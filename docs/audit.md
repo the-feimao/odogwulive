@@ -711,3 +711,30 @@ An initial test run caught a duplicate manifest link on `/scanner-app`; the layo
 1. PWA install prompts still depend on browser support for SVG `any` icons. Add PNG 192/512 icons if a target platform needs them.
 2. The service worker remains network-first for navigations and does not cache API responses, so event/order data cannot be served stale.
 3. No existing route, controller, API contract, auth behaviour, payment flow or license/installer logic was changed.
+
+## 23. Phase 4 final verification and deferred items (2026-11-19)
+
+### Audit results
+
+- **Local email:** Mailpit is now the Compose image behind the unchanged `mailhog` service name and ports. Real `.env` values were not touched.
+- **Fonts:** all Google Fonts requests were removed from the Sass entry, welcome view, default Laravel layout and error layouts. The two legacy frontend master layouts still request Poppins and remain deferred.
+- **Scanner:** the new `/scanner-app` PWA uses only the existing `/api/scanner/...` endpoints and the same Passport token shape. No API route, request/response shape or auth behaviour changed.
+- **PWA:** public and scanner manifests are config-driven, the service worker caches only static assets/offline shell, and no API response is cached.
+- **Twilio:** `twilio/sdk` is still present. Configuration is stored in the `settings` row and gated by `sms_notification`; `SettingController` forces that flag to `0` when the checkbox is absent and requires the Twilio fields only when it is enabled. No default, credential or send path was changed. Existing database settings were not inspected or modified.
+- **Production email:** `.env.example` still describes local SMTP (`MAIL_HOST=mailhog`, port `1025`). No production SMTP/Brevo credentials were added; this needs an operator decision.
+- **Payment SDKs:** Razorpay, PayPal, Stripe and Flutterwave remain external provider-hosted SDKs/checkouts. These are intentionally outside the CDN-to-npm migration.
+- **Remaining legacy CDNs:** Bootstrap, jQuery, Popper, Select2, Summernote, Flatpickr, SweetAlert2, Chart.js, DataTables, moment.js, pdfmake and nicescroll are still loaded by the pre-existing legacy/admin layouts. Replacing them requires editing `resources/views/master.blade.php` and related admin views, which is scheduled for Phase 5 or a user-approved exception.
+
+### Verification
+
+```powershell
+C:\xampp\php\php.exe vendor\bin\phpunit --testdox           # OK (45 tests, 382 assertions)
+npm run build                                               # OK; existing Bootstrap Sass deprecation warnings only
+```
+
+No paid dependency was introduced. Passport, Spatie Permission, payment packages, API contracts, order/payment logic, validation behaviour and license/installer logic are unchanged.
+
+### Decisions requested
+
+1. Should the legacy/admin CDN libraries be replaced during Phase 5, or may `resources/views/master.blade.php` be edited now despite the pre-existing local modifications?
+2. Which production email option should be documented/configured (host SMTP or Brevo free tier)? Credentials must be supplied through the environment, not committed.
