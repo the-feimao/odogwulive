@@ -568,3 +568,37 @@ The four pages were measured in headless Chrome with device-metric emulation at 
 2. Organizer signup still redirects to the legacy `/login` route after creation, matching the original behaviour.
 3. Existing registration/login endpoint tests remain green; a browser smoke test is still useful for real password-reset email delivery under the configured SMTP/Mailpit setup.
 4. No controller, route, validation rule, Passport behaviour, API contract, payment logic or license/installer logic was changed.
+
+---
+
+## 18. Phase 3 progress — blogs, organizers and contact (2026-11-19)
+
+### What changed
+
+- Rebuilt `resources/views/frontend/blog.blade.php` and `resources/views/frontend/blogDetail.blade.php` on `layouts.public`. The index now uses responsive article cards with lazy-loaded images, category/date metadata, accessible favourite controls and a graceful empty state; the detail page keeps the original escaped description, category, tags, session flash message and `/blog-detail/{id}/{slug}` links.
+- Updated `resources/views/components/favorite-button.blade.php` so `type="blog"` reads `AppUser::favorite_blog` instead of the event favourites column. Existing event usage is unchanged.
+- Rebuilt `resources/views/frontend/orgDetail.blade.php` with a profile hero, contact details, follow control, event cards and the existing paginator. The legacy `onclick="follow(id)"` hook is preserved through the new `resources/js/public-social.js` Vite entry.
+- Rebuilt `resources/views/frontend/contact.blade.php` on the public layout, preserving the original `action="#"`, `method="post"` and `name`/`email`/`subject`/`message` fields. The Google Maps CDN script is no longer used on this page.
+- Added free, self-hosted `leaflet` via npm plus `resources/js/contact-map.js`. It renders an OpenStreetMap tile map from the existing `default_lat`/`default_long` settings, removes the fallback message once initialised and shows a neutral fallback when coordinates are not configured. No API key is required.
+- Added `tests/Feature/RemainingPublicPagesTest.php` covering published-only blog listings, blog favourites, blog detail content/flash messages, organizer profile/events/follow hooks and the contact form/map contract without legacy Bootstrap/jQuery/CDN assets.
+- `resources/views/frontend/home.blade.php` was left untouched: the only route calling `FrontendController@home` is commented out in `routes/frontend.php`, so the view is currently dead code. It is flagged here rather than removed during this view-migration phase.
+
+### Verification
+
+```powershell
+node --check resources\js\public-social.js                  # OK
+node --check resources\js\contact-map.js                    # OK
+npm run build                                               # OK; Leaflet CSS/JS bundled, existing Bootstrap Sass warnings only
+C:\xampp\php\php.exe artisan optimize:clear
+C:\xampp\php\php.exe vendor\bin\phpunit --filter RemainingPublicPagesTest --testdox # OK (4 tests, 47 assertions)
+C:\xampp\php\php.exe vendor\bin\phpunit --testdox           # OK (42 tests, 359 assertions)
+```
+
+Temporary fixture-backed renders of all four pages were measured in headless Chrome at 360px, 768px and 1280px. Document and body scroll widths matched the viewport with no unintended horizontal overflow. The contact page was also loaded over HTTP from a temporary static server; Chrome reported an initialised Leaflet container with six OSM tiles and no fallback message. Temporary previews were kept outside the repository and removed from the test suite before commit.
+
+### Risks and manual checks
+
+1. The contact form still has no server-side submission target (`action="#"`) and no validation rules, matching the original page; only the presentation changed.
+2. The OSM tile layer requires outbound access to `tile.openstreetmap.org`. The fallback message is shown when coordinates are missing, but offline tile loading will leave an empty map background.
+3. The follow button was verified at the HTTP/HTML contract level and through the existing JSON endpoint tests; a browser smoke test with a real attendee account is still useful.
+4. `public/build/` is generated output and was not staged. Pre-existing modified controllers/routes/master layout and license/installer logic were not touched. Passport auth, API contracts, order/payment logic and validation behaviour are unchanged.

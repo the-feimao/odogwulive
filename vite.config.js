@@ -10,6 +10,8 @@ export default defineConfig({
                 'resources/js/app.js',
                 'resources/js/checkout.js',
                 'resources/js/user-area.js',
+                'resources/js/public-social.js',
+                'resources/js/contact-map.js',
             ],
             refresh: true,
         }),
