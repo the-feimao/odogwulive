@@ -538,3 +538,33 @@ Temporary rendered responses were captured outside the repository and measured i
 2. The order detail renderer assumes the JSON payload shape from `FrontendController@getOrder`; that controller was read only and left untouched.
 3. Legacy `public/frontend/js/custom.js` still exists for pages that have not been migrated; it is no longer loaded by these redesigned views.
 4. Pre-existing modified controllers, routes and `resources/views/master.blade.php` were not staged or altered. Passport auth, API contracts, order/payment logic and license/installer logic are unchanged.
+
+---
+
+## 17. Phase 3 progress — authentication pages (2026-11-19)
+
+### What changed
+
+- Rebuilt `resources/views/frontend/auth/login.blade.php`, `register.blade.php`, `resetPassword.blade.php` and `orgRegister.blade.php` on `layouts.public`, replacing the styled-components CSS class soup and Bootstrap/jQuery/CDN shell with the shared design system.
+- Preserved every original form action (`/user/login`, `/user/register`, `/user/resetPassword`, `/user/org-register`), the hidden `url` return field, all input names (`name`, `last_name`, `email`, `phone`, `password`, `confirm_password`, `first_name`, `name`, `country`), existing `data-qa` hooks and the partner/organizer links.
+- Session flash messages now render through the shared alert component: login/reset errors and reset success messages keep their original text.
+- Organizer registration now uses the existing design-system select for countries while retaining the `Currency`-backed options and `old('country')` selection.
+- Added `tests/Feature/AuthPagesTest.php` covering all four page contracts plus rendering of server validation errors in the new components.
+
+### Verification
+
+```powershell
+C:\xampp\php\php.exe artisan optimize:clear
+C:\xampp\php\php.exe vendor\bin\phpunit --filter AuthPagesTest --testdox  # OK (5 tests, 67 assertions)
+C:\xampp\php\php.exe vendor\bin\phpunit --testdox           # OK (38 tests, 312 assertions)
+npm run build                                                # OK; existing Bootstrap Sass deprecation warnings only
+```
+
+The four pages were measured in headless Chrome with device-metric emulation at 360px, 768px and 1280px. Document/body scroll widths matched the viewport on every page and no unintended horizontal overflow was found.
+
+### Risks and manual checks
+
+1. Password reset still sends a randomly generated password by email through the existing controller; only the page was restyled.
+2. Organizer signup still redirects to the legacy `/login` route after creation, matching the original behaviour.
+3. Existing registration/login endpoint tests remain green; a browser smoke test is still useful for real password-reset email delivery under the configured SMTP/Mailpit setup.
+4. No controller, route, validation rule, Passport behaviour, API contract, payment logic or license/installer logic was changed.
