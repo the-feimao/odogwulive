@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use PHPUnit\Framework\Attributes\Test;
 use App\Models\OrderChild;
 use Illuminate\Support\Facades\Hash;
 use Laravel\Passport\Passport;
@@ -9,7 +10,7 @@ use Tests\TestCase;
 
 class ScannerApiTest extends TestCase
 {
-    /** @test */
+    #[Test]
     public function a_scanner_can_log_in_and_receive_a_token()
     {
         $organizer = $this->organizer();
@@ -26,7 +27,7 @@ class ScannerApiTest extends TestCase
             ->assertJsonStructure(['data' => ['token']]);
     }
 
-    /** @test */
+    #[Test]
     public function a_non_scanner_cannot_log_in_to_the_scanner_api()
     {
         $organizer = $this->organizer(['password' => Hash::make('secret123')]);
@@ -39,7 +40,7 @@ class ScannerApiTest extends TestCase
             ->assertJsonPath('msg', 'Only scanner can login.');
     }
 
-    /** @test */
+    #[Test]
     public function assigned_events_are_listed_for_the_authenticated_scanner()
     {
         $organizer = $this->organizer();
@@ -56,7 +57,7 @@ class ScannerApiTest extends TestCase
             ->assertJsonPath('data.0.name', 'Assigned Event');
     }
 
-    /** @test */
+    #[Test]
     public function scanning_a_valid_ticket_marks_it_used_and_completes_the_order()
     {
         $organizer = $this->organizer();
@@ -84,7 +85,7 @@ class ScannerApiTest extends TestCase
             ->assertJsonPath('msg', 'Ticket is already scanned. ');
     }
 
-    /** @test */
+    #[Test]
     public function a_ticket_from_another_event_cannot_be_scanned()
     {
         $organizer = $this->organizer();

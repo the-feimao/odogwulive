@@ -2,12 +2,13 @@
 
 namespace Tests\Feature;
 
+use PHPUnit\Framework\Attributes\Test;
 use App\Models\Setting;
 use Tests\TestCase;
 
 class TicketQrTest extends TestCase
 {
-    /** @test */
+    #[Test]
     public function an_admin_can_print_a_ticket_with_a_qr_code()
     {
         $organizer = $this->organizer();
@@ -28,7 +29,7 @@ class TicketQrTest extends TestCase
             ->assertSee('<img', false);
     }
 
-    /** @test */
+    #[Test]
     public function an_organization_cannot_print_another_organizations_ticket()
     {
         $organizer = $this->organizer();

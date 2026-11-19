@@ -2,13 +2,14 @@
 
 namespace Tests\Feature;
 
+use PHPUnit\Framework\Attributes\Test;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
 
 class UserAuthenticationTest extends TestCase
 {
-    /** @test */
+    #[Test]
     public function a_visitor_can_register_and_is_logged_in()
     {
         $response = $this->post('/user/register', [
@@ -29,7 +30,7 @@ class UserAuthenticationTest extends TestCase
         ]);
     }
 
-    /** @test */
+    #[Test]
     public function registration_rejects_a_duplicate_email()
     {
         $existing = $this->customer();
@@ -43,7 +44,7 @@ class UserAuthenticationTest extends TestCase
         ])->assertRedirect('/user/register')->assertSessionHasErrors('email');
     }
 
-    /** @test */
+    #[Test]
     public function a_registered_user_can_log_in_and_bad_credentials_are_rejected()
     {
         $user = $this->customer(['password' => Hash::make('secret123')]);
@@ -62,7 +63,7 @@ class UserAuthenticationTest extends TestCase
         ])->assertRedirect('/user/login')->assertSessionHas('error_msg', 'Invalid Username or Password.');
     }
 
-    /** @test */
+    #[Test]
     public function the_user_api_issues_a_token_on_login()
     {
         $user = $this->customer(['password' => Hash::make('secret123')]);

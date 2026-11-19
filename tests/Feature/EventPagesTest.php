@@ -2,11 +2,12 @@
 
 namespace Tests\Feature;
 
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 class EventPagesTest extends TestCase
 {
-    /** @test */
+    #[Test]
     public function the_landing_page_and_event_listing_render()
     {
         $organizer = $this->organizer();
@@ -20,7 +21,7 @@ class EventPagesTest extends TestCase
             ->assertSee('Upcoming Test Carnival', false);
     }
 
-    /** @test */
+    #[Test]
     public function the_event_detail_page_renders_the_event()
     {
         $organizer = $this->organizer();
@@ -39,7 +40,7 @@ class EventPagesTest extends TestCase
             ->assertSee('EARLY-BIRD-TEST', false);
     }
 
-    /** @test */
+    #[Test]
     public function the_ticket_selection_page_renders_the_ticket()
     {
         $organizer = $this->organizer();

@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use PHPUnit\Framework\Attributes\Test;
 use App\Models\Coupon;
 use App\Models\Order;
 use App\Models\OrderChild;
@@ -11,7 +12,7 @@ use Tests\TestCase;
 
 class CheckoutAndOrderTest extends TestCase
 {
-    /** @test */
+    #[Test]
     public function the_checkout_page_shows_taxes_and_available_quantity()
     {
         $organizer = $this->organizer();
@@ -28,7 +29,7 @@ class CheckoutAndOrderTest extends TestCase
             ->assertSee('Checkout VAT', false);
     }
 
-    /** @test */
+    #[Test]
     public function a_local_payment_order_is_created_with_children_taxes_and_commission()
     {
         $organizer = $this->organizer();
@@ -66,7 +67,7 @@ class CheckoutAndOrderTest extends TestCase
         $this->assertSame(1, (int) Coupon::find($coupon->id)->use_count);
     }
 
-    /** @test */
+    #[Test]
     public function checking_a_valid_and_an_invalid_coupon_via_the_api()
     {
         $organizer = $this->organizer();
@@ -91,7 +92,7 @@ class CheckoutAndOrderTest extends TestCase
             ->assertJsonPath('data', null);
     }
 
-    /** @test */
+    #[Test]
     public function the_api_returns_taxes_for_an_event_organizer()
     {
         $organizer = $this->organizer();
