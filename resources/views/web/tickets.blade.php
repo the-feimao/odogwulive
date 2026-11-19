@@ -1,193 +1,113 @@
-@extends('main')
+@extends('layouts.public')
+
+@section('title', __('Choose a Ticket').' — '.$data->name.' — '.config('brand.name'))
 
 @section('content')
-<style>
-    .hm-gradient {
-    background-image: linear-gradient(to top, #f3e7e9 0%, #e3eeff 99%, #e3eeff 100%);
-    }
-    .darken-grey-text {
-        color: #2E2E2E;
-    }
+    @php
+        $eventImage = $data->image
+            ? url('images/upload/'.$data->image)
+            : asset('web/bg/1.jpg');
+        $isOnline = $data->type === 'online';
+        $locationLabel = $isOnline ? __('Online event') : ($data->address ?: __('Venue to be announced'));
+        $eventUrl = url('/event/'.$data->id.'/'.\Illuminate\Support\Str::slug($data->name));
+    @endphp
 
-    
-</style>
-      <!-- content begin -->
-      <div id="content" class="no-bottom no-top" style="background-size: cover;">
+    <section class="tw-relative tw-overflow-hidden tw-bg-ink-950">
+        <img src="{{ $eventImage }}" alt="" width="1600" height="900"
+            class="tw-absolute tw-inset-0 tw-h-full tw-w-full tw-object-cover tw-opacity-30">
+        <div class="tw-absolute tw-inset-0 tw-bg-gradient-to-r tw-from-ink-950 tw-via-ink-950/90 tw-to-ink-950/30"></div>
+        <div class="tw-relative tw-mx-auto tw-max-w-content tw-px-4 tw-py-12 md:tw-px-6 md:tw-py-16">
+            <nav aria-label="{{ __('Breadcrumb') }}" class="tw-flex tw-flex-wrap tw-items-center tw-gap-2 tw-text-xs tw-font-semibold tw-text-neutral-400">
+                <a href="{{ url('/') }}" class="hover:tw-text-neutral-50 focus:tw-outline-none focus-visible:tw-ring-2 focus-visible:tw-ring-primary-500">{{ __('Home') }}</a>
+                <x-lucide-chevron-right class="tw-h-3 tw-w-3" />
+                <a href="{{ $eventUrl }}" class="hover:tw-text-neutral-50 focus:tw-outline-none focus-visible:tw-ring-2 focus-visible:tw-ring-primary-500">{{ $data->name }}</a>
+            </nav>
+            <x-badge tone="primary" class="tw-mt-5">{{ __('Ticket selection') }}</x-badge>
+            <h1 class="tw-mt-3 tw-text-3xl tw-font-extrabold tw-tracking-tight tw-text-neutral-50 md:tw-text-4xl">
+                {{ __('Choose a Ticket') }}
+            </h1>
+            <p class="tw-mt-2 tw-max-w-2xl tw-text-sm tw-text-neutral-300 md:tw-text-base">
+                {{ $data->name }} · {{ $data->start_time?->format('l, F j, Y · g:i A') }} · {{ $locationLabel }}
+            </p>
+        </div>
+    </section>
 
-        <!-- revolution slider begin -->
-    
-        <!-- section begin -->
-        <section id="section-ticket" class="jarallax text-light"
-            style="position: relative; z-index: 0; background-size: cover;">
+    <div class="tw-mx-auto tw-max-w-content tw-px-4 tw-py-10 md:tw-px-6 md:tw-py-14">
+        <div class="tw-grid tw-gap-8 lg:tw-grid-cols-[minmax(0,1fr)_300px]">
+            <div>
+                <x-card :title="__('Available options')" :subtitle="__('Select a ticket to continue to checkout.')">
+                    <x-tabs :tabs="[
+                        ['label' => __('Paid').' ('.count($data->paid_ticket).')', 'slot' => 'paid'],
+                        ['label' => __('Free').' ('.count($data->free_ticket).')', 'slot' => 'free'],
+                    ]">
+                        <x-slot:paid>
+                            <div class="tw-grid tw-gap-4 md:tw-grid-cols-2">
+                                @forelse ($data->paid_ticket as $ticket)
+                                    <x-event-ticket-offer :ticket="$ticket" :event="$data" :currency="$currency ?? null" />
+                                @empty
+                                    <x-empty-state class="md:tw-col-span-2 tw-rounded-card tw-border tw-border-dashed tw-border-neutral-300 dark:tw-border-neutral-700"
+                                        title="{{ __('No Paid Tickets found') }}"
+                                        description="{{ __('Check the free tab or return to the event page.') }}">
+                                        <x-slot:icon><x-lucide-ticket class="tw-h-6 tw-w-6" /></x-slot:icon>
+                                    </x-empty-state>
+                                @endforelse
+                            </div>
+                        </x-slot:paid>
 
-            <div class="wm wm-border dark wow fadeInDown animated"
-                style="visibility: visible; animation-name: fadeInDown; background-size: cover;">                                  
-                 {{--  --}}
+                        <x-slot:free>
+                            <div class="tw-grid tw-gap-4 md:tw-grid-cols-2">
+                                @forelse ($data->free_ticket as $ticket)
+                                    <x-event-ticket-offer :ticket="$ticket" :event="$data" :currency="$currency ?? null" />
+                                @empty
+                                    <x-empty-state class="md:tw-col-span-2 tw-rounded-card tw-border tw-border-dashed tw-border-neutral-300 dark:tw-border-neutral-700"
+                                        title="{{ __('No Free Tickets found') }}"
+                                        description="{{ __('Browse the paid options instead.') }}">
+                                        <x-slot:icon><x-lucide-ticket class="tw-h-6 tw-w-6" /></x-slot:icon>
+                                    </x-empty-state>
+                                @endforelse
+                            </div>
+                        </x-slot:free>
+                    </x-tabs>
+                </x-card>
             </div>
-            <div class="container" style="background-size: cover;">
-                <div class="row" style="background-size: cover;">
-                    <div class="col-md-6 offset-md-3 text-center wow fadeInUp animated"
-                        style="visibility: visible; animation-name: fadeInUp; background-size: cover;">
-                        <h1>Choose a Ticket</h1>
-                        <div class="separator" style="background-size: cover;"><span><i
-                                    class="fa fa-square"></i></span></div>
-                        <div class="spacer-single" style="background-size: cover;"></div>
-                    </div>
-                    <p>test {{$data->paid_ticket}}</p>
-                   
-    
-                    @foreach ($data->paid_ticket as $item)
-                                       
 
-                    <div class="col-lg-4">
-                        <article class="ticket">
-                          <header class="ticket__wrapper">
-                            <div class="ticket__header">
-                              <span>{{$item->ticket_number}}</span>
-                              @if($item->type=="free")
-                              <span>{{__('FREE')}}</span>
-                              @else
-                                <span>{{$currency.$item->price}}</span>
-                              @endif     
+            <aside class="tw-space-y-6 lg:tw-sticky lg:tw-top-24 lg:tw-self-start">
+                <x-card :title="__('Event summary')">
+                    <img src="{{ $eventImage }}" alt="{{ $data->name }}" width="400" height="240" loading="lazy"
+                        class="tw-aspect-video tw-w-full tw-rounded-stub tw-object-cover">
+                    <dl class="tw-mt-4 tw-space-y-3 tw-text-sm">
+                        <div class="tw-flex tw-gap-2">
+                            <x-lucide-calendar-days class="tw-mt-0.5 tw-h-4 tw-w-4 tw-shrink-0 tw-text-primary-600" />
+                            <div>
+                                <dt class="tw-sr-only">{{ __('Date') }}</dt>
+                                <dd class="tw-font-semibold tw-text-ink-950 dark:tw-text-neutral-50">{{ $data->start_time?->format('l, F j, Y') }}</dd>
+                                <dd class="tw-text-neutral-500 dark:tw-text-neutral-400">{{ $data->start_time?->format('g:i A') }}</dd>
                             </div>
-                          </header>
-                          <div class="ticket__divider">
-                            <div class="ticket__notch"></div>
-                            <div class="ticket__notch ticket__notch--right"></div>
-                          </div>
-                          <div class="ticket__body">
-                            <section class="ticket__section">
-                              <h3>{{$item->name}}</h3>
-                              <p>{{$item->description}}</p>                            
-                            </section>
-                            <section class="ticket__section">
-                              <h3>{{__('Sales')}}</h3>
-                              <p class="mb-0"><span>{{__('Start')}} : </span>{{$item->start_time->format('Y-m-d h:i a')}}</p>
-                              <p class="mb-0"><span>{{__('end')}} : </span>{{$item->end_time->format('Y-m-d h:i a')}}</p>
-                              @if($item->available_qty <= 0)                                
-                              @else
-                                <p><span>{{__('Quantity')}} : </span>{{$item->available_qty.' pcs left'}}</p>                              
-                              @endif
-                            </section>                          
-                          </div>
-                          <footer class="ticket__footer text-right">  
-                            @if($item->available_qty <= 0)
-                            <p class="mt-1 mb-1 text-center coupon-data">{{__('Sold Out')}}</p>  
-                            @else
-                              @if(Auth::guard('appuser')->check())
-                                <a href="{{url('checkout/'.$item->id)}}"><button class="btn btn-a" >{{__('Book Now')}}</button></a>
-                              @else
-                                <a href="{{url('user/login')}}"><button class="btn btn-a" >{{__('Book Now')}}</button></a>
-                              @endif
-                            @endif
-                          </footer>
-                        </article>
-                      </div> 
-                   
-                    @endforeach
-
-                   
-                    <div class="col-md-4" style="background-size: cover;">
-                        <div class="pricing-s1 mb30 wow fadeInUp animated"
-                            style="visibility: visible; animation-name: fadeInUp; background-size: cover;">
-                            <div class="top" style="background-size: cover;">
-                                <h2>Regular(1 Days)</h2>
-                                <p class="price"><span class="currency id-color">NGN</span> <b>10,000 </b></p>
-                            </div>
-                            <div class="bottom" style="background-size: cover;">
-                                <ul>
-
-                                    <li><i class="icon_check_alt2"></i>1 Day</li>
-
-                                </ul>
-                                <a href="#" class="btn btn-custom text-white">Buy Ticket</a>
-                            </div>
-                            <div class="ps1-deco" style="background-size: cover;"></div>
                         </div>
-                    </div>
-                    <div class="col-md-4" style="background-size: cover;">
-                        <div class="pricing-s1 mb30 wow fadeInUp animated"
-                            style="visibility: visible; animation-name: fadeInUp; background-size: cover;">
-                            <div class="top" style="background-size: cover;">
-                                <h2>Regular(2 Days)</h2>
-                                <p class="price"><span class="currency id-color">NGN</span> <b>19,000 </b></p>
+                        <div class="tw-flex tw-gap-2">
+                            <x-lucide-map-pin class="tw-mt-0.5 tw-h-4 tw-w-4 tw-shrink-0 tw-text-primary-600" />
+                            <div>
+                                <dt class="tw-sr-only">{{ __('Location') }}</dt>
+                                <dd class="tw-font-semibold tw-text-ink-950 dark:tw-text-neutral-50">{{ $locationLabel }}</dd>
                             </div>
-                            <div class="bottom" style="background-size: cover;">
-                                <ul>
-                                    <li><i class="icon_check_alt2"></i>2 Days</li>
-
-                                </ul>
-                                <a href="#" class="btn btn-custom text-white">Buy Ticket</a>
-                            </div>
-                            <div class="ps1-deco" style="background-size: cover;"></div>
                         </div>
-                    </div>
-                    <div class="col-md-4" style="background-size: cover;">
-                        <div class="pricing-s1 mb30 wow fadeInUp animated"
-                            style="visibility: visible; animation-name: fadeInUp; background-size: cover;">
-                            <div class="top" style="background-size: cover;">
-                                <h2>VIP</h2>
-                                <p class="price"><span class="currency id-color">NGN</span> <b>1.2M</b></p>
+                        @if ($data->category)
+                            <div class="tw-flex tw-gap-2">
+                                <x-lucide-ticket class="tw-mt-0.5 tw-h-4 tw-w-4 tw-shrink-0 tw-text-primary-600" />
+                                <div>
+                                    <dt class="tw-sr-only">{{ __('Category') }}</dt>
+                                    <dd class="tw-font-semibold tw-text-ink-950 dark:tw-text-neutral-50">{{ $data->category->name }}</dd>
+                                </div>
                             </div>
-                            <div class="bottom" style="background-size: cover;">
-                                <ul>
-                                    <li><i class="icon_check_alt2"></i>Table For 2</li>
-                                    <li><i class="icon_check_alt2"></i>2 Days</li>
-                                </ul>
-                                <a href="#" class="btn btn-custom text-white">Buy Ticket</a>
-                            </div>
-                            <div class="ps1-deco" style="background-size: cover;"></div>
-                        </div>
-                    </div>
-                    <div class="col-md-4" style="background-size: cover;">
-                        <div class="pricing-s1 mb30 wow fadeInUp"
-                            style="visibility: hidden; animation-name: none; background-size: cover;">
-                            <div class="ribbon color-2 text-white" style="background-size: cover;">Recommend</div>
-                            <div class="top" style="background-size: cover;">
-                                <h2>Deluxe</h2>
-                                <p class="price"><span class="currency id-color">NGN</span> <b>5M</b></p>
-                            </div>
-                            <div class="bottom" style="background-size: cover;">
-                                <ul>
-                                    <li><i class="icon_check_alt2"></i>Table For 2</li>
-                                    <li><i class="icon_check_alt2"></i>5 Days</li>
-                                </ul>
-                                <a href="#" class="btn btn-custom text-white">Buy Ticket</a>
-                            </div>
-                            <div class="ps1-deco" style="background-size: cover;"></div>
-                        </div>
-                    </div>
-                    <div class="col-md-4" style="background-size: cover;">
-                        <div class="pricing-s1 mb30 wow fadeInUp"
-                            style="visibility: hidden; animation-name: none; background-size: cover;">
-                            <div class="top" style="background-size: cover;">
-                                <h2>Platinum</h2>
-                                <p class="price"><span class="currency id-color">NGN</span> <b>10M</b></p>
-                            </div>
-                            <div class="bottom" style="background-size: cover;">
-                                <ul>
-                                    <li><i class="icon_check_alt2"></i>Table For 10</li>
-                                    <li><i class="icon_check_alt2"></i>2 Days</li>
-                                </ul>
-                                <a href="#" class="btn btn-custom text-white">Buy Ticket</a>
-                            </div>
-                            <div class="ps1-deco" style="background-size: cover;"></div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div id="jarallax-container-1"
-                style="position: absolute; top: 0px; left: 0px; width: 100%; height: 100%; overflow: hidden; z-index: -100; clip-path: polygon(0px 0px, 100% 0px, 100% 100%, 0px 100%); background-size: cover;">
-                <img src="images/bg/2.jpg" class="jarallax-img" alt=""
-                    style="object-fit: cover; object-position: 50% 50%; max-width: none; position: absolute; top: 0px; left: 0px; width: 626.4px; height: 1652.2px; overflow: hidden; pointer-events: none; transform-style: preserve-3d; backface-visibility: hidden; will-change: transform, opacity; margin-top: -387.1px; transform: translate3d(0px, -11.725px, 0px);">
-            </div>
-        </section>
-        <!-- section close -->
-
-
-        <!-- footer begin -->
-        
-        @include('web.footer')
-        <!-- footer close -->
+                        @endif
+                    </dl>
+                    <a href="{{ $eventUrl }}"
+                        class="tw-mt-5 tw-inline-flex tw-items-center tw-gap-1.5 tw-text-sm tw-font-bold tw-text-accent-700 hover:tw-text-accent-800 focus:tw-outline-none focus-visible:tw-ring-2 focus-visible:tw-ring-accent-600 dark:tw-text-accent-300">
+                        <x-lucide-chevron-left class="tw-h-4 tw-w-4" />
+                        {{ __('Back to event') }}
+                    </a>
+                </x-card>
+            </aside>
+        </div>
     </div>
 @endsection

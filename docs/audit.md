@@ -410,7 +410,6 @@ npm run build                                      # OK
 5. API contracts, Passport auth, payment logic and license/installer logic were not touched.
 
 ---
-
 ## 13. Phase 3 progress — event listings (2026-11-19)
 
 This commit set migrates the event guide, event listing, category listing and event-type listing pages to the new public shell. Controller methods, route names/paths and GET field names were not changed.
@@ -444,3 +443,34 @@ HTTP smoke checks on PHP 8.2.12 returned HTTP 200 for `/`, `/style-guide`, `/ind
 4. Event detail, checkout, user area, auth, blog and contact pages still use the legacy Bootstrap/jQuery layout and will be migrated in later Phase 3 commit sets.
 5. Dark mode and the 360px/768px/1280px layouts should be reviewed visually from the captured screenshots.
 6. API contracts, Passport auth, payment logic and license/installer logic were not touched.
+
+---
+
+## 14. Phase 3 progress — event detail and ticket selection (2026-11-19)
+
+### What changed
+
+- Rebuilt `resources/views/frontend/eventDetail.blade.php` for `/event/{id}/{name}` on the shared public layout: editorial hero, date/time/venue and type chips, favourite and share controls, Alpine gallery thumbnails, escaped description, tags, organizer card, reviews with star ratings, venue card with an OpenStreetMap link, static FAQ details, and a sticky ticket sidebar with paid/free tabs.
+- Rebuilt `resources/views/web/tickets.blade.php` for `/eventdetail/{id}/{name}`: real paid/free tickets from the existing controller payload, event summary card, and working login/checkout links. All hard-coded placeholder ticket cards and prices were removed.
+- Added `x-event-ticket-offer`, used by both pages. It preserves the original `checkout/{ticketId}` link for signed-in attendees and the original `user/login` redirect for guests, keeps ticket numbers visible, and shows sold-out state without offering checkout.
+- Fixed a latent authenticated-user bug in `x-favorite-button`: an Alpine expression was being passed to a Blade component as PHP, causing a 500. The active state is now rendered server-side while the button itself stays Alpine-driven.
+- The legacy detail view hid a single paid ticket because of a `count == 1` check. The redesign shows all tickets supplied by the controller; no checkout or order logic changed.
+- Extended `tests/Feature/EventPagesTest.php` to cover detail content, gallery/organizer/reviews/map/FAQ sections, paid and free tickets, guest login redirect, authenticated checkout link, sold-out behaviour, and removal of placeholder pricing.
+
+### Verification
+
+```powershell
+C:\xampp\php\php.exe artisan optimize:clear
+C:\xampp\php\php.exe vendor\bin\phpunit --testdox   # OK (25 tests, 133 assertions)
+npm run build                                      # OK; existing Bootstrap Sass deprecation warnings only
+```
+
+Feature tests exercise both routes through the Laravel HTTP kernel with fixture events and tickets. The local database has no published events, so HTTP smoke checks for these two data-dependent routes were not meaningful; the earlier listing-page smoke checks still pass and the Vite build succeeds.
+
+### Risks and manual checks
+
+1. The venue card links to OpenStreetMap rather than embedding an interactive map. Leaflet can be added in Phase 4 when map dependencies are reviewed.
+2. Share uses the browser Clipboard API; it requires a secure context in real browsers. The link itself is also always selectable.
+3. Reviews are displayed exactly as supplied by the controller, which does not filter by `status`; this legacy behaviour was not changed.
+4. Event descriptions are escaped and line breaks preserved, so admin-entered HTML is shown as text. This is safer than rendering raw HTML and does not affect stored data.
+5. Checkout, payment gateways, Passport auth, API contracts and license/installer logic were not touched.

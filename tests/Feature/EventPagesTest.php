@@ -117,26 +117,66 @@ class EventPagesTest extends TestCase
             'name' => 'Detailed Test Event',
             'description' => 'Detailed test event description.',
         ]);
-        // The current detail view hides a single paid ticket; add two so the
-        // ticket list is actually rendered (existing behaviour, not changed).
-        $this->ticket($event, ['name' => 'Early Bird', 'ticket_number' => 'EARLY-BIRD-TEST']);
-        $this->ticket($event, ['name' => 'Regular', 'ticket_number' => 'REGULAR-TEST']);
+        $paid = $this->ticket($event, ['name' => 'Early Bird', 'ticket_number' => 'EARLY-BIRD-TEST']);
+        $this->ticket($event, [
+            'name' => 'Community Pass',
+            'ticket_number' => 'FREE-PASS-TEST',
+            'type' => 'free',
+            'price' => 0,
+        ]);
 
         $this->get('/event/'.$event->id.'/detailed-test-event')
             ->assertOk()
             ->assertSee('Detailed Test Event', false)
-            ->assertSee('EARLY-BIRD-TEST', false);
+            ->assertSee('Detailed test event description.', false)
+            ->assertSee('Test Organizer', false)
+            ->assertSee('About this event')
+            ->assertSee('Organized by')
+            ->assertSee('Reviews')
+            ->assertSee('Good to know')
+            ->assertSee('View on OpenStreetMap')
+            ->assertSee('EARLY-BIRD-TEST', false)
+            ->assertSee('FREE-PASS-TEST', false)
+            ->assertSee('user/login', false);
     }
 
     #[Test]
-    public function the_ticket_selection_page_renders_the_ticket()
+    public function signed_in_attendees_get_the_original_checkout_link()
     {
         $organizer = $this->organizer();
-        $event = $this->event($organizer);
-        $this->ticket($event, ['name' => 'VIP Access', 'ticket_number' => 'VIP-ACCESS-TEST']);
+        $event = $this->event($organizer, ['name' => 'Checkout Link Event']);
+        $ticket = $this->ticket($event, ['name' => 'Early Bird', 'ticket_number' => 'CHECKOUT-LINK-TEST']);
 
-        $this->get('/eventdetail/'.$event->id.'/test-event')
+        $this->actingAs($this->customer(), 'appuser')
+            ->get('/event/'.$event->id.'/checkout-link-event')
             ->assertOk()
-            ->assertSee('VIP-ACCESS-TEST', false);
+            ->assertSee('CHECKOUT-LINK-TEST', false)
+            ->assertSee('checkout/'.$ticket->id, false);
+    }
+
+    #[Test]
+    public function the_ticket_selection_page_renders_real_tickets_without_placeholder_pricing()
+    {
+        $organizer = $this->organizer();
+        $event = $this->event($organizer, ['name' => 'Ticket Selection Event']);
+        $ticket = $this->ticket($event, ['name' => 'VIP Access', 'ticket_number' => 'VIP-ACCESS-TEST']);
+        $soldOut = $this->ticket($event, [
+            'name' => 'Sold Out Pass',
+            'ticket_number' => 'SOLD-OUT-TEST',
+            'quantity' => 0,
+        ]);
+
+        $this->actingAs($this->customer(), 'appuser')
+            ->get('/eventdetail/'.$event->id.'/ticket-selection-event')
+            ->assertOk()
+            ->assertSee('Ticket Selection Event', false)
+            ->assertSee('Event summary')
+            ->assertSee('VIP-ACCESS-TEST', false)
+            ->assertSee('SOLD-OUT-TEST', false)
+            ->assertSee('checkout/'.$ticket->id, false)
+            ->assertSee('Sold Out')
+            ->assertDontSee('checkout/'.$soldOut->id, false)
+            ->assertDontSee('Regular(1 Days)', false)
+            ->assertDontSee('1.2M', false);
     }
 }
