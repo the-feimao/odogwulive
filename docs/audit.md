@@ -375,3 +375,36 @@ npm run build                            # OK
 `php artisan serve` using the XAMPP PHP 8.2.12 binary returned HTTP 200 for both `/` and `/style-guide`, with no platform-check exception.
 
 No API contracts, payment logic, Passport auth or licensing logic were changed.
+
+---
+
+## 12. Phase 3 progress — public shell and home (2026-11-19)
+
+This is the first Phase 3 commit set: the shared public shell and the root home page. Other public pages still use their existing legacy layouts.
+
+### What changed
+
+- Added `config/brand.php` for public-facing defaults (name, headline, about text, location, social links). Hard-coded "Odogwu Fest" copy on the home page now comes from config; admin-editable name/logo/favicon/email/copyright still come from `Setting`.
+- Added `resources/views/layouts/public.blade.php` with Vite assets, theme init, skip link, flash messages and the public header/footer.
+- Added `x-public-header`, `x-public-footer`, `x-public-nav-links` and `x-flash-messages` components. The header is mobile-first with an Alpine menu, accessible labels and a persisted theme toggle.
+- Rebuilt `resources/views/web/home.blade.php`: editorial hero, category quick search (existing `category` field on `/all-events`), feature strip, upcoming-event cards, category grid, organizer highlights, three-step explainer and organizer CTA. Empty states are handled when no events/categories exist.
+- Added `PublicViewServiceProvider` and `PublicHomeComposer` so the home page gets events, categories, price bounds, category counts and organizers without editing the pre-existing modified `FrontendController` or route files. Aggregate append accessors are disabled on listing models to avoid per-card queries.
+- Extended `tests/Feature/EventPagesTest.php` to assert the new home shell renders the brand and a published event, plus a graceful empty state.
+
+### Verification
+
+```powershell
+C:\xampp\php\php.exe artisan optimize:clear
+C:\xampp\php\php.exe vendor\bin\phpunit --testdox   # OK (21 tests, 92 assertions)
+npm run build                                      # OK
+```
+
+`php artisan serve` on PHP 8.2.12 returned HTTP 200 for `/` and `/style-guide`. The home response contains Vite asset URLs, the hero, header navigation, event/empty sections and the footer, with no PHP exception. Headless Chrome rendered the page at 360px, 768px and 1280px; screenshots were kept outside the repository for manual visual review.
+
+### Risks and manual checks
+
+1. Only `/` uses the new shell. `/index`, `/all-events`, event detail, checkout and user pages still carry Bootstrap/jQuery/CDN code and will be migrated in later Phase 3 commit sets.
+2. The theme toggle uses the Phase 2 `.tw-dark` class and persisted `ds-theme` value. It was smoke-tested in the style guide, but a visual dark-mode pass on the real home page is still recommended.
+3. Event/category images fall back to bundled local placeholder images when a record has no upload.
+4. `__('...')` translation strings were kept wherever the legacy pages used them; untranslated strings fall back to English.
+5. API contracts, Passport auth, payment logic and license/installer logic were not touched.

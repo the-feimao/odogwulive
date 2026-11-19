@@ -13,12 +13,23 @@ class EventPagesTest extends TestCase
         $organizer = $this->organizer();
         $event = $this->event($organizer, ['name' => 'Upcoming Test Carnival']);
 
-        $this->get('/')->assertOk();
+        $this->get('/')
+            ->assertOk()
+            ->assertSee(config('brand.name'), false)
+            ->assertSee('Upcoming Test Carnival', false);
         $this->get('/index')->assertOk();
 
         $this->get('/all-events')
             ->assertOk()
             ->assertSee('Upcoming Test Carnival', false);
+    }
+
+    #[Test]
+    public function the_home_page_has_a_graceful_empty_state()
+    {
+        $this->get('/')
+            ->assertOk()
+            ->assertSee('No events on sale yet');
     }
 
     #[Test]
