@@ -8,6 +8,7 @@ export default defineConfig({
                 'resources/sass/app.scss',
                 'resources/css/app.css',
                 'resources/js/app.js',
+                'resources/js/pwa-register.js',
                 'resources/js/checkout.js',
                 'resources/js/user-area.js',
                 'resources/js/public-social.js',

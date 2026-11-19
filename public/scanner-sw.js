@@ -1,5 +1,12 @@
 const CACHE_NAME = 'odogwu-scanner-v1';
-const PRECACHE = ['/offline.html', '/manifest.webmanifest', '/scanner-icon.svg'];
+const PRECACHE = [
+    '/offline.html',
+    '/manifest.webmanifest',
+    '/site.webmanifest',
+    '/scanner.webmanifest',
+    '/site-icon.svg',
+    '/scanner-icon.svg',
+];
 
 self.addEventListener('install', (event) => {
     event.waitUntil(

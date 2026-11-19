@@ -15,7 +15,8 @@ class ScannerPwaTest extends TestCase
             ->assertSee('Ticket scanner')
             ->assertSee('Scanner sign in')
             ->assertSee('Manual ticket code')
-            ->assertSee('manifest.webmanifest')
+            ->assertSee('scanner.webmanifest')
+            ->assertDontSee('/site.webmanifest')
             ->assertDontSee('code.jquery.com')
             ->assertDontSee('sweetalert2');
     }
@@ -32,5 +33,33 @@ class ScannerPwaTest extends TestCase
         $this->assertStringContainsString('/scanner-icon.svg', $manifest['icons'][0]['src']);
         $this->assertStringContainsString("caches.match('/offline.html')", $worker);
         $this->assertStringContainsString('You are offline', $offline);
+    }
+
+    #[Test]
+    public function the_public_site_has_a_config_driven_manifest()
+    {
+        $this->get('/')
+            ->assertOk()
+            ->assertSee('site.webmanifest')
+            ->assertSee('theme-color');
+
+        $site = $this->get(route('pwa.site-manifest'))->assertOk();
+        $scanner = $this->get(route('pwa.scanner-manifest'))->assertOk();
+
+        $this->assertStringContainsString(
+            'application/manifest+json',
+            $site->headers->get('Content-Type')
+        );
+        $this->assertStringContainsString(
+            'application/manifest+json',
+            $scanner->headers->get('Content-Type')
+        );
+
+        $siteManifest = json_decode($site->getContent(), true);
+        $scannerManifest = json_decode($scanner->getContent(), true);
+
+        $this->assertSame(config('brand.name').' Events', $siteManifest['name']);
+        $this->assertSame(config('brand.name').' Ticket Scanner', $scannerManifest['name']);
+        $this->assertSame('/scanner-app', $scannerManifest['start_url']);
     }
 }

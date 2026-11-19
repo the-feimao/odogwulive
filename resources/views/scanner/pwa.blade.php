@@ -1,13 +1,8 @@
 @extends('layouts.public')
 
 @section('title', 'Ticket scanner')
-
-@push('head')
-    <link rel="manifest" href="{{ asset('manifest.webmanifest') }}">
-    <meta name="theme-color" content="#FEC009">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-title" content="Scanner">
-@endpush
+@section('manifest', route('pwa.scanner-manifest'))
+@section('app-title', 'Scanner')
 
 @section('content')
     <div id="scanner-app" class="tw-mx-auto tw-max-w-6xl tw-px-4 tw-py-10 sm:tw-px-6 lg:tw-px-8">

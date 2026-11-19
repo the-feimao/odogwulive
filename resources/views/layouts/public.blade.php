@@ -11,12 +11,18 @@
 
     <link rel="icon" href="{{ $publicSetting?->favicon ? url('images/upload/'.$publicSetting->favicon) : asset('web/logo.png') }}" type="image/png">
 
+    <link rel="manifest" href="@yield('manifest', route('pwa.site-manifest'))">
+    <meta name="theme-color" content="@yield('theme-color', '#FEC009')">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="@yield('app-title', config('brand.name', config('app.name')))">
+
     <x-theme-init />
 
     @vite([
         'resources/sass/app.scss',
         'resources/css/app.css',
         'resources/js/app.js',
+        'resources/js/pwa-register.js',
     ])
 
     @stack('head')

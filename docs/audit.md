@@ -682,3 +682,32 @@ The first targeted run failed before `npm run build` because the Vite manifest d
 3. The service worker is registered at the root scope but deliberately caches only static assets and the offline page. It does not cache API responses or event data.
 4. PWA installability depends on the browser accepting the SVG `any` icon. Add PNG 192/512 icons later if a target platform rejects it; no functional change would be needed.
 5. Existing scanner-management routes, Passport auth, API contracts, order/payment logic and license/installer logic were not touched.
+
+## 22. Phase 4 addendum — public-site PWA manifests (2026-11-19)
+
+### What changed
+
+- Added config-driven manifest routes in `routes/pwa.php`: `/site.webmanifest` and `/scanner.webmanifest`, both served with `application/manifest+json`. Their Blade JSON views read `config('brand.name')`, so app names follow configuration rather than new hard-coded "Odogwu Fest" strings.
+- Added `public/site-icon.svg` and linked the public manifest from `layouts/public.blade.php`. The layout now exposes `manifest`, `theme-color` and `app-title` sections so the scanner can override them and avoid emitting two manifest links on one page.
+- Switched `resources/views/scanner/pwa.blade.php` from the static `manifest.webmanifest` link to the config-driven scanner manifest. The original static file is retained as a compatibility alias and remains in the service worker precache list.
+- Added `resources/js/pwa-register.js` to the public layout and Vite inputs. It is the single place that registers `/scanner-sw.js`; the duplicate registration in `scanner-pwa.js` was removed.
+- Extended `tests/Feature/ScannerPwaTest.php` to verify the public layout, both manifest routes, headers, config-derived names and the absence of a second manifest on the scanner page.
+
+### Verification
+
+```powershell
+node --check resources\js\pwa-register.js                  # OK
+node --check resources\js\scanner-pwa.js                  # OK
+node --check public\scanner-sw.js                         # OK
+npm run build                                             # OK; pwa-register chunk added
+C:\xampp\php\php.exe vendor\bin\phpunit --filter ScannerPwaTest --testdox # OK (3 tests, 23 assertions)
+C:\xampp\php\php.exe vendor\bin\phpunit --testdox           # OK (45 tests, 382 assertions)
+```
+
+An initial test run caught a duplicate manifest link on `/scanner-app`; the layout override sections were added and the suite passes again.
+
+### Risks and manual checks
+
+1. PWA install prompts still depend on browser support for SVG `any` icons. Add PNG 192/512 icons if a target platform needs them.
+2. The service worker remains network-first for navigations and does not cache API responses, so event/order data cannot be served stale.
+3. No existing route, controller, API contract, auth behaviour, payment flow or license/installer logic was changed.
