@@ -57,8 +57,11 @@ services:
     #         - '11211:11211'
     #     networks:
     #         - sail
+    # Free MIT-licensed Mailpit replaces the abandoned Mailhog image. The
+    # service name and ports stay the same so existing MAIL_HOST=mailhog
+    # configuration continues to work without touching real .env values.
     mailhog:
-        image: 'mailhog/mailhog:latest'
+        image: 'axllent/mailpit:latest'
         ports:
             - 1025:1025
             - 8025:8025

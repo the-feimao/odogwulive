@@ -602,3 +602,28 @@ Temporary fixture-backed renders of all four pages were measured in headless Chr
 2. The OSM tile layer requires outbound access to `tile.openstreetmap.org`. The fallback message is shown when coordinates are missing, but offline tile loading will leave an empty map background.
 3. The follow button was verified at the HTTP/HTML contract level and through the existing JSON endpoint tests; a browser smoke test with a real attendee account is still useful.
 4. `public/build/` is generated output and was not staged. Pre-existing modified controllers/routes/master layout and license/installer logic were not touched. Passport auth, API contracts, order/payment logic and validation behaviour are unchanged.
+
+## 19. Phase 4 addendum — dependency audit and local mail (2026-11-19)
+
+### What changed
+
+- Audited every external URL under `resources/views` and `resources/sass`. The 62 references fall into four groups:
+  1. **Intentionally external payment SDKs/hosted checkouts** — Razorpay, PayPal, Stripe and Flutterwave. These are provider-hosted payment flows and were left unchanged.
+  2. **Self-hosted replacements already delivered** — the redesigned public pages use Vite-bundled Tailwind/Alpine/Lucide and the contact page uses npm-bundled Leaflet + OpenStreetMap tiles. No API key is required.
+  3. **Legacy/admin CDN hubs still present** — Bootstrap, jQuery, Popper, Select2, Summernote, Flatpickr, SweetAlert2, Chart.js, DataTables, moment.js, pdfmake and nicescroll in `resources/views/master.blade.php`, `resources/views/frontend/master.blade.php`, `resources/views/frontend/auth/app.blade.php`, `resources/views/admin/frontpage.blade.php`, `resources/views/admin/order/invoicePrint.blade.php` and `resources/views/cancel.blade.php`. These remain until Phase 5 or until the user approves editing the pre-existing modified master layout.
+  4. **Font CDN references** — Google Fonts in `resources/sass/app.scss`, `resources/views/welcome.blade.php`, `resources/views/layouts/app.blade.php`, the three error layouts and the two legacy frontend master layouts.
+- Replaced the unmaintained `mailhog/mailhog:latest` image with the free MIT-licensed `axllent/mailpit:latest`. The Compose service is still named `mailhog` and still exposes SMTP `1025` and web UI `8025`, so existing `MAIL_HOST=mailhog` values in real and example `.env` files keep working. Real `.env` values were not touched.
+
+### Verification
+
+```powershell
+C:\xampp\php\php.exe vendor\bin\phpunit --testdox           # OK (42 tests, 359 assertions)
+npm run build                                               # OK; existing Bootstrap Sass deprecation warnings only
+```
+
+### Risks and manual checks
+
+1. Mailpit has a different web UI from Mailhog, but the SMTP/Web ports and Compose service name are unchanged. Run `sail up -d mailhog` (or the equivalent local command) and visit `http://localhost:8025` to confirm the new UI before relying on it for password-reset emails.
+2. The remaining legacy/admin CDN dependencies are not core to the redesigned public site. They are deliberately deferred because `resources/views/master.blade.php` is pre-existing user work and the admin panel is scheduled for Phase 5.
+3. The external payment SDKs are required by the existing hosted checkout flows and were not replaced with local packages.
+4. License/installer logic was not inspected or altered. No API contract, auth behaviour, route, request field, validation rule or order/payment logic changed in this addendum.
