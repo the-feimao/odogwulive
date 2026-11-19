@@ -7,6 +7,7 @@ use App\Models\Coupon;
 use App\Models\Order;
 use App\Models\OrderChild;
 use App\Models\OrderTax;
+use App\Models\PaymentSetting;
 use Laravel\Passport\Passport;
 use Tests\TestCase;
 
@@ -26,7 +27,75 @@ class CheckoutAndOrderTest extends TestCase
         $this->actingAs($customer, 'appuser')
             ->get('/checkout/'.$ticket->id)
             ->assertOk()
-            ->assertSee('Checkout VAT', false);
+            ->assertSee('Checkout VAT', false)
+            ->assertSee('id="checkout-form"', false)
+            ->assertSee('action="'.url('createOrder').'"', false)
+            ->assertSee('name="tpo"', false)
+            ->assertSee('name="available"', false)
+            ->assertSee('name="quantity"', false)
+            ->assertSee('name="price"', false)
+            ->assertSee('name="tax"', false)
+            ->assertSee('name="payment"', false)
+            ->assertSee('name="stripe_payment"', false)
+            ->assertSee('name="currency_code"', false)
+            ->assertSee('name="payment_token"', false)
+            ->assertSee('name="ticket_id"', false)
+            ->assertSee('name="coupon_id"', false)
+            ->assertSee('name="coupon_discount"', false)
+            ->assertSee('name="tax_data"', false)
+            ->assertSee('name="payment_type"', false)
+            ->assertSee('id="form_submit"', false)
+            ->assertDontSee('frontend/js/custom.js', false)
+            ->assertDontSee('stackpath.bootstrapcdn.com', false);
+    }
+
+    #[Test]
+    public function the_checkout_page_preserves_gateway_field_names_and_sdk_loading()
+    {
+        $organizer = $this->organizer();
+        $event = $this->event($organizer);
+        $ticket = $this->ticket($event, ['price' => 1200]);
+
+        PaymentSetting::find(1)->update([
+            'paypal' => 1,
+            'razor' => 1,
+            'stripe' => 1,
+            'flutterwave' => 1,
+            'cod' => 0,
+            'paypalClientId' => 'test-client-id',
+            'razorPublishKey' => 'test-razor-key',
+            'stripePublicKey' => 'test-stripe-key',
+        ]);
+
+        $this->actingAs($this->customer(), 'appuser')
+            ->get('/checkout/'.$ticket->id)
+            ->assertOk()
+            ->assertSee('value="PAYPAL"', false)
+            ->assertSee('value="RAZOR"', false)
+            ->assertSee('value="STRIPE"', false)
+            ->assertSee('value="FLUTTERWAVE"', false)
+            ->assertSee('data-namespace="paypal_sdk"', false)
+            ->assertSee('checkout.razorpay.com/v1/checkout.js', false)
+            ->assertSee('id="paypal-button-container"', false)
+            ->assertSee('id="stripe-form"', false)
+            ->assertDontSee('value="LOCAL"', false);
+    }
+
+    #[Test]
+    public function a_free_ticket_checkout_uses_the_original_free_payment_value()
+    {
+        $organizer = $this->organizer();
+        $event = $this->event($organizer);
+        $ticket = $this->ticket($event, ['type' => 'free', 'price' => 0]);
+
+        $this->actingAs($this->customer(), 'appuser')
+            ->get('/checkout/'.$ticket->id)
+            ->assertOk()
+            ->assertSee('value="FREE"', false)
+            ->assertSee('name="payment" id="payment" value="0"', false)
+            ->assertSee('name="stripe_payment" id="stripe_payment" value="0"', false)
+            ->assertSee('name="tax" id="tax_total" value="0"', false)
+            ->assertDontSee('name="tax_data"', false);
     }
 
     #[Test]

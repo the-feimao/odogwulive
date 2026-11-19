@@ -474,3 +474,35 @@ Feature tests exercise both routes through the Laravel HTTP kernel with fixture 
 3. Reviews are displayed exactly as supplied by the controller, which does not filter by `status`; this legacy behaviour was not changed.
 4. Event descriptions are escaped and line breaks preserved, so admin-entered HTML is shown as text. This is safer than rendering raw HTML and does not affect stored data.
 5. Checkout, payment gateways, Passport auth, API contracts and license/installer logic were not touched.
+
+---
+
+## 15. Phase 3 progress — checkout (2026-11-19)
+
+### What changed
+
+- Rebuilt `resources/views/frontend/checkout.blade.php` on `layouts.public`: three-step progress header, event/ticket details, accessible quantity stepper, payment method cards, sticky order summary with tax lines, coupon field, and secure-checkout messaging.
+- Added `resources/js/checkout.js` as a small Vite entry. It recreates the legacy quantity/total recalculation and the PayPal, Razorpay and Stripe selection behaviour without jQuery or `frontend/js/custom.js`. All original hidden field names, radio values, gateway container IDs and the `form_submit` button ID remain unchanged.
+- The new script keeps the original USD/EUR minor-unit conversion for the hidden `payment`/`stripe_payment` values, and fixes a latent JavaScript typo in the legacy quantity handler that prevented `stripe_payment` from being refreshed after quantity changes.
+- Gateway SDKs are now loaded only when enabled for the ticket/payment settings. PayPal and Razorpay scripts are pushed from the checkout view; Stripe Checkout is still injected when Stripe is selected, matching the legacy flow.
+- The coupon field is rendered as a disabled, clearly-labelled control with the original hidden `coupon_id`/`coupon_discount` values and a note that coupons are applied in the mobile app. The legacy web page had no working coupon handler, so no new client-side discount calculation was introduced.
+- Extended `tests/Feature/CheckoutAndOrderTest.php` to lock the form action, hidden field names, tax data, free-ticket totals, gateway radio values, SDK loading, and the absence of the legacy Bootstrap/jQuery assets.
+
+### Verification
+
+```powershell
+C:\xampp\php\php.exe artisan optimize:clear
+C:\xampp\php\php.exe vendor\bin\phpunit --testdox   # OK (27 tests, 168 assertions)
+node --check resources\js\checkout.js              # OK
+npm run build                                      # OK; existing Bootstrap Sass deprecation warnings only
+```
+
+A temporary rendered checkout response was served from the local PHP development server and captured with headless Chrome at 360px, 768px and 1280px. Screenshots were written outside the repository for manual review. The preview used fixture data and was removed after capture.
+
+### Risks and manual checks
+
+1. Real PayPal, Razorpay, Stripe and Flutterwave payments still need a browser smoke test with gateway test keys. Automated tests verify field names and SDK loading only.
+2. PayPal and Razorpay remain externally hosted SDKs because they are required by those payment providers. They are not core CSS/JS and are loaded only on checkout when enabled.
+3. Flutterwave still redirects through the existing `createOrder` → `web/create-payment/{id}` flow; those pre-existing modified payment views were not touched.
+4. The coupon field is intentionally not a new discount calculator. Web coupon application was non-functional before this change; the API-based coupon flow used by the mobile app is unchanged and still covered by tests.
+5. Server-side order creation, taxes, commission, notifications, redirects, Passport auth, API contracts and license/installer logic were not changed.
