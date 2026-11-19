@@ -1,0 +1,77 @@
+/* Self-hosted type: no runtime dependency on Google Fonts. */
+@import '@fontsource/plus-jakarta-sans/latin-400.css';
+@import '@fontsource/plus-jakarta-sans/latin-500.css';
+@import '@fontsource/plus-jakarta-sans/latin-600.css';
+@import '@fontsource/plus-jakarta-sans/latin-700.css';
+@import '@fontsource/plus-jakarta-sans/latin-800.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+    [x-cloak] {
+        display: none !important;
+    }
+
+    .ds {
+        --ds-stub-bg: #ffffff;
+        font-family: theme('fontFamily.sans');
+        color: theme('colors.ink.900');
+        background-color: theme('colors.neutral.0');
+        -webkit-font-smoothing: antialiased;
+        text-rendering: optimizeLegibility;
+    }
+
+    .tw-dark .ds {
+        --ds-stub-bg: #151a2e;
+        color: theme('colors.neutral.100');
+        background-color: theme('colors.ink.950');
+    }
+
+    .ds :focus-visible {
+        outline: 2px solid theme('colors.accent.600');
+        outline-offset: 2px;
+    }
+
+    .tw-dark .ds :focus-visible {
+        outline-color: theme('colors.primary.400');
+    }
+}
+
+@layer components {
+    /* The one decorative motif: a ticket stub divider used on event/ticket cards. */
+    .ds-ticket-divider {
+        position: relative;
+        border-top: 1px dashed theme('colors.neutral.300');
+    }
+
+    .ds-ticket-divider::before,
+    .ds-ticket-divider::after {
+        content: '';
+        position: absolute;
+        top: -8px;
+        width: 16px;
+        height: 16px;
+        border: 1px solid theme('colors.neutral.200');
+        border-radius: theme('borderRadius.pill');
+        background-color: var(--ds-stub-bg);
+    }
+
+    .ds-ticket-divider::before {
+        left: -8px;
+    }
+
+    .ds-ticket-divider::after {
+        right: -8px;
+    }
+
+    .tw-dark .ds-ticket-divider {
+        border-top-color: theme('colors.neutral.700');
+    }
+
+    .tw-dark .ds-ticket-divider::before,
+    .tw-dark .ds-ticket-divider::after {
+        border-color: theme('colors.neutral.700');
+    }
+}

@@ -74,6 +74,11 @@ class RouteServiceProvider extends ServiceProvider
         ], function ($router) {
             require base_path('routes/frontend.php');
             require base_path('routes/web.php');
+
+            // Internal component gallery. Never registered outside local/dev.
+            if ($this->app->environment(['local', 'dev'])) {
+                require base_path('routes/dev.php');
+            }
         });
 
     }

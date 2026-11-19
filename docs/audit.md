@@ -304,3 +304,45 @@ vendor\bin\phpunit --testdox          # OK (20 tests, 88 assertions)
 7. **CDN assets remain** in the current Blade layouts. They are untouched in Phase 1 and will be removed page-by-page in Phase 3/4.
 
 Licensing was not touched, flagged as required by the hard constraints.
+
+---
+
+## 10. Phase 2 addendum — design system (2026-11-19)
+
+### Stack and tokens
+
+| Item | Value |
+|---|---|
+| Tailwind CSS | `3.4.19` (PostCSS + Autoprefixer, Vite pipeline) |
+| Alpine.js | `3.17.5` (started from `resources/js/app.js`) |
+| Icons | `technikermathe/blade-lucide-icons ^3.208` (Composer, no CDN) |
+| Type | Self-hosted Plus Jakarta Sans via `@fontsource/plus-jakarta-sans` |
+| Utility prefix | `tw-`, so Bootstrap utilities are not overridden on unmigrated pages |
+| Dark mode | Class strategy; because of the `tw-` prefix the class is `.tw-dark` |
+
+Design tokens live in `tailwind.config.js`: brand gold `primary`, deep-ink `ink`, restrained teal `accent`/`success`, neutral greys, `warning`, `danger`, Plus Jakarta Sans type scale, small type scale extension, `card`/`stub`/`pill` radii, card/focus shadows, and extended spacing. Preflight is disabled so Bootstrap remains intact. The only decorative motif is the ticket-stub divider in `resources/css/app.css`.
+
+### Files and components
+
+New reusable components in `resources/views/components/`: `button`, `input`, `select`, `textarea`, `modal`, `dropdown`, `tabs`, `badge`, `card`, `event-card`, `ticket-card`, `alert`, `toast`, `skeleton`, `pagination`, `empty-state`, `theme-toggle`, `theme-init`, plus the internal `style-guide-samples` partial.
+
+A local/dev-only gallery is available at `/style-guide` (`routes/dev.php`, conditionally required by `RouteServiceProvider`). It renders every component in light and dark containers. Existing pages and API routes are unchanged in Phase 2.
+
+### Verification
+
+```powershell
+npm run build                         # OK; self-hosted fonts emitted under public/build/assets
+vendor\bin\phpunit --testdox          # OK (20 tests, 88 assertions)
+php artisan route:list --path=style-guide --json
+php artisan route:list --path=api --json
+```
+
+GET `/style-guide` through `php artisan serve` returned HTTP 200 with Vite asset URLs, Alpine `x-data` and both preview wrappers. Compiled CSS contains `.tw-dark` selectors for `dark:tw-*` utilities; API route names remain duplicate-free.
+
+### Risks and manual checks
+
+1. Bootstrap 4 and its Sass deprecation warnings remain because public/admin pages have not been migrated yet.
+2. The new components are not yet used by public pages; Phase 3 will adopt them page by page.
+3. npm 12 still blocks install scripts for `esbuild` and `@parcel/watcher`; `npm run build` works, but `npm run watch` may need approval.
+4. Visual checks at 360px, 768px and 1280px should be repeated during Phase 3 when the components are used in real layouts.
+5. License/installer logic, payment logic, API contracts and Passport auth were not touched.

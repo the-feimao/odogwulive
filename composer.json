@@ -22,6 +22,7 @@
         "spatie/laravel-permission": "^6.0",
         "stripe/stripe-php": "^7.67",
         "tanmuhittin/laravel-google-translate": "^2.0",
+        "technikermathe/blade-lucide-icons": "3.208",
         "twilio/sdk": "^6.16",
         "yajra/laravel-datatables-oracle": "^12.0"
     },

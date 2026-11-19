@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "c1a399d6572b896e602fa5344f78334f",
+    "content-hash": "5d9b85dd32b7395318123b72ffe0b167",
     "packages": [
         {
             "name": "artesaos/seotools",
@@ -198,6 +198,87 @@
                 "source": "https://github.com/berkayk/laravel-onesignal/tree/v2.5.0"
             },
             "time": "2026-03-30T07:10:47+00:00"
+        },
+        {
+            "name": "blade-ui-kit/blade-icons",
+            "version": "1.11.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/driesvints/blade-icons.git",
+                "reference": "9a6e9f0cd96f482d01d4c5c32166119c59e514fc"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/driesvints/blade-icons/zipball/9a6e9f0cd96f482d01d4c5c32166119c59e514fc",
+                "reference": "9a6e9f0cd96f482d01d4c5c32166119c59e514fc",
+                "shasum": ""
+            },
+            "require": {
+                "illuminate/contracts": "^12.0|^13.0",
+                "illuminate/filesystem": "^12.0|^13.0",
+                "illuminate/support": "^12.0|^13.0",
+                "illuminate/view": "^12.0|^13.0",
+                "php": "^8.2",
+                "symfony/console": "^7.0|^8.0",
+                "symfony/finder": "^7.0|^8.0"
+            },
+            "require-dev": {
+                "mockery/mockery": "^1.5.1",
+                "orchestra/testbench": "^10.0|^11.0",
+                "phpunit/phpunit": "^11.0"
+            },
+            "bin": [
+                "bin/blade-icons-generate"
+            ],
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "BladeUI\\Icons\\BladeIconsServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "files": [
+                    "src/helpers.php"
+                ],
+                "psr-4": {
+                    "BladeUI\\Icons\\": "src"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Dries Vints",
+                    "homepage": "https://driesvints.com"
+                }
+            ],
+            "description": "A package to easily make use of icons in your Laravel Blade views.",
+            "homepage": "https://github.com/driesvints/blade-icons",
+            "keywords": [
+                "blade",
+                "icons",
+                "laravel",
+                "svg"
+            ],
+            "support": {
+                "issues": "https://github.com/driesvints/blade-icons/issues",
+                "source": "https://github.com/driesvints/blade-icons"
+            },
+            "funding": [
+                {
+                    "url": "https://github.com/sponsors/driesvints",
+                    "type": "github"
+                },
+                {
+                    "url": "https://www.paypal.com/paypalme/driesvints",
+                    "type": "paypal"
+                }
+            ],
+            "time": "2026-11-09T12:00:40+00:00"
         },
         {
             "name": "brick/math",
@@ -8202,6 +8283,71 @@
                 }
             ],
             "time": "2026-04-24T07:34:32+00:00"
+        },
+        {
+            "name": "technikermathe/blade-lucide-icons",
+            "version": "v3.208.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/PascaleBeier/blade-lucide-icons.git",
+                "reference": "4e9a56af9981ae0c917757a1f9150427ff2f97bf"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/PascaleBeier/blade-lucide-icons/zipball/4e9a56af9981ae0c917757a1f9150427ff2f97bf",
+                "reference": "4e9a56af9981ae0c917757a1f9150427ff2f97bf",
+                "shasum": ""
+            },
+            "require": {
+                "blade-ui-kit/blade-icons": "^1.6",
+                "illuminate/support": "^9.0|^10.0|^11.0|^12.0|^13.0",
+                "php": "^8.1"
+            },
+            "require-dev": {
+                "orchestra/testbench": "^7.0|^8.0|^9.0|^10.0|^11.0",
+                "phpunit/phpunit": "^9.0|^10.0|^11.0|^12.5.12",
+                "spatie/phpunit-snapshot-assertions": "^4.2.14|^5.0|^6.0"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "Technikermathe\\LucideIcons\\BladeLucideIconsServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Technikermathe\\LucideIcons\\": "src"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Dan Pock",
+                    "role": "Original Developer"
+                },
+                {
+                    "name": "Pascale Beier",
+                    "role": "Developer"
+                }
+            ],
+            "description": "A package to easily make use of Lucide icons in your Laravel Blade views.",
+            "homepage": "https://github.com/technikermathe/blade-lucide-icons",
+            "keywords": [
+                "Heroicons",
+                "LucideIcons",
+                "blade",
+                "laravel"
+            ],
+            "support": {
+                "issues": "https://github.com/PascaleBeier/blade-lucide-icons/issues",
+                "source": "https://github.com/PascaleBeier/blade-lucide-icons/tree/v3.208.0"
+            },
+            "time": "2026-11-19T05:00:27+00:00"
         },
         {
             "name": "tijsverkoyen/css-to-inline-styles",
