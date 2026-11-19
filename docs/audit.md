@@ -408,3 +408,39 @@ npm run build                                      # OK
 3. Event/category images fall back to bundled local placeholder images when a record has no upload.
 4. `__('...')` translation strings were kept wherever the legacy pages used them; untranslated strings fall back to English.
 5. API contracts, Passport auth, payment logic and license/installer logic were not touched.
+
+---
+
+## 13. Phase 3 progress — event listings (2026-11-19)
+
+This commit set migrates the event guide, event listing, category listing and event-type listing pages to the new public shell. Controller methods, route names/paths and GET field names were not changed.
+
+### What changed
+
+- Rebuilt `resources/views/web/landing.blade.php` for `/index`: editorial hero, local placeholder image, category/type quick search that submits to the existing `/all-events` route, and a responsive upcoming-events grid.
+- Rebuilt `resources/views/frontend/events.blade.php` for `/all-events`, `/events-category/{id}/{name}` and `/event-type/{type}`: server-side filters are untouched; Alpine adds instant page-local search, category/type/date filtering, sorting, skeleton loading, result counts and an empty state. The existing `category`, `type`, `duration` and `date` GET fields are preserved, as are active-filter chips.
+- Rebuilt `resources/views/frontend/allCategory.blade.php` for `/all-category`: category cards with lazy images, explicit image dimensions and accessible links.
+- Added `app/View/Composers/EventListingComposer.php` and registered it for `web.landing` and `frontend.events` so those views get active categories and minimum ticket prices without editing the pre-existing modified `FrontendController`.
+- Added `x-public-event-card` and `x-favorite-button`. The favourite control calls the existing `/add-favorite/{id}/{type}` JSON endpoint with `fetch` instead of legacy jQuery/SweetAlert and keeps the same response handling. `resources/views/web/home.blade.php` now reuses the shared event card.
+- Replaced remaining Bootstrap/jQuery/Font Awesome markup on these listing pages with the Phase 2 design system and Lucide icons. Bootstrap remains bundled for pages not yet migrated.
+
+### Verification
+
+```powershell
+C:\xampp\php\php.exe artisan optimize:clear
+C:\xampp\php\php.exe vendor\bin\phpunit --testdox   # OK (24 tests, 113 assertions)
+npm run build                                      # OK; existing Bootstrap Sass deprecation warnings only
+```
+
+Tests now cover `/index`, `/all-events?category=...`, `/all-events?type=...`, `/events-category/{id}/{name}`, `/event-type/{type}` and `/all-category`, including exclusion of non-matching events.
+
+HTTP smoke checks on PHP 8.2.12 returned HTTP 200 for `/`, `/style-guide`, `/index`, `/all-events`, `/all-events?type=online`, `/all-category` and `/event-type/all`. Headless Chrome rendered `/all-events` at 360px, 768px and 1280px, plus `/index` at 360px and `/all-category` at 1280px; screenshots were saved outside the repository for manual review.
+
+### Risks and manual checks
+
+1. Alpine filtering is page-local: changing a filter updates the current page instantly, while the **Apply** button still performs the existing server-side GET reload.
+2. The existing controller still fatal-errors on an invalid `category` query value because it calls `Category::find($id)->name`; this pre-existing behaviour was deliberately not changed.
+3. The new favourite button depends on the existing authenticated `/add-favorite/{id}/{type}` endpoint and its `success` JSON field. It was tested structurally, not through a real logged-in browser session.
+4. Event detail, checkout, user area, auth, blog and contact pages still use the legacy Bootstrap/jQuery layout and will be migrated in later Phase 3 commit sets.
+5. Dark mode and the 360px/768px/1280px layouts should be reviewed visually from the captured screenshots.
+6. API contracts, Passport auth, payment logic and license/installer logic were not touched.

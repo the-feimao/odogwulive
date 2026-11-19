@@ -125,23 +125,7 @@
             @else
                 <div class="tw-mt-10 tw-grid tw-gap-6 sm:tw-grid-cols-2 lg:tw-grid-cols-3">
                     @foreach ($publicEvents as $event)
-                        @php
-                            $minPrice = $eventPrices->get($event->id)?->min_price;
-                            $priceLabel = $minPrice === null
-                                ? __('See details')
-                                : ((float) $minPrice === 0.0
-                                    ? __('Free')
-                                    : trim((string) ($currency ?? '')).number_format((float) $minPrice));
-                            $image = $event->image
-                                ? url('images/upload/'.$event->image)
-                                : asset('web/bg/1.jpg');
-                            $date = $event->start_time?->format('D, M j · g:i A');
-                            $location = $event->type === 'online' ? __('Online') : $event->address;
-                            $href = url('/event/'.$event->id.'/'.\Illuminate\Support\Str::slug($event->name));
-                        @endphp
-
-                        <x-event-card :event="$event" :image="$image" :date="$date" :location="$location"
-                            :price="$priceLabel" :href="$href" :badge="$event->category?->name" />
+                        <x-public-event-card :event="$event" :prices="$eventPrices" :currency="$currency ?? null" />
                     @endforeach
                 </div>
             @endif

@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Models\Setting;
+use App\View\Composers\EventListingComposer;
 use App\View\Composers\PublicHomeComposer;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
@@ -20,5 +21,6 @@ class PublicViewServiceProvider extends ServiceProvider
         });
 
         View::composer('web.home', PublicHomeComposer::class);
+        View::composer(['web.landing', 'frontend.events'], EventListingComposer::class);
     }
 }
