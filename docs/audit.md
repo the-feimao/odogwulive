@@ -346,3 +346,32 @@ GET `/style-guide` through `php artisan serve` returned HTTP 200 with Vite asset
 3. npm 12 still blocks install scripts for `esbuild` and `@parcel/watcher`; `npm run build` works, but `npm run watch` may need approval.
 4. Visual checks at 360px, 768px and 1280px should be repeated during Phase 3 when the components are used in real layouts.
 5. License/installer logic, payment logic, API contracts and Passport auth were not touched.
+
+---
+
+## 11. PHP 8.2 compatibility fix (2026-11-19)
+
+### Root cause
+
+The local CLI used for Composer was PHP 8.5.8, so dependency resolution silently selected packages requiring PHP 8.4.1+. The web runtime is PHP 8.2.12, causing the fatal error in `vendor/composer/platform_check.php`. The blocking packages were Symfony 8.1 components and `lcobucci/clock` 3.7.
+
+### Fix
+
+- Added `config.platform.php: 8.2.12` to `composer.json` so dependency resolution always targets the real runtime.
+- Downgraded `lcobucci/clock` to `3.3.1`.
+- Downgraded `symfony/clock` to `v7.4.21`, `symfony/css-selector` to `v7.4.22`, `symfony/event-dispatcher` to `v7.4.17`, `symfony/string` to `v7.4.22`, `symfony/translation` to `v7.4.23`, and `symfony/yaml` to `v7.4.23`.
+- Regenerated Composer autoload files; `platform_check.php` now requires PHP `>= 8.2.0`.
+
+### Verification
+
+```powershell
+composer why-not php 8.2.12              # no conflicts
+C:\xampp\php\php.exe -v                  # PHP 8.2.12
+C:\xampp\php\php.exe artisan --version   # Laravel Framework 12.73.0
+C:\xampp\php\php.exe vendor\bin\phpunit --testdox  # OK (20 tests, 88 assertions)
+npm run build                            # OK
+```
+
+`php artisan serve` using the XAMPP PHP 8.2.12 binary returned HTTP 200 for both `/` and `/style-guide`, with no platform-check exception.
+
+No API contracts, payment logic, Passport auth or licensing logic were changed.
