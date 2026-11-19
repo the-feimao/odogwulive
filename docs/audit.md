@@ -652,3 +652,33 @@ A follow-up search confirmed no `fonts.googleapis.com`, `fonts.gstatic.com` or `
 1. The legacy scaffold pages now use the visitor's system font instead of Nunito. This is a small typography change on default/error pages only; the public design system is unaffected.
 2. Two legacy frontend master layouts still request Google Fonts. They are unchanged to avoid disturbing the pre-existing user-modified admin/legacy layout work.
 3. No payment SDK, route, form field, validation rule, API contract or auth behaviour changed.
+
+## 21. Phase 4 addendum — scanner PWA and offline shell (2026-11-19)
+
+### What changed
+
+- Added free, Apache-2.0 `html5-qrcode` via npm and a new `resources/js/scanner-pwa.js` Vite entry. It signs in through the existing `/api/scanner/login`, lists assigned events through `/api/scanner/events` and validates codes through `/api/scanner/scan-ticket/{code}/{eventId}`. No API route, payload, auth guard or scanner controller was modified.
+- Added an additive `routes/scanner.php` route file (`/scanner-app`, name `scanner.pwa`) registered from `app/Providers/RouteServiceProvider.php`. No existing route in `routes/web.php` was touched.
+- Added `resources/views/scanner/pwa.blade.php` on the public layout. The page provides scanner sign-in, assigned-event selection, camera QR scanning, manual code entry, clear success/error status, and a sign-out control. It uses the existing design-system utilities and no jQuery, SweetAlert2 or Bootstrap CDN.
+- Added static PWA assets: `public/manifest.webmanifest`, `public/scanner-icon.svg`, `public/scanner-sw.js` and `public/offline.html`. The service worker precaches only the offline shell/manifest/icon and Vite build assets; navigations are network-first so event/order data is never served from a stale HTML cache. API responses are not cached.
+- Added `tests/Feature/ScannerPwaTest.php` covering the new route, absence of legacy CDN dependencies and the presence/contents of the static PWA assets.
+
+### Verification
+
+```powershell
+node --check resources\js\scanner-pwa.js                  # OK
+node --check public\scanner-sw.js                         # OK
+npm run build                                             # OK; html5-qrcode bundled into scanner-pwa chunk
+C:\xampp\php\php.exe vendor\bin\phpunit --filter ScannerPwaTest --testdox # OK (2 tests, 12 assertions)
+C:\xampp\php\php.exe vendor\bin\phpunit --testdox           # OK (44 tests, 371 assertions)
+```
+
+The first targeted run failed before `npm run build` because the Vite manifest did not yet contain the new entry; rebuilding assets resolved it.
+
+### Risks and manual checks
+
+1. Camera access requires HTTPS or `localhost`. On a plain insecure LAN origin, the page falls back to the manual ticket-code field with a clear message.
+2. The Passport token is stored in `localStorage`, matching the persistence needs of a standalone installable scanner. The XSS surface is limited to a single Blade page with escaped DOM text, but a real-device smoke test with a scanner account is still recommended.
+3. The service worker is registered at the root scope but deliberately caches only static assets and the offline page. It does not cache API responses or event data.
+4. PWA installability depends on the browser accepting the SVG `any` icon. Add PNG 192/512 icons later if a target platform rejects it; no functional change would be needed.
+5. Existing scanner-management routes, Passport auth, API contracts, order/payment logic and license/installer logic were not touched.

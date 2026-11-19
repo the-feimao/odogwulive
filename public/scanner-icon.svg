@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Ticket scanner">
+  <rect width="512" height="512" rx="112" fill="#151A2E"/>
+  <path d="M104 160h304a24 24 0 0 1 24 24v48a32 32 0 0 0 0 64v48a24 24 0 0 1-24 24H104a24 24 0 0 1-24-24v-48a32 32 0 0 0 0-64v-48a24 24 0 0 1 24-24Z" fill="#FEC009"/>
+  <path d="M208 256l56 56 96-112" fill="none" stroke="#151A2E" stroke-width="36" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

@@ -12,6 +12,7 @@ export default defineConfig({
                 'resources/js/user-area.js',
                 'resources/js/public-social.js',
                 'resources/js/contact-map.js',
+                'resources/js/scanner-pwa.js',
             ],
             refresh: true,
         }),
