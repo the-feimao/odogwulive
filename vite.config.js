@@ -9,6 +9,7 @@ export default defineConfig({
                 'resources/css/app.css',
                 'resources/js/app.js',
                 'resources/js/checkout.js',
+                'resources/js/user-area.js',
             ],
             refresh: true,
         }),

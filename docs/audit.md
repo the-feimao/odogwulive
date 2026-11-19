@@ -506,3 +506,35 @@ A temporary rendered checkout response was served from the local PHP development
 3. Flutterwave still redirects through the existing `createOrder` → `web/create-payment/{id}` flow; those pre-existing modified payment views were not touched.
 4. The coupon field is intentionally not a new discount calculator. Web coupon application was non-functional before this change; the API-based coupon flow used by the mobile app is unchanged and still covered by tests.
 5. Server-side order creation, taxes, commission, notifications, redirects, Passport auth, API contracts and license/installer logic were not changed.
+
+---
+
+## 16. Phase 3 progress — user area (2026-11-19)
+
+### What changed
+
+- Rebuilt `resources/views/frontend/profile.blade.php` on `layouts.public`: dark profile hero, avatar with photo upload, inline bio editor, account links, and accessible tabs for saved events, saved blogs and followed organisers. Saved blogs now use the existing `/blog-detail/{id}/{slug}` route instead of a dead `javascript:void(0)` link.
+- Rebuilt `resources/views/frontend/userTickets.blade.php`: upcoming/past order list, rich order detail panel, payment toggler, invoice link and a custom review dialog. All legacy hooks are preserved: `.event-data`, `data-order-id`, `viewPayment()`, `#payment-data`, `.open-addReview`, `#reviewModel`, `#order_id`, `#rate-1`…`#rate-5`, `name="rate"` and `name="message"`.
+- Rebuilt `resources/views/frontend/user_profile.blade.php` and `resources/views/frontend/auth/changePassword.blade.php` on the public layout while keeping the original actions, field names, `name="login"` form marker and validation messages.
+- Added `resources/js/user-area.js` as a small Vite entry. It replaces the jQuery-dependent profile/ticket behaviours with vanilla JS but keeps the original global functions (`addFavorite`, `follow`, `viewPayment`, `addRate`) and element IDs so no controller or route had to change. It also provides local status messages instead of SweetAlert2 for these simple actions.
+- Added `tests/Feature/UserAreaTest.php` covering profile rendering, saved items, all account links, ticket detail hooks, both form contracts, inline JSON endpoints (`/add-bio`, `/add-favorite`, `/add-followList`) and review creation.
+- Fixed a 360px-only layout issue in the profile page by adding `tw-min-w-0` to grid items and an explicit one-column mobile grid. The remaining wide elements are the intentionally horizontally scrollable tab strip inside the card; document width is now exactly 360px.
+
+### Verification
+
+```powershell
+node --check resources\js\user-area.js                       # OK
+npm run build                                                # OK; existing Bootstrap Sass deprecation warnings only
+C:\xampp\php\php.exe artisan optimize:clear
+C:\xampp\php\php.exe vendor\bin\phpunit --filter UserAreaTest --testdox  # OK (6 tests, 77 assertions)
+C:\xampp\php\php.exe vendor\bin\phpunit --testdox           # OK (33 tests, 245 assertions)
+```
+
+Temporary rendered responses were captured outside the repository and measured in headless Chrome at 360px, 768px and 1280px. Document and body scroll widths matched the viewport on all four user-area pages; no unintended horizontal overflow was found. The temporary preview test and HTML files were not added to the commit.
+
+### Risks and manual checks
+
+1. The upload-profile-image, favourite, follow and review endpoints were exercised through their existing controllers, but a browser smoke test with a real account is still useful for the photo preview and modal focus behaviour.
+2. The order detail renderer assumes the JSON payload shape from `FrontendController@getOrder`; that controller was read only and left untouched.
+3. Legacy `public/frontend/js/custom.js` still exists for pages that have not been migrated; it is no longer loaded by these redesigned views.
+4. Pre-existing modified controllers, routes and `resources/views/master.blade.php` were not staged or altered. Passport auth, API contracts, order/payment logic and license/installer logic are unchanged.
