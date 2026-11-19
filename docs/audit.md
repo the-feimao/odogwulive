@@ -627,3 +627,28 @@ npm run build                                               # OK; existing Boots
 2. The remaining legacy/admin CDN dependencies are not core to the redesigned public site. They are deliberately deferred because `resources/views/master.blade.php` is pre-existing user work and the admin panel is scheduled for Phase 5.
 3. The external payment SDKs are required by the existing hosted checkout flows and were not replaced with local packages.
 4. License/installer logic was not inspected or altered. No API contract, auth behaviour, route, request field, validation rule or order/payment logic changed in this addendum.
+
+## 20. Phase 4 addendum — font CDN cleanup (2026-11-19)
+
+### What changed
+
+- Removed the Google Fonts `<link>`/preconnect requests from `resources/views/welcome.blade.php`, `resources/views/layouts/app.blade.php` and the three Blade error layouts (`layout`, `minimal`, `illustrated-layout`).
+- Removed the runtime `@import url('https://fonts.googleapis.com/css?family=Nunito')` from `resources/sass/app.scss`.
+- Replaced the `Nunito` declarations in `resources/sass/_variables.scss` and the affected inline styles with a system font stack (`system-ui`, `-apple-system`, `Segoe UI`, Roboto, Helvetica Neue, Arial, Noto Sans and emoji fallbacks).
+- The redesigned public site continues to load Plus Jakarta Sans from self-hosted `@fontsource` files bundled by Vite; no font is fetched from a third-party CDN on those pages.
+- Google Fonts references in `resources/views/frontend/master.blade.php` and `resources/views/frontend/auth/app.blade.php` were deliberately left for the legacy-layout migration/Phase 5, because those layouts remain the CDN hubs for Bootstrap/Select2/Summernote/SweetAlert2.
+
+### Verification
+
+```powershell
+C:\xampp\php\php.exe vendor\bin\phpunit --testdox           # OK (42 tests, 359 assertions)
+npm run build                                               # OK; existing Bootstrap Sass deprecation warnings only
+```
+
+A follow-up search confirmed no `fonts.googleapis.com`, `fonts.gstatic.com` or `Nunito` references remain in the Sass entry, `welcome.blade.php`, `layouts/app.blade.php` or the three error layouts.
+
+### Risks and manual checks
+
+1. The legacy scaffold pages now use the visitor's system font instead of Nunito. This is a small typography change on default/error pages only; the public design system is unaffected.
+2. Two legacy frontend master layouts still request Google Fonts. They are unchanged to avoid disturbing the pre-existing user-modified admin/legacy layout work.
+3. No payment SDK, route, form field, validation rule, API contract or auth behaviour changed.

@@ -11,9 +11,7 @@
 
     @vite(['resources/sass/app.scss', 'resources/js/app.js'])
 
-    <!-- Fonts -->
-    <link rel="dns-prefetch" href="//fonts.gstatic.com">
-    <link href="https://fonts.googleapis.com/css?family=Nunito" rel="stylesheet">
+    <!-- Fonts: system font stack comes from resources/sass/app.scss; no third-party CDN. -->
 </head>
 <body>
     <div id="app">
