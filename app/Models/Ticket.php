@@ -25,6 +25,9 @@ class Ticket extends Model
     ];
 
     protected $table = 'tickets';
-    protected $dates = ['start_time','end_time'];
+    protected $casts = [
+        'start_time' => 'datetime',
+        'end_time' => 'datetime',
+    ];
     
 }

@@ -32,7 +32,10 @@ class Event extends Model
     ];
 
     protected $table = 'events';
-    protected $dates = ['start_time','end_time'];
+    protected $casts = [
+        'start_time' => 'datetime',
+        'end_time' => 'datetime',
+    ];
     protected $appends = ['imagePath','rate','totalTickets','soldTickets'];
 
     public function category()
