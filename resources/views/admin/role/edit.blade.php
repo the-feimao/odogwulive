@@ -1,55 +1,30 @@
-@extends('master')
+@extends('layouts.admin')
 
-@section('content')
-<section class="section">
-    @include('admin.layout.breadcrumbs', [
-        'title' => __('Edit Roles'),  
-        'headerData' => __('Roles') ,
-        'url' => 'roles' ,          
-    ]) 
+@section('admin-content')
+    <x-admin-breadcrumb :title="__('Edit Roles')" :parent="__('Roles')" url="roles" />
 
-    <div class="section-body">
-        <div class="row">
-            <div class="col-lg-8"><h2 class="section-title"> {{__('Edit Roles')}}</h2></div>           
-        </div>       
-       
-        <div class="row">
-            <div class="col-12">
-              <div class="card">     
-                <div class="card-body">
-                    <form method="post" action="{{ route("roles.update", [$role->id]) }}">
-                        @csrf
-                        @method('PUT')
-                        <div class="form-group">
-                            <label>{{__('Name')}}</label>
-                            <input type="text" name="name" value="{{$role->name}}" placeholder="{{__('Name')}}" class="form-control @error('name')? is-invalid @enderror" readonly>
-                            @error('name')
-                                <div class="invalid-feedback">{{$message}}</div>
-                            @endif
-                        </div>
-                        <div class="form-group">
-                            <label>{{__('Permissions')}}</label>
-                            <select name="permissions[]" class="form-control select2" multiple="multiple">
-                                @foreach ($permissions as $per)
-                                    <option value="{{$per['id']}}"
-                                    {{ (in_array($per->id, old('permissions', [])) || isset($role) && $role->permissions->contains($per->id)) ? 'selected' : '' }}>
-                                    {{$per['name']}}</option>
-                                @endforeach
-                            </select>
-                            @error('permissions')
-                                <div class="invalid-feedback">{{$message}}</div>
-                            @endif
-                        </div>
-                        <div class="form-group">
-                            
-                            <button type="submit" class="btn btn-primary">{{__('Submit')}}</button>
-                            
-                        </div>
-                    </form>
-                </div>
-              </div>
+    <x-flash-messages />
+
+    <x-card :title="__('Edit Roles')" :subtitle="__('The role name is fixed; update its permissions below.')">
+        <form method="post" action="{{ route('roles.update', [$role->id]) }}" class="tw-grid tw-gap-6">
+            @csrf
+            @method('PUT')
+
+            <x-input name="name" :label="__('Name')" :placeholder="__('Name')" :value="$role->name" readonly />
+
+            <x-select name="permissions[]" :label="__('Permissions')" multiple class="select2"
+                :help="__('Use Ctrl or Cmd to select more than one permission.')">
+                @foreach ($permissions as $per)
+                    <option value="{{ $per['id'] }}"
+                        {{ (in_array($per->id, old('permissions', [])) || $role->permissions->contains($per->id)) ? 'selected' : '' }}>
+                        {{ $per['name'] }}
+                    </option>
+                @endforeach
+            </x-select>
+
+            <div>
+                <x-button type="submit">{{ __('Submit') }}</x-button>
             </div>
-          </div>
-        </div>
-    </section>
+        </form>
+    </x-card>
 @endsection

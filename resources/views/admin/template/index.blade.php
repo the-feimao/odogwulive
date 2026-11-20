@@ -1,115 +1,90 @@
-@extends('master')
+@extends('layouts.admin')
 
-@section('content')
-<section class="section">
-    @include('admin.layout.breadcrumbs', [
-        'title' => __('Notification Template'),            
-    ]) 
+@section('admin-content')
+    @php
+        $template = $data->first();
+    @endphp
 
-    <div class="section-body">       
-       
-        <div class="row">
-            <div class="col-12">
-                @if (session('status'))
-                <div class="alert alert-success alert-dismissible fade show" role="alert">
-                    {{ session('status') }}
-                    <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-                        <span aria-hidden="true">&times;</span>
-                    </button>
-                </div>
-                @endif
-            </div>
-            <div class="col-12">
-              <div class="card">     
-                <div class="card-header">
-                    <h5>{{__('Notification Template')}}</h5>
-                </div>
-                <div class="card-body">
-                    <div class="row mb-4 mt-2">
-                        <div class="col-lg-8"><h2 class="section-title mt-0"> {{__('Notification Template')}}</h2></div>
-                        <div class="col-lg-4 text-right">
-                            @can('notification_template_create')
-                            <button class="btn btn-primary add-button"><a href="{{url('notification-template/create')}}"><i class="fas fa-plus"></i> {{__('Add New')}}</a></button>                
-                            @endcan
-                        </div>
-                    </div> 
-                    <div class="row">
-                        <div class="col-lg-3">
-                            <div class="template-left">
-                                @foreach ($data as $item)
-                                    @if($loop->iteration==1)
-                                        <?php $template = $item;?>
-                                    @endif
-                                    <div class="template-row mb-4">                                      
-                                        <button onclick="notificationDetail({{$item->id}});" class="btn btn-primary template-btn"> {{$item->title}}</button>    
-                                    </div>
-                                @endforeach                                
-                            </div>
-                        </div>
-                        <div class="col-lg-7">
-                            <form action="{{url('notification-template/'.$template->id)}}" id="edit-template-form" method="post">
-                                @csrf 
-                                @method('PUT')
-                                <div class="form-group">
-                                    <label>{{__('Subject')}}</label>
-                                    <input type="text" name="subject" placeholder="{{__('Subject')}}" value="{{isset($template) ? $template->subject: ''}}" class="form-control @error('subject')? is-invalid @enderror">
-                                    @error('subject')
-                                        <div class="invalid-feedback">{{$message}}</div>
-                                    @endif
-                                </div>
-                                <div class="form-group">
-                                    <label>{{__('Email Content')}}</label>
-                                    <textarea name="mail_content" Placeholder ="{{__('Email Content')}}" class="textarea_editor @error('mail_content')? is-invalid @enderror">
-                                        {{isset($template) ? $template->mail_content: ''}}
-                                    </textarea>
-                                    @error('mail_content')
-                                        <div class="invalid-feedback block">{{$message}}</div>
-                                    @endif
-                                </div>
-                                <div class="form-group">
-                                    <label>{{__('App notification message Content')}}</label>
-                                    <textarea name="message_content" id="message_content" placeholder="{{__('App notification message Content')}}" class="form-control @error('message_content')? is-invalid @enderror">{{isset($template) ? $template->message_content: ''}}</textarea>
-                                    @error('message_content')
-                                        <div class="invalid-feedback">{{$message}}</div>
-                                    @endif
-                                </div>
-                                <div class="form-group">                            
-                                    <button type="submit" class="btn btn-primary">{{__('Submit')}}</button>                                    
-                                </div>
-                            </form>
-                        </div>
-                        <div class="col-lg-2">
-                            <h5 class="text-muted">{{__('Email Placeholder')}}</h5>
-                            <div class="email-holder"> 
-                                <span class="d-block" data-toggle="tooltip" data-title="Customer Name" data-original-title="" title="">
-                                    <button class="btn" type="button">@{{user_name}}</button>
-                                </span>
-                                <span class="d-block" data-toggle="tooltip" data-title="Organizer Name" data-original-title="" title="">
-                                    <button class="btn" type="button">@{{organizer_name}}</button>
-                                </span>
-                                <span class="d-block" data-toggle="tooltip" data-title="Application Name" data-original-title="" title="">
-                                    <button class="btn" type="button">@{{app_name}}</button>
-                                </span>
-                                <span class="d-block" data-toggle="tooltip" data-title="Event Name" data-original-title="" title="">
-                                    <button class="btn" type="button">@{{event_name}}</button>
-                                </span>
-                                <span class="d-block" data-toggle="tooltip" data-title="Event date" data-original-title="" title="">
-                                    <button class="btn" type="button">@{{date}}</button>
-                                </span>
-                                <span class="d-block" data-toggle="tooltip" data-title="Number of purchased tickets" data-original-title="" title="">
-                                    <button class="btn" type="button">@{{quantity}}</button>
-                                </span>
-                                <span class="d-block" data-toggle="tooltip" data-title="Password" data-original-title="" title="">
-                                    <button class="btn" type="button">@{{password}}</button>
-                                </span>                               
-                            </div>
-                        </div>
-                    </div>                                               
+    <x-admin-breadcrumb :title="__('Notification Template')" />
 
-                </div>
-              </div>
-            </div>
-          </div>
+    <div class="tw-flex tw-flex-wrap tw-items-end tw-justify-between tw-gap-4">
+        <div>
+            <h1 class="tw-text-2xl tw-font-extrabold tw-tracking-tight tw-text-ink-900 dark:tw-text-neutral-50">
+                {{ __('Notification Template') }}
+            </h1>
+            <p class="tw-mt-1 tw-text-sm tw-text-neutral-600 dark:tw-text-neutral-300">
+                {{ __('Choose a template, then edit its email and app notification content.') }}
+            </p>
         </div>
-    </section>
+
+        @can('notification_template_create')
+            <a href="{{ url('notification-template/create') }}"
+                class="tw-inline-flex tw-h-10 tw-items-center tw-gap-2 tw-rounded-pill tw-bg-primary-500 tw-px-4 tw-text-sm tw-font-bold tw-text-ink-950 tw-transition hover:tw-bg-primary-400 focus-visible:tw-outline-none focus-visible:tw-ring-2 focus-visible:tw-ring-accent-600">
+                <x-lucide-plus class="tw-h-4 tw-w-4" />
+                {{ __('Add New') }}
+            </a>
+        @endcan
+    </div>
+
+    <x-flash-messages />
+
+    <x-card :padded="false">
+        @if (! $template)
+            <x-empty-state :title="__('No templates yet')" :description="__('Add a notification template to customise outgoing messages.')" />
+        @else
+            <div class="tw-grid tw-gap-5 tw-p-5 lg:tw-grid-cols-[minmax(0,210px)_minmax(0,1fr)] xl:tw-grid-cols-[minmax(0,210px)_minmax(0,1fr)_minmax(0,190px)]">
+                <div class="tw-space-y-2">
+                    <h2 class="tw-text-xs tw-font-bold tw-uppercase tw-tracking-wide tw-text-neutral-500 dark:tw-text-neutral-400">
+                        {{ __('Templates') }}
+                    </h2>
+                    @foreach ($data as $item)
+                        <button type="button" onclick="notificationDetail({{ $item->id }});"
+                            class="template-btn tw-flex tw-w-full tw-items-center tw-gap-2 tw-rounded-stub tw-border tw-border-neutral-200 tw-bg-neutral-0 tw-px-3 tw-py-2 tw-left tw-text-left tw-text-sm tw-font-semibold tw-text-ink-800 tw-transition hover:tw-border-accent-300 hover:tw-bg-accent-50 focus-visible:tw-outline-none focus-visible:tw-ring-2 focus-visible:tw-ring-accent-600 dark:tw-border-neutral-700 dark:tw-bg-ink-900 dark:tw-text-neutral-100 dark:hover:tw-border-accent-500/40 dark:hover:tw-bg-accent-500/10">
+                            <x-lucide-bell class="tw-h-4 tw-w-4 tw-shrink-0 tw-text-accent-600 dark:tw-text-accent-300" />
+                            <span class="tw-truncate">{{ $item->title }}</span>
+                        </button>
+                    @endforeach
+                </div>
+
+                <form action="{{ url('notification-template/'.$template->id) }}" id="edit-template-form" method="post" class="tw-grid tw-gap-5">
+                    @csrf
+                    @method('PUT')
+
+                    <x-input name="subject" :label="__('Subject')" :placeholder="__('Subject')" :value="$template->subject" />
+
+                    <x-textarea name="mail_content" :label="__('Email Content')" :placeholder="__('Email Content')"
+                        :value="$template->mail_content" rows="8" class="textarea_editor" />
+
+                    <x-textarea name="message_content" id="message_content" :label="__('App notification message Content')"
+                        :placeholder="__('App notification message Content')" :value="$template->message_content" rows="5" />
+
+                    <div>
+                        <x-button type="submit">{{ __('Submit') }}</x-button>
+                    </div>
+                </form>
+
+                <div class="lg:tw-col-span-2 xl:tw-col-span-1">
+                    <h2 class="tw-text-xs tw-font-bold tw-uppercase tw-tracking-wide tw-text-neutral-500 dark:tw-text-neutral-400">
+                        {{ __('Email Placeholder') }}
+                    </h2>
+                    <div class="tw-mt-2 tw-flex tw-flex-wrap tw-gap-2">
+                        <button type="button" title="Customer Name" data-toggle="tooltip" data-title="Customer Name"
+                            class="tw-rounded-pill tw-bg-neutral-100 tw-px-3 tw-py-1.5 tw-font-mono tw-text-xs tw-text-neutral-700 tw-transition hover:tw-bg-accent-100 hover:tw-text-accent-800 focus-visible:tw-outline-none focus-visible:tw-ring-2 focus-visible:tw-ring-accent-600 dark:tw-bg-neutral-800 dark:tw-text-neutral-200 dark:hover:tw-bg-accent-500/20">@{{user_name}}</button>
+                        <button type="button" title="Organizer Name" data-toggle="tooltip" data-title="Organizer Name"
+                            class="tw-rounded-pill tw-bg-neutral-100 tw-px-3 tw-py-1.5 tw-font-mono tw-text-xs tw-text-neutral-700 tw-transition hover:tw-bg-accent-100 hover:tw-text-accent-800 focus-visible:tw-outline-none focus-visible:tw-ring-2 focus-visible:tw-ring-accent-600 dark:tw-bg-neutral-800 dark:tw-text-neutral-200 dark:hover:tw-bg-accent-500/20">@{{organizer_name}}</button>
+                        <button type="button" title="Application Name" data-toggle="tooltip" data-title="Application Name"
+                            class="tw-rounded-pill tw-bg-neutral-100 tw-px-3 tw-py-1.5 tw-font-mono tw-text-xs tw-text-neutral-700 tw-transition hover:tw-bg-accent-100 hover:tw-text-accent-800 focus-visible:tw-outline-none focus-visible:tw-ring-2 focus-visible:tw-ring-accent-600 dark:tw-bg-neutral-800 dark:tw-text-neutral-200 dark:hover:tw-bg-accent-500/20">@{{app_name}}</button>
+                        <button type="button" title="Event Name" data-toggle="tooltip" data-title="Event Name"
+                            class="tw-rounded-pill tw-bg-neutral-100 tw-px-3 tw-py-1.5 tw-font-mono tw-text-xs tw-text-neutral-700 tw-transition hover:tw-bg-accent-100 hover:tw-text-accent-800 focus-visible:tw-outline-none focus-visible:tw-ring-2 focus-visible:tw-ring-accent-600 dark:tw-bg-neutral-800 dark:tw-text-neutral-200 dark:hover:tw-bg-accent-500/20">@{{event_name}}</button>
+                        <button type="button" title="Event date" data-toggle="tooltip" data-title="Event date"
+                            class="tw-rounded-pill tw-bg-neutral-100 tw-px-3 tw-py-1.5 tw-font-mono tw-text-xs tw-text-neutral-700 tw-transition hover:tw-bg-accent-100 hover:tw-text-accent-800 focus-visible:tw-outline-none focus-visible:tw-ring-2 focus-visible:tw-ring-accent-600 dark:tw-bg-neutral-800 dark:tw-text-neutral-200 dark:hover:tw-bg-accent-500/20">@{{date}}</button>
+                        <button type="button" title="Number of purchased tickets" data-toggle="tooltip" data-title="Number of purchased tickets"
+                            class="tw-rounded-pill tw-bg-neutral-100 tw-px-3 tw-py-1.5 tw-font-mono tw-text-xs tw-text-neutral-700 tw-transition hover:tw-bg-accent-100 hover:tw-text-accent-800 focus-visible:tw-outline-none focus-visible:tw-ring-2 focus-visible:tw-ring-accent-600 dark:tw-bg-neutral-800 dark:tw-text-neutral-200 dark:hover:tw-bg-accent-500/20">@{{quantity}}</button>
+                        <button type="button" title="Password" data-toggle="tooltip" data-title="Password"
+                            class="tw-rounded-pill tw-bg-neutral-100 tw-px-3 tw-py-1.5 tw-font-mono tw-text-xs tw-text-neutral-700 tw-transition hover:tw-bg-accent-100 hover:tw-text-accent-800 focus-visible:tw-outline-none focus-visible:tw-ring-2 focus-visible:tw-ring-accent-600 dark:tw-bg-neutral-800 dark:tw-text-neutral-200 dark:hover:tw-bg-accent-500/20">@{{password}}</button>
+                    </div>
+                </div>
+            </div>
+        @endif
+    </x-card>
 @endsection

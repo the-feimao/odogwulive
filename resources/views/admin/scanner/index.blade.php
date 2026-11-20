@@ -1,80 +1,89 @@
-@extends('master')
+@extends('layouts.admin')
 
-@section('content')
-<section class="section">
-    @include('admin.layout.breadcrumbs', [
-        'title' => __('Scanner'),            
-    ]) 
+@section('admin-content')
+    <x-admin-breadcrumb :title="__('Scanner')" />
 
-    <div class="section-body">           
-        <div class="row">
-            <div class="col-12">
-                @if (session('status'))
-                <div class="alert alert-success alert-dismissible fade show" role="alert">
-                    {{ session('status') }}
-                    <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-                        <span aria-hidden="true">&times;</span>
-                    </button>
-                </div>
-                @endif
-            </div>
-            <div class="col-12">
-              <div class="card">     
-                <div class="card-body">
-                    <div class="row mb-4 mt-2">
-                        <div class="col-lg-8"><h2 class="section-title mt-0"> {{__('View Scanner')}}</h2></div>
-                        <div class="col-lg-4 text-right">
-                            @can('scanner_create')
-                            <button class="btn btn-primary add-button"><a href="{{url('scanner/create')}}"><i class="fas fa-plus"></i> {{__('Add New')}}</a></button>                
-                            @endcan
-                        </div>
-                    </div>   
-                  <div class="table-responsive">
-                    <table class="table" id="report_table">
-                        <thead>
-                            <tr>
-                                <th></th>                            
-                                <th>{{__('Name')}}</th>
-                                <th>{{__('Total events')}}</th>
-                                <th>{{__('Status')}}</th>          
-                                <th>{{__('Action')}}</th>
-                               
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach ($scanners as $item)
-                                <tr>
-                                    <td></td>                                   
-                                    <td>
-                                        <div class="media">
-                                            <img alt="image" class="mr-3 avatar" src="{{url('images/upload/'.$item->image)}}">
-                                            <div class="media-body">
-                                                <div class="media-title mb-0">
-                                                   {{$item->first_name.' '.$item->last_name}}
-                                                </div>
-                                                <div class="media-description text-muted"> {{$item->email}} </div>
-                                            </div>
-                                        </div>    
-                                    </td>                                                                                   
-                                    <td>{{$item->total_event}}</td>                                    
-                                    <td><span class="badge {{$item->status==1?'badge-success':'badge-danger'}} badge-primary"> {{$item->status==1?'Active':'Inactive'}}</span></td>                                    
-                                    <td>                                                                       
-                                        @if($item->status=="0")                                                
-                                            <a href="{{ url('block-scanner/'.$item->id) }}" title="Unblock {{$item->name}}" class="btn-icon text-success"><i class="fas fa-unlock-alt"></i></a>                                                                             
-                                        @else                         
-                                            <a href="{{ url('block-scanner/'.$item->id) }}" title="Block {{$item->name}}" class="btn-icon text-danger"><i class="fas fa-ban text-danger"></i></a>                                                                         
-                                        @endif                              
-                                    </td>
-                                   
-                                </tr>
-                            @endforeach                           
-                        </tbody>
-                    </table>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
+    <div class="tw-flex tw-flex-wrap tw-items-end tw-justify-between tw-gap-4">
+        <div>
+            <h1 class="tw-text-2xl tw-font-extrabold tw-tracking-tight tw-text-ink-900 dark:tw-text-neutral-50">
+                {{ __('View Scanner') }}
+            </h1>
+            <p class="tw-mt-1 tw-text-sm tw-text-neutral-600 dark:tw-text-neutral-300">
+                {{ __('Manage scanner accounts and their event assignments.') }}
+            </p>
         </div>
-    </section>
+
+        @can('scanner_create')
+            <a href="{{ url('scanner/create') }}"
+                class="tw-inline-flex tw-h-10 tw-items-center tw-gap-2 tw-rounded-pill tw-bg-primary-500 tw-px-4 tw-text-sm tw-font-bold tw-text-ink-950 tw-transition hover:tw-bg-primary-400 focus-visible:tw-outline-none focus-visible:tw-ring-2 focus-visible:tw-ring-accent-600">
+                <x-lucide-plus class="tw-h-4 tw-w-4" />
+                {{ __('Add New') }}
+            </a>
+        @endcan
+    </div>
+
+    <x-flash-messages />
+
+    <x-card :padded="false">
+        @if ($scanners->isEmpty())
+            <x-empty-state :title="__('No scanners yet')" :description="__('Add a scanner to help check in attendees.')" />
+        @else
+            <div class="tw-overflow-x-auto">
+                <table id="report_table" class="tw-min-w-full tw-text-left tw-text-sm">
+                    <thead>
+                        <tr class="tw-border-b tw-border-neutral-200 tw-text-xs tw-uppercase tw-tracking-wide tw-text-neutral-500 dark:tw-border-neutral-700 dark:tw-text-neutral-400">
+                            <th class="tw-w-8 tw-px-3 tw-py-3"></th>
+                            <th class="tw-px-3 tw-py-3">{{ __('Name') }}</th>
+                            <th class="tw-px-3 tw-py-3">{{ __('Total events') }}</th>
+                            <th class="tw-px-3 tw-py-3">{{ __('Status') }}</th>
+                            <th class="tw-px-3 tw-py-3">{{ __('Action') }}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach ($scanners as $item)
+                            <tr class="tw-border-b tw-border-neutral-100 last:tw-border-0 dark:tw-border-neutral-800">
+                                <td class="tw-px-3 tw-py-3">
+                                    <span class="tw-inline-flex tw-h-8 tw-w-8 tw-items-center tw-justify-center tw-rounded-stub tw-bg-accent-100 tw-text-accent-700 dark:tw-bg-accent-500/20 dark:tw-text-accent-300">
+                                        <x-lucide-user-check class="tw-h-4 tw-w-4" />
+                                    </span>
+                                </td>
+                                <td class="tw-px-3 tw-py-3">
+                                    <div class="tw-flex tw-items-center tw-gap-3">
+                                        <img src="{{ url('images/upload/'.$item->image) }}" alt="{{ $item->name }}"
+                                            loading="lazy" width="40" height="40"
+                                            class="tw-h-10 tw-w-10 tw-rounded-pill tw-object-cover">
+                                        <div>
+                                            <p class="tw-font-semibold tw-text-ink-900 dark:tw-text-neutral-100">{{ $item->first_name.' '.$item->last_name }}</p>
+                                            <p class="tw-text-xs tw-text-neutral-500 dark:tw-text-neutral-400">{{ $item->email }}</p>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="tw-px-3 tw-py-3 tw-text-neutral-600 dark:tw-text-neutral-300">{{ $item->total_event }}</td>
+                                <td class="tw-px-3 tw-py-3">
+                                    <x-badge :tone="$item->status == 1 ? 'success' : 'danger'">
+                                        {{ $item->status == 1 ? __('Active') : __('Inactive') }}
+                                    </x-badge>
+                                </td>
+                                <td class="tw-px-3 tw-py-3">
+                                    @if ($item->status == '0')
+                                        <a href="{{ url('block-scanner/'.$item->id) }}" title="Unblock {{ $item->name }}"
+                                            aria-label="Unblock {{ $item->name }}"
+                                            class="tw-inline-flex tw-h-9 tw-w-9 tw-items-center tw-justify-center tw-rounded-stub tw-text-success-600 tw-transition hover:tw-bg-success-50 focus-visible:tw-outline-none focus-visible:tw-ring-2 focus-visible:tw-ring-success-600 dark:tw-text-success-300 dark:hover:tw-bg-success-500/10">
+                                            <x-lucide-unlock class="tw-h-4 tw-w-4" />
+                                        </a>
+                                    @else
+                                        <a href="{{ url('block-scanner/'.$item->id) }}" title="Block {{ $item->name }}"
+                                            aria-label="Block {{ $item->name }}"
+                                            class="tw-inline-flex tw-h-9 tw-w-9 tw-items-center tw-justify-center tw-rounded-stub tw-text-danger-600 tw-transition hover:tw-bg-danger-50 focus-visible:tw-outline-none focus-visible:tw-ring-2 focus-visible:tw-ring-danger-600 dark:tw-text-danger-300 dark:hover:tw-bg-danger-500/10">
+                                            <x-lucide-ban class="tw-h-4 tw-w-4" />
+                                        </a>
+                                    @endif
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        @endif
+    </x-card>
 @endsection

@@ -844,3 +844,30 @@ npm run build                                                                  #
 3. A pre-existing controller issue was found while testing: `TaxController@store` does not set the required `user_id` for an admin account, so that path can fail with a database error. It was not changed in this view-only group; only the form action and fields are asserted.
 4. Tests activate the seeded license inside a transaction only to render admin content. License-check and installer logic were not modified.
 5. No API route, request/response shape, auth behaviour, Passport setup, Spatie permission, order/payment calculation or license/installer code changed.
+
+## 28. Phase 5 addendum — roles, scanner staff and notification templates (2026-11-20)
+
+### What changed
+
+- Migrated all seven `admin/role/{index,create,edit}`, `admin/scanner/{index,create}` and `admin/template/{index,create}` views to the Tailwind/Alpine admin design system.
+- Preserved the role contracts: `roles` resource routes, `name`, `permissions[]` multi-select with the `select2` hook, readonly role name on edit, `roles.update`, existing permission gates and the admin-role no-edit rule.
+- Preserved the scanner contracts: `/scanner`, `/scanner/create`, POST `/scanner`, `/block-scanner/{id}`, `first_name`, `last_name`, `email`, `phone`, `password`, `status`, `scanner_create` gate and status-based block/unblock links.
+- Preserved the template contracts: `notification-template` resource routes, `title`, `subject`, `mail_content`, `message_content`, `class="event-form"`, `notificationDetail()`, `id="edit-template-form"`, `class="textarea_editor"`, `id="message_content"` and all `@{{placeholder}}` buttons.
+- Added a safe empty state for templates; previously the index assumed at least one template existed before defining `$template`.
+- Added `tests/Feature/AdminRoleScannerTemplatePagesTest.php` for rendering, hooks, form actions, permission behaviour and the unchanged store/update/block flows.
+
+### Verification
+
+```powershell
+C:\xampp\php\php.exe vendor\bin\phpunit --filter AdminRoleScannerTemplatePagesTest --testdox # OK (3 tests, 82 assertions)
+C:\xampp\php\php.exe vendor\bin\phpunit --testdox                                           # OK (68 tests, 679 assertions)
+npm run build                                                                               # OK; built in 31.18s with existing Sass deprecation warnings only
+```
+
+### Risks and manual checks
+
+1. `resources/views/master.blade.php` remains untouched, so legacy CDN assets and the license gate are still loaded on every migrated admin page.
+2. The role permission select keeps `select2` and `multiple` so the legacy Select2 initialization and `permissions[]` submission shape are unchanged.
+3. The template page still depends on Summernote from the legacy admin bundle for `textarea_editor`; no rich-text editor replacement was made in this view-only group.
+4. Tests activate the seeded license inside a transaction only to render admin content. License-check and installer logic were not modified.
+5. No API route, request/response shape, auth behaviour, Passport setup, Spatie permission, order/payment calculation or license/installer code changed.
