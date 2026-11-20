@@ -1,31 +1,22 @@
-@extends('master')
+@extends('layouts.admin')
 
-@section('content')
-    <section class="section">
-        @include('admin.layout.breadcrumbs', [
-        'title' => __('Setting'),
-        ])
+@section('admin-content')
+    <x-admin-breadcrumb :title="__('Setting')" />
 
-        <div class="section-body">
-            <div class="row">
-                <div class="col-lg-8">
-                    <h2 class="section-title"> {{ __('Admin Setting') }}</h2>
-                </div>
-                <div class="col-lg-4 text-right">
-                </div>
-            </div>
+    <div class="tw-flex tw-flex-wrap tw-items-end tw-justify-between tw-gap-4">
+        <div>
+            <h1 class="tw-text-2xl tw-font-extrabold tw-tracking-tight tw-text-ink-900 dark:tw-text-neutral-50">
+                {{ __('Admin Setting') }}
+            </h1>
+            <p class="tw-mt-1 tw-text-sm tw-text-neutral-600 dark:tw-text-neutral-300">
+                {{ __('Manage branding, commerce, notifications and support options.') }}
+            </p>
+        </div>
+    </div>
 
-            <div class="row">
-                <div class="col-12">
-                    @if (session('status'))
-                        <div class="alert alert-success alert-dismissible fade show" role="alert">
-                            {{ session('status') }}
-                            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-                                <span aria-hidden="true">&times;</span>
-                            </button>
-                        </div>
-                    @endif
-                </div>
+    <x-flash-messages />
+
+    <div class="row ds-settings">
                 <div class="col-lg-6">
                     <div class="card card-large-icons">
                         <div class="card-icon bg-primary text-white">
@@ -1009,5 +1000,4 @@
                                                                                                                                                                                                             </div>
                                                                                                                                                                                                         </div>
                                                                                                                                                                                                     </div>
-                                                                                                                                                                                                </section>
                                                                                                                                                                                             @endsection

@@ -74,4 +74,65 @@
     .tw-dark .ds-ticket-divider::after {
         border-color: theme('colors.neutral.700');
     }
+
+    /* Scoped bridge for the large legacy settings form. Field names, actions
+       and JavaScript hooks stay untouched while the presentation uses tokens. */
+    .ds-settings .card {
+        @apply tw-rounded-card tw-border tw-border-neutral-200 tw-bg-neutral-0 tw-shadow-card dark:tw-border-neutral-800 dark:tw-bg-ink-900;
+    }
+
+    .ds-settings .card-icon {
+        @apply tw-flex tw-h-11 tw-w-11 tw-items-center tw-justify-center tw-rounded-stub tw-bg-primary-500 tw-text-ink-950;
+    }
+
+    .ds-settings .card-body {
+        @apply tw-p-5;
+    }
+
+    .ds-settings .card-body h4 {
+        @apply tw-text-lg tw-font-bold tw-text-ink-900 dark:tw-text-neutral-50;
+    }
+
+    .ds-settings .card-body > p {
+        @apply tw-mt-1 tw-text-sm tw-text-neutral-600 dark:tw-text-neutral-300;
+    }
+
+    .ds-settings .card-cta {
+        @apply tw-mt-4 tw-inline-flex tw-items-center tw-gap-1.5 tw-rounded-pill tw-bg-accent-50 tw-px-3 tw-py-1.5 tw-text-sm tw-font-semibold tw-text-accent-700 tw-transition-colors hover:tw-bg-accent-100 focus-visible:tw-outline-none focus-visible:tw-ring-2 focus-visible:tw-ring-accent-600 dark:tw-bg-accent-900/30 dark:tw-text-accent-200 dark:hover:tw-bg-accent-900/50;
+    }
+
+    .ds-settings .col-form-label,
+    .ds-settings .form-group > label {
+        @apply tw-text-sm tw-font-semibold tw-text-ink-800 dark:tw-text-neutral-100;
+    }
+
+    .ds-settings .form-control,
+    .ds-settings .custom-select {
+        @apply tw-h-10 tw-w-full tw-rounded-card tw-border tw-border-neutral-200 tw-bg-neutral-0 tw-px-3 tw-text-sm tw-text-ink-900 tw-placeholder-neutral-400 tw-transition focus:tw-border-accent-600 focus:tw-outline-none focus:tw-ring-2 focus:tw-ring-accent-600/20 dark:tw-border-neutral-700 dark:tw-bg-ink-900 dark:tw-text-neutral-50 dark:tw-placeholder-neutral-500;
+    }
+
+    .ds-settings textarea.form-control,
+    .ds-settings textarea.textarea_editor {
+        @apply tw-h-auto tw-py-2;
+    }
+
+    .ds-settings .form-control.is-invalid {
+        @apply tw-border-danger-600 focus:tw-border-danger-600 focus:tw-ring-danger-600/20;
+    }
+
+    .ds-settings .invalid-feedback {
+        @apply tw-mt-1 tw-block tw-text-xs tw-font-medium tw-text-danger-600;
+    }
+
+    .ds-settings .btn-primary {
+        @apply tw-inline-flex tw-h-10 tw-items-center tw-justify-center tw-rounded-pill tw-bg-primary-500 tw-px-4 tw-text-sm tw-font-semibold tw-text-ink-950 tw-transition-colors hover:tw-bg-primary-400 focus-visible:tw-outline-none focus-visible:tw-ring-2 focus-visible:tw-ring-primary-600 focus-visible:tw-ring-offset-2 disabled:tw-cursor-not-allowed disabled:tw-opacity-50;
+    }
+
+    .ds-settings .image-preview {
+        @apply tw-rounded-card tw-border tw-border-dashed tw-border-neutral-300 tw-bg-neutral-50 dark:tw-border-neutral-700 dark:tw-bg-ink-900;
+    }
+
+    .ds-settings .custom-switch-indicator {
+        @apply tw-rounded-pill;
+    }
 }

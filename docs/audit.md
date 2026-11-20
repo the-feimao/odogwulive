@@ -1004,3 +1004,39 @@ npm run build                                                                  #
 3. The printable invoice is intentionally standalone and uses bundled Vite CSS; check a real browser print preview for page breaks and primary-colour preservation with the configured setting.
 4. Tests activate the seeded license inside a transaction only to render admin content. License-check and installer logic were not modified.
 5. No API route, request/response shape, auth behaviour, Passport setup, Spatie permission, payment gateway integration, tax/coupon calculation or license/installer code changed.
+
+## 34. Phase 5 addendum - master layout and final admin views (2026-11-20)
+
+### What changed
+
+- Replaced the legacy admin CDN CSS/JS in `resources/views/master.blade.php` with bundled Vite entries: `resources/js/app.js`, `resources/js/admin-legacy.js` and the shared design-system CSS.
+- Added `resources/js/admin-jquery.js` to expose global jQuery before legacy plugins, and `resources/js/admin-legacy.js` to bundle Bootstrap 4, DataTables (Bootstrap 4, Buttons, HTML5/Print, Select), JSZip, pdfMake, Select2, Flatpickr, Summernote, jQuery NiceScroll, Chart.js 2, SweetAlert2, Moment and Font Awesome 5.
+- Added a minimal local `resources/css/vendor/jvectormap.css` because the old jVectorMap CDN CSS host now serves unrelated content; abandoned/unmaintained npm candidates for jVectorMap, colorpicker, tagsinput and Dropzone were rejected and their existing local admin assets were kept.
+- Added `admin-legacy.js` to `vite.config.js` and matching dev dependencies to `package.json`/`package-lock.json`. All remaining local `public/admin/js/*.js` scripts now have `defer` so Vite's module scripts and globals are ready before they run.
+- Kept the PayPal SDK as a provider-hosted script by design; only the existing pre-staged client-id fix remains uncommitted. No payment key or `.env` value was touched.
+- Wrapped the deactivated-license SweetAlert in `DOMContentLoaded` so it still renders after the bundled globals load. License activation logic, routes and the `content-license` yield are unchanged.
+- Removed the duplicate `@vite` directives from `layouts/admin.blade.php` because `master.blade.php` now loads the bundles once.
+- Migrated `admin/setting.blade.php` to `layouts/admin.blade.php` with a scoped `.ds-settings` bridge; all nine setting form actions, field names, collapse IDs, upload hooks, editors and validation messages are unchanged.
+- Added `layouts/admin-license.blade.php` so `admin/license.blade.php` stays inside the master `content-license` yield and remains reachable while the license is inactive. The form action `save-license-setting`, `license_key`/`license_name` fields and disabled-when-active behaviour are unchanged.
+- Added `layouts/admin-auth.blade.php` and rebuilt `auth/login.blade.php` with the design system while preserving the `admin/login` action, `email`, `password`, `remember`, `novalidate`, tabindexes, error handling and `data-background` hook.
+
+### Verification
+
+```powershell
+npm install --save-dev ...                                                      # installed bundled admin libraries; removed unsupported candidates
+npm audit --omit=dev                                                            # OK; 0 production vulnerabilities
+npm audit                                                                       # 6 dev-only vulnerabilities (1 moderate, 5 high)
+php artisan test --filter=AdminShellAndSettingsTest                             # OK (3 tests, 47 assertions)
+php artisan test                                                                 # OK (85 tests, 1152 assertions)
+npm run build                                                                    # OK; built in 27.22s with Sass deprecation warnings and one large admin-legacy chunk warning
+```
+
+### Risks and manual checks
+
+1. `admin-legacy.js` is a large bridge chunk (~2.86 MB minified, ~1.13 MB gzip) because it bundles the full legacy admin library set. It removes third-party CDN dependencies but should be code-split in a later hardening pass if bundle size becomes a priority.
+2. The admin shell markup, local `public/admin/js` scripts and their global variable contracts remain; only their loading source/order changed. Check DataTables exports, Select2, Flatpickr, Summernote, SweetAlert2, Chart.js and the sidebar scrollbar in a real browser.
+3. The license modal now waits for `DOMContentLoaded`; verify the deactivated-license redirect dialog and the license-setting page with a non-activated license in a browser.
+4. PayPal still loads from `www.paypal.com` because it is a provider SDK, not a bundleable library. The pre-existing PayPal client-id fix is intentionally left unstaged and uncommitted.
+5. The full npm audit still reports six dev-only vulnerabilities in the legacy build tooling; production dependencies report zero vulnerabilities. No `npm audit fix --force` was run because it would introduce breaking changes.
+6. Tests activate the seeded license inside a transaction only to render admin content. License-check and installer logic were not modified or bypassed.
+7. No API route, request/response shape, auth behaviour, Passport setup, Spatie permission, payment calculation or order/ticket flow changed.

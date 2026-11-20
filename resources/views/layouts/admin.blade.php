@@ -6,7 +6,6 @@
 @extends('master')
 
 @section('content')
-    @vite(['resources/css/app.css', 'resources/js/app.js'])
     <x-theme-init />
 
     <div class="ds ds-admin tw-mx-auto tw-max-w-content tw-space-y-5 tw-px-4 tw-py-6 md:tw-px-6 lg:tw-px-8">
