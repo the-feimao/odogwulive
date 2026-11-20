@@ -818,3 +818,29 @@ One stale `php -S 127.0.0.1:8099` worker from an earlier interrupted run was sto
 3. `resources/views/admin/feedback/edit.blade.php` is still absent although `FeedbackController@edit` returns `admin.feedback.edit`; this is a pre-existing issue and was not changed in this group.
 4. Tests activate the seeded license inside a transaction only to render admin content. License-check and installer logic were not modified.
 5. No API route, request/response shape, auth behaviour, Passport setup, Spatie permission, order/payment logic or license/installer code changed.
+
+## 27. Phase 5 addendum — tax, coupon and language CRUD pages (2026-11-20)
+
+### What changed
+
+- Migrated all nine `admin/tax/{index,create,edit}`, `admin/coupon/{index,create,edit}` and `admin/language/{index,create,edit}` views to the Tailwind/Alpine admin design system.
+- Preserved the tax contracts: `name`, `price`, `status` and `allow_all_bill` fields, `id="allow_all_bill"`, the `report_table` ID, edit route and existing permission gates. The unused delete icon remains non-actionable because `TaxController@destroy` is empty.
+- Preserved the coupon contracts: `enctype="multipart/form-data"`, `name`, `event_id`, `discount`, `max_use`, `start_date`, `end_date`, `description` and `status` fields, the `date` class and `#start_date`/`#end_date` Flatpickr hooks, `report_table`, edit route and `deleteData('coupon','id')`.
+- Preserved the language contracts: sample-file download link, multipart file inputs for `image` and `json_file`, `accept=".json"`, `id="image-preview"`/`id="image-upload"`, readonly name on edit, `direction`, `status`, `report_table` and edit route.
+- Added `tests/Feature/AdminCatalogPagesTest.php` for list/form/edit rendering, hook preservation and unchanged store/update redirects.
+
+### Verification
+
+```powershell
+C:\xampp\php\php.exe vendor\bin\phpunit --filter AdminCatalogPagesTest --testdox # OK (3 tests, 73 assertions)
+C:\xampp\php\php.exe vendor\bin\phpunit --testdox                              # OK (65 tests, 597 assertions)
+npm run build                                                                  # OK; built in 13.89s with existing Sass deprecation warnings only
+```
+
+### Risks and manual checks
+
+1. `resources/views/master.blade.php` remains untouched, so legacy CDN assets and the license gate are still loaded on every migrated admin page.
+2. Coupon date fields keep the `date` class and their IDs so the legacy Flatpickr initialization still works; the design-system styling is additive.
+3. A pre-existing controller issue was found while testing: `TaxController@store` does not set the required `user_id` for an admin account, so that path can fail with a database error. It was not changed in this view-only group; only the form action and fields are asserted.
+4. Tests activate the seeded license inside a transaction only to render admin content. License-check and installer logic were not modified.
+5. No API route, request/response shape, auth behaviour, Passport setup, Spatie permission, order/payment calculation or license/installer code changed.
