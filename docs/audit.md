@@ -764,3 +764,29 @@ A full-suite run initially appeared to hang after stale `php -S 127.0.0.1:8000` 
 2. The new layout renders the design system inside the existing master content section. This keeps the license gate intact, but the overall page still carries legacy global CSS/JS from the master layout.
 3. Tests activate the seeded license inside a transaction solely to render admin content. License-check and installer logic themselves were not modified.
 4. No API route, request/response shape, auth behaviour, Passport setup, Spatie permissions, order/payment logic or license/installer code changed.
+
+## 25. Phase 5 addendum — dashboards and non-payment reports (2026-11-20)
+
+### What changed
+
+- Added `resources/views/components/admin-stat-card.blade.php` and used it on the admin and organization dashboards.
+- Migrated `admin/dashboard.blade.php` and `admin/org_dashboard.blade.php` to the design system while preserving the legacy `getStatistics()` class hooks (`order-pending`, `order-complete`, `order-cancel`, `order-total`), `#orders-month`, `#eventDate`, `#home_calender` and progress-bar attributes.
+- Migrated five report views to the design system while keeping their POST actions, field names (`duration`, `organizer`, `customer`), table IDs (`report_table`, `revenue_table`, `org_order_report`) and DataTables footer cells: admin customer, admin organization, admin revenue, organization customer and organization orders.
+- Added `tests/Feature/AdminDashboardPagesTest.php` and `tests/Feature/AdminReportPagesTest.php` for rendering, hook preservation and role checks.
+- Settlement/report views containing the Stripe/PayPal/local payment modal were deliberately not migrated in this group because their `data-toggle="modal"`, `payLocally()` and hidden field contracts are more coupled to legacy scripts.
+
+### Verification
+
+```powershell
+C:\xampp\php\php.exe vendor\bin\phpunit --filter "AdminDashboardPagesTest|AdminReportPagesTest" --testdox # OK (6 tests, 43 assertions)
+C:\xampp\php\php.exe vendor\bin\phpunit --testdox                                                    # OK (55 tests, 466 assertions)
+npm run build                                                                                        # OK; built in 21.14s with existing Sass deprecation warnings only
+```
+
+### Risks and manual checks
+
+1. The dashboard month dropdown now uses Alpine instead of Bootstrap's `data-toggle`, but it still calls the unchanged `getStatistics()` function and keeps the same DOM hooks.
+2. The calendar widget still relies on the legacy Flatpickr initialization targeting `#eventDate` and `#home_calender`; server-rendered events now also have inline widths so they remain visible if that script is delayed.
+3. Report filters still use `date duration` classes for Flatpickr. Native selects now replace Select2 on the migrated reports, which is a visual change only.
+4. `master.blade.php` remains untouched, so legacy CDN assets still load on these pages.
+5. No API contract, order/payment calculation, Passport/Spatie behaviour or license/installer logic changed.

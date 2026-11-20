@@ -1,212 +1,166 @@
-@extends('master')
+@extends('layouts.admin')
 
-@section('content')
-    <section class="section">
-        <div class="section-header">
-            <h1>{{ __('Dashboard') }} </h1>
+@section('admin-content')
+    <x-admin-breadcrumb :title="__('Dashboard')" />
+
+    <div class="tw-flex tw-flex-wrap tw-items-end tw-justify-between tw-gap-4">
+        <div>
+            <h1 class="tw-text-2xl tw-font-extrabold tw-tracking-tight tw-text-ink-900 dark:tw-text-neutral-50">
+                {{ __('Dashboard') }}
+            </h1>
+            <p class="tw-mt-1 tw-text-sm tw-text-neutral-600 dark:tw-text-neutral-300">
+                {{ __('A snapshot of orders, customers and upcoming events.') }}
+            </p>
         </div>
+    </div>
 
-        <div class="section-body">
-            <div class="row">
-                <div class="col-lg-4 col-md-4 col-sm-12">
-                    <div class="card card-statistic-2">
-                        <div class="card-stats">
-                            <div class="card-stats-title">{{ __('Order Statistics') }} -
-                                <div class="dropdown d-inline">
-                                    <a class="font-weight-600 dropdown-toggle" data-toggle="dropdown"
-                                        href="javascript:void(0)" id="orders-month">{{ __('All') }}</a>
-                                    <ul class="dropdown-menu dropdown-menu-sm">
-                                        <li class="dropdown-title">{{ __('Select Month') }}</li>
-                                        @for ($i = 1; $i <= 12; $i++)
-                                            <li><a href="javascript:void(0)" class="dropdown-item" onclick="getStatistics({{ $i }} )">{{ date('F', mktime(0, 0, 0, $i, 10)) }}</a></li>
-                                        @endfor
-                                    </ul>
-                                </div>
-                            </div>
-                            <div class="card-stats-items">
-                                <div class="card-stats-item">
-                                    <div class="card-stats-item-count order-pending">{{ $master['pending_order'] }}</div>
-                                    <div class="card-stats-item-label">{{ __('Pending') }}</div>
-                                </div>
-                                <div class="card-stats-item">
-                                    <div class="card-stats-item-count order-complete">{{ $master['complete_order'] }}</div>
-                                    <div class="card-stats-item-label">{{ __('Completed') }}</div>
-                                </div>
-                                <div class="card-stats-item">
-                                    <div class="card-stats-item-count order-cancel">{{ $master['cancel_order'] }}</div>
-                                    <div class="card-stats-item-label">{{ __('Cancel') }}</div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="card-icon shadow-primary bg-primary">
-                            <i class="fas fa-shopping-bag"></i>
-                        </div>
-                        <div class="card-wrap">
-                            <div class="card-header">
-                                <h4>{{ __('Total Orders') }}</h4>
-                            </div>
-                            <div class="card-body order-total">
-                                {{ $master['total_order'] }}
-                            </div>
-                        </div>
-                    </div>
+    <x-flash-messages />
+
+    <div class="tw-grid tw-gap-4 md:tw-grid-cols-2 xl:tw-grid-cols-3">
+        <x-admin-stat-card :label="__('Total Orders')" tone="primary">
+            <x-slot:icon><x-lucide-ticket class="tw-h-5 tw-w-5" /></x-slot:icon>
+            <span class="card-stats order-total">{{ $master['total_order'] }}</span>
+            <div class="tw-mt-3 tw-grid tw-grid-cols-3 tw-gap-2 tw-border-t tw-border-neutral-100 tw-pt-3 dark:tw-border-neutral-800">
+                <div>
+                    <p class="card-stats order-pending tw-text-base tw-font-bold tw-text-warning-600">{{ $master['pending_order'] }}</p>
+                    <p class="tw-text-2xs tw-font-semibold tw-uppercase tw-tracking-wide tw-text-neutral-500">{{ __('Pending') }}</p>
                 </div>
-                <div class="col-lg-4 col-md-4 col-sm-12">
-                    <div class="card card-hero">
-                        <div class="card-header">
-                            <div class="card-icon">
-                                <i class="fas fa-user-friends"></i>
-                            </div>
-                            <h4>{{ $master['users'] }}</h4>
-                            <div class="card-description">{{ __('Customers') }}</div>
-                        </div>
-                    </div>
+                <div>
+                    <p class="card-stats order-complete tw-text-base tw-font-bold tw-text-success-600">{{ $master['complete_order'] }}</p>
+                    <p class="tw-text-2xs tw-font-semibold tw-uppercase tw-tracking-wide tw-text-neutral-500">{{ __('Completed') }}</p>
                 </div>
-                <div class="col-lg-4 col-md-4 col-sm-12">
-                    <div class="card card-hero">
-                        <div class="card-header">
-                            <div class="card-icon">
-                                <i class="fas fa-user-shield"></i>
-                            </div>
-                            <h4>{{ $master['organizations'] }}</h4>
-                            <div class="card-description">{{ __('Organizations') }}</div>
-                        </div>
-                    </div>
+                <div>
+                    <p class="card-stats order-cancel tw-text-base tw-font-bold tw-text-danger-600">{{ $master['cancel_order'] }}</p>
+                    <p class="tw-text-2xs tw-font-semibold tw-uppercase tw-tracking-wide tw-text-neutral-500">{{ __('Cancel') }}</p>
                 </div>
             </div>
+        </x-admin-stat-card>
 
-            {{-- chart --}}
-            <div class="row">
-                <div class="col-lg-9">
-                    <div class="row">
-                        <div class="col-lg-12">
-                            {{-- <div class="card mb-4">
-                                <div class="card-header pt-0 pb-0">
-                                    <div class="row w-100">
-                                        <div class="col-lg-8">
-                                            <h2 class="section-title"> {{ __('Event Locations') }}</h2>
-                                            <input type="hidden" id="events" name="events" value="{{ $events }}">
-                                        </div>
-                                        <div class="col-lg-4 text-right mt-2">
-                                            <a href="{{ url('events') }}"><button class="btn btn-sm btn-primary ">{{ __('See all') }}</button> </a>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="card-body">
-                                    <div class="vector-map" id="eventMap"></div>
-                                </div>
-                            </div> --}}
-                            
-                        </div>
-                        <div class="col-lg-12">
-                            <div class="card mb-4">
-                                <div class="card-header pt-0 pb-0">
-                                    <div class="row w-100">
-                                        <div class="col-lg-8">
-                                            <h2 class="section-title"> {{ __('Recent Event') }}</h2>
-                                        </div>
-                                        <div class="col-lg-4 text-right mt-2">
-                                            <a href="{{ url('events') }}"><button
-                                                    class="btn btn-sm btn-primary ">{{ __('See all') }}</button> </a>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="card-body">
-                                    <div class="table-responsive">
-                                        <table class="table home-tbl" id="">
+        <x-dropdown :label="__('Order Statistics')" class="tw-justify-self-start">
+            <x-slot:trigger>
+                <span id="orders-month" class="tw-inline-flex tw-items-center tw-gap-2">
+                    <x-lucide-ticket class="tw-h-4 tw-w-4" />
+                    {{ __('All') }}
+                </span>
+            </x-slot:trigger>
+            <p class="tw-px-3 tw-py-2 tw-text-2xs tw-font-bold tw-uppercase tw-tracking-wide tw-text-neutral-500">
+                {{ __('Select Month') }}
+            </p>
+            @for ($i = 1; $i <= 12; $i++)
+                <button type="button" onclick="getStatistics({{ $i }})"
+                    class="tw-flex tw-w-full tw-items-center tw-rounded-stub tw-px-3 tw-py-2 tw-text-left tw-text-sm tw-text-ink-700 tw-transition hover:tw-bg-neutral-100 focus-visible:tw-outline-none focus-visible:tw-ring-2 focus-visible:tw-ring-accent-600 dark:tw-text-neutral-200 dark:hover:tw-bg-neutral-800">
+                    {{ date('F', mktime(0, 0, 0, $i, 10)) }}
+                </button>
+            @endfor
+        </x-dropdown>
 
-                                            <tbody>
-                                                @foreach ($events as $item)
-                                                    <tr>
-                                                        <td> <img class="table-img"
-                                                                src="{{ url('images/upload/' . $item->image) }}"> </td>
-                                                        <td style="width:390px">
-                                                            <h6>{{ $item->name }}</h6>
-                                                            @if ($item->type == 'online')
-                                                                <p>{{ __('Online Event') }}</p>
-                                                            @else
-                                                                <p>{{ $item->address }}</p>
-                                                            @endif
-                                                        </td>
-                                                        <td>
-                                                            <button class="btn-icon btn block"><i
-                                                                    class="fas fa-user-friends"></i></button>
-                                                            <span
-                                                                class="tbl-info">{{ $item->people . ' allowed' }}</span>
-                                                        </td>
-                                                        <td>
-                                                            <button class="btn-icon btn block"><i
-                                                                    class="fas fa-ticket-alt"></i></button>
-                                                            <span class="tbl-info">{{ $item->avaliable }}
-                                                                {{ __('Pcs left') }}</span>
-                                                        </td>
-                                                        <td>
-                                                            <button class="btn-icon btn block"><i
-                                                                    class="far fa-calendar-alt"></i></button>
-                                                            <span
-                                                                class="tbl-info">{{ $item->start_time->format('Y-m-d') }}</span>
-                                                        </td>
-                                                    </tr>
-                                                @endforeach
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+        <x-admin-stat-card :label="__('Customers')" tone="accent" :hint="__('Registered app users')">
+            <x-slot:icon><x-lucide-users class="tw-h-5 tw-w-5" /></x-slot:icon>
+            {{ $master['users'] }}
+        </x-admin-stat-card>
+
+        <x-admin-stat-card :label="__('Organizations')" tone="success" :hint="__('Verified event partners')">
+            <x-slot:icon><x-lucide-users class="tw-h-5 tw-w-5" /></x-slot:icon>
+            {{ $master['organizations'] }}
+        </x-admin-stat-card>
+    </div>
+
+    <div class="tw-grid tw-gap-5 xl:tw-grid-cols-[minmax(0,1fr)_320px]">
+        <x-card :padded="false">
+            <x-slot:header>
+                <div class="tw-flex tw-flex-wrap tw-items-center tw-justify-between tw-gap-3">
+                    <h2 class="tw-text-lg tw-font-bold tw-text-ink-900 dark:tw-text-neutral-50">{{ __('Recent Event') }}</h2>
+                    <a href="{{ url('events') }}"
+                        class="tw-inline-flex tw-h-9 tw-items-center tw-gap-1.5 tw-rounded-pill tw-border tw-border-neutral-200 tw-px-3 tw-text-xs tw-font-bold tw-text-ink-700 tw-transition hover:tw-bg-neutral-50 focus-visible:tw-outline-none focus-visible:tw-ring-2 focus-visible:tw-ring-accent-600 dark:tw-border-neutral-700 dark:tw-text-neutral-200 dark:hover:tw-bg-neutral-800">
+                        {{ __('See all') }}
+                        <x-lucide-arrow-up-right class="tw-h-3.5 tw-w-3.5" />
+                    </a>
                 </div>
+            </x-slot:header>
 
-                <div class="col-lg-3">
-                    <div class="card">
-                        <div class="card-body calender-event">
-                            <input type="hidden" name="eventDate" id="eventDate" value="{{ json_encode($master['eventDate']) }}">
-                            <div id="home_calender"></div>
-                            <h5 class="text-dark mb-4 mt-2">{{ carbon\Carbon::now()->format('F') . __(' Event') }}</h5>
-                            <div class="home-upcoming-event">
-                                @if (count($monthEvent) == 0)
-                                    <div class="row">
-                                        <div class="col-12 text-center">
-                                            <div class="empty-data">
-                                                <div class="card-icon shadow-primary">
-                                                    <i class="fas fa-search"></i>
-                                                </div>
-                                                <h6 class="mt-3">{{ __('No events found') }} </h6>
-                                            </div>
+            @if ($events->isEmpty())
+                <x-empty-state :title="__('No events found')" :description="__('Published events will appear here.')" />
+            @else
+                <div class="tw-overflow-x-auto">
+                    <table class="tw-min-w-full tw-text-left tw-text-sm">
+                        <tbody>
+                            @foreach ($events as $item)
+                                <tr class="tw-border-b tw-border-neutral-100 last:tw-border-0 dark:tw-border-neutral-800">
+                                    <td class="tw-px-4 tw-py-3">
+                                        <img src="{{ url('images/upload/'.$item->image) }}" alt="{{ $item->name }}"
+                                            loading="lazy" class="tw-h-12 tw-w-16 tw-rounded-stub tw-object-cover">
+                                    </td>
+                                    <td class="tw-px-4 tw-py-3">
+                                        <p class="tw-font-semibold tw-text-ink-900 dark:tw-text-neutral-100">{{ $item->name }}</p>
+                                        <p class="tw-mt-0.5 tw-text-xs tw-text-neutral-500 dark:tw-text-neutral-400">
+                                            {{ $item->type == 'online' ? __('Online Event') : $item->address }}
+                                        </p>
+                                    </td>
+                                    <td class="tw-px-4 tw-py-3 tw-text-neutral-600 dark:tw-text-neutral-300">
+                                        <span class="tw-inline-flex tw-items-center tw-gap-1.5">
+                                            <x-lucide-users class="tw-h-4 tw-w-4 tw-text-primary-600" />
+                                            {{ $item->people.' allowed' }}
+                                        </span>
+                                    </td>
+                                    <td class="tw-px-4 tw-py-3 tw-text-neutral-600 dark:tw-text-neutral-300">
+                                        <span class="tw-inline-flex tw-items-center tw-gap-1.5">
+                                            <x-lucide-ticket class="tw-h-4 tw-w-4 tw-text-accent-600" />
+                                            {{ $item->avaliable.' '.__('Pcs left') }}
+                                        </span>
+                                    </td>
+                                    <td class="tw-px-4 tw-py-3 tw-text-neutral-600 dark:tw-text-neutral-300">
+                                        <span class="tw-inline-flex tw-items-center tw-gap-1.5">
+                                            <x-lucide-calendar-days class="tw-h-4 tw-w-4 tw-text-primary-600" />
+                                            {{ $item->start_time->format('Y-m-d') }}
+                                        </span>
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            @endif
+        </x-card>
 
-                                        </div>
+        <x-card :padded="false">
+            <x-slot:header>
+                <h2 class="tw-text-lg tw-font-bold tw-text-ink-900 dark:tw-text-neutral-50">
+                    {{ \Illuminate\Support\Carbon::now()->format('F').' '.__('Event') }}
+                </h2>
+            </x-slot:header>
+
+            <div class="tw-p-4">
+                <input type="hidden" name="eventDate" id="eventDate" value="{{ json_encode($master['eventDate']) }}">
+                <div id="home_calender"></div>
+
+                <div class="home-upcoming-event tw-space-y-4">
+                    @if ($monthEvent->isEmpty())
+                        <x-empty-state :title="__('No events found')" :description="__('Nothing scheduled for this month yet.')" />
+                    @else
+                        @foreach ($monthEvent as $item)
+                            <div class="tw-grid tw-grid-cols-[44px_minmax(0,1fr)] tw-gap-3">
+                                <div class="tw-flex tw-h-12 tw-w-11 tw-flex-col tw-items-center tw-justify-center tw-rounded-stub tw-bg-primary-100 tw-text-primary-700 dark:tw-bg-primary-500/15 dark:tw-text-primary-300">
+                                    <span class="tw-text-lg tw-font-extrabold tw-leading-none">{{ $item->start_time->format('d') }}</span>
+                                    <span class="tw-text-2xs tw-font-bold tw-uppercase">{{ $item->start_time->format('D') }}</span>
+                                </div>
+                                <div>
+                                    <p class="name tw-text-sm tw-font-semibold tw-text-ink-900 dark:tw-text-neutral-100">{{ $item->name }}</p>
+                                    <p class="tw-mt-0.5 tw-text-xs tw-text-neutral-500 dark:tw-text-neutral-400">
+                                        {{ __('Ticket Sold') }}
+                                        <span>{{ $item->sold_ticket }}/{{ $item->tickets }}</span>
+                                    </p>
+                                    <div class="progress tw-mt-2 tw-h-1.5 tw-overflow-hidden tw-rounded-pill tw-bg-neutral-100 dark:tw-bg-neutral-800" data-height="5">
+                                        <div class="progress-bar tw-h-full tw-rounded-pill tw-bg-primary-500" role="progressbar"
+                                            data-width="{{ $item->average }}%"
+                                            style="width: {{ max(0, min(100, (float) $item->average)) }}%"
+                                            aria-valuenow="{{ $item->average }}" aria-valuemin="0" aria-valuemax="100"></div>
                                     </div>
-                                @else
-                                    @foreach ($monthEvent as $item)
-                                        <div class="row mb-4">
-                                            <div class="col-3">
-                                                <div class="date-left">
-                                                    <h3 class="mb-0">{{ $item->start_time->format('d') }}</h3>
-                                                    <p class="mb-0">{{ $item->start_time->format('D') }}</p>
-                                                </div>
-                                            </div>
-                                            <div class="col-9 event-right">
-                                                <p class="mb-0 name">{{ $item->name }}</p>
-                                                <p class="mb-0">{{ __('Ticket Sold') }}
-                                                    <span>{{ $item->sold_ticket }}/{{ $item->tickets }}</span></p>
-                                                <div class="progress mb-3" data-height="5">
-                                                    <div class="progress-bar" role="progressbar"
-                                                        data-width="{{ $item->average }}%"
-                                                        aria-valuenow="{{ $item->average }}" aria-valuemin="0"
-                                                        aria-valuemax="100"></div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    @endforeach
-                                @endif
-
-
+                                </div>
                             </div>
-                        </div>
-
-                    </div>
+                        @endforeach
+                    @endif
                 </div>
             </div>
-        </div>
-    </section>
+        </x-card>
+    </div>
 @endsection
