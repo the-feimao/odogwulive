@@ -976,3 +976,31 @@ npm run build                                                                  #
 3. The local CLI PHP does not have GD, so the store test uses `UploadedFile::fake()->create(..., 'image/jpeg')` instead of `fake()->image()`; the controller still receives a real JPEG upload with the same field name and extension.
 4. Tests activate the seeded license inside a transaction only to render admin content. License-check and installer logic were not modified.
 5. No API route, request/response shape, auth behaviour, Passport setup, Spatie permission, order/payment calculation or license/installer code changed.
+
+## 33. Phase 5 addendum - admin order pages (2026-11-20)
+
+### What changed
+
+- Migrated `admin/order/{index,view,invoice,printTicket}` to the Tailwind/Alpine admin design system through the additive `layouts/admin.blade.php` wrapper.
+- Preserved the order list contract: `report_table`, `name="order_status"`, `#status-{id}`, `changeOrderStatus(id)`, `name="payment_status"`, `#payment-{id}`, `changePaymentStatus(id)`, invoice links, terminal-status disabling and admin/organizer scope.
+- Preserved order detail data and calculations: event/organizer/attendee details, ticket and payment fields, subtotal derivation, coupon discount, tax and final payment values; status badges use the original detail-page labels (`Complete`/`Waiting`).
+- Preserved invoice and print contracts: `invoice-print`, `order-invoice-print/{id}`, `#print_invoice`, `get-code/{id}` QR links, ticket numbers, tax rows, payment token display and admin-only organizer details.
+- Rebuilt standalone `admin/order/invoicePrint.blade.php` with Vite CSS instead of Bootstrap, jQuery and Font Awesome CDNs; kept `window.print()`, app name/favicon/primary-color settings and RTL handling.
+- Preserved the QR ticket print contract: raw QR output, ticket number, event/organizer/attendee details, payment method and `images/scan.png` scanned-state image.
+- Added `tests/Feature/AdminOrderPagesTest.php` for status hooks and POST behaviour, admin/organizer scopes and authorization, invoice amounts and print hooks, CDN removal, and QR/scanned ticket output.
+
+### Verification
+
+```powershell
+C:\xampp\php\php.exe vendor\bin\phpunit --filter AdminOrderPagesTest --testdox # OK (3 tests, 76 assertions)
+C:\xampp\php\php.exe vendor\bin\phpunit --testdox                              # OK (82 tests, 1105 assertions)
+npm run build                                                                  # OK; built in 18.78s with existing Sass deprecation warnings only
+```
+
+### Risks and manual checks
+
+1. `resources/views/master.blade.php` remains untouched, so legacy CDN assets and the license gate are still loaded on the wrapped admin order pages.
+2. Order status and payment status dropdowns still rely on `changeOrderStatus(id)` and `changePaymentStatus(id)` from the legacy `public/admin/js/myCustom.js`; all IDs, names, `onchange` attributes and endpoint URLs were preserved.
+3. The printable invoice is intentionally standalone and uses bundled Vite CSS; check a real browser print preview for page breaks and primary-colour preservation with the configured setting.
+4. Tests activate the seeded license inside a transaction only to render admin content. License-check and installer logic were not modified.
+5. No API route, request/response shape, auth behaviour, Passport setup, Spatie permission, payment gateway integration, tax/coupon calculation or license/installer code changed.

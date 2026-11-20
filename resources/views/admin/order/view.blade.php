@@ -1,107 +1,93 @@
-@extends('master')
+@extends('layouts.admin')
 
-@section('content')
-    <section class="section">
-        @include('admin.layout.breadcrumbs', [
-        'title' => __('Order Detail'),
-        'headerData' => __('Orders') ,
-        'url' => 'orders' ,
-        ])
+@section('admin-content')
+    @php
+        $orderTone = match ($order->order_status) {
+            'Pending' => 'warning',
+            'Cancel' => 'danger',
+            default => 'success',
+        };
+        $paymentTone = $order->payment_status == 1 ? 'success' : 'warning';
+        $paymentLabel = $order->payment_status == 1 ? 'Complete' : 'Waiting';
+    @endphp
 
-        <div class="section-body">
-            <div class="row">
-                <div class="col-lg-8">
-                    <h2 class="section-title"> {{ __('Order Detail') }}</h2>
-                </div>
-            </div>
+    <x-admin-breadcrumb :title="__('Order Detail')" :parent="__('Orders')" url="orders" />
 
-            <div class="row">
-                <div class="col-12">
-                    @if (session('status'))
-                        <div class="alert alert-success alert-dismissible fade show" role="alert">
-                            {{ session('status') }}
-                            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-                                <span aria-hidden="true">&times;</span>
-                            </button>
+    <div>
+        <h1 class="tw-text-2xl tw-font-extrabold tw-tracking-tight tw-text-ink-900 dark:tw-text-neutral-50">
+            {{ __('Order Detail') }}
+        </h1>
+    </div>
+
+    <x-flash-messages />
+
+    <x-card class="order-detail" :padded="false">
+        <x-slot:header>
+            <h2 class="tw-text-lg tw-font-bold tw-text-ink-900 dark:tw-text-neutral-50">
+                {{ __('Order : ') }} <span class="tw-font-mono">{{ $order->order_id }}</span>
+            </h2>
+        </x-slot:header>
+
+        <div class="tw-grid tw-gap-6 tw-p-5 lg:tw-grid-cols-4">
+            <div class="lg:tw-col-span-1">
+                <div class="event-detail tw-overflow-hidden tw-rounded-card tw-border tw-border-neutral-200 dark:tw-border-neutral-800">
+                    <img src="{{ url('images/upload/'.$order->event->image) }}" alt="{{ $order->event->name }}"
+                        class="tw-h-40 tw-w-full tw-object-cover" loading="lazy" width="320" height="160">
+                    <div class="tw-space-y-2 tw-p-4">
+                        <h3 class="tw-text-base tw-font-bold tw-text-ink-900 dark:tw-text-neutral-50">{{ $order->event->name }}</h3>
+                        <p class="tw-text-sm tw-text-neutral-600 dark:tw-text-neutral-300">{{ __('By') }}: {{ $order->organization->name }}</p>
+                        <div>
+                            <p class="tw-text-xs tw-font-semibold tw-uppercase tw-tracking-wide tw-text-neutral-500 dark:tw-text-neutral-400">{{ __('event on : ') }}</p>
+                            <p class="tw-mt-1 tw-text-sm tw-text-ink-800 dark:tw-text-neutral-200">
+                                {{ $order->event->start_time->format('l').', '.$order->event->start_time->format('Y-m-d h:i a').' to '.$order->event->start_time->format('Y-m-d h:i a') }}
+                            </p>
                         </div>
-                    @endif
-                </div>
-                <div class="col-12">
-                    <div class="card">
-                        <div class="card-body order-detail">
-                            <h4>{{ __('Order : ') }} <span>{{ $order->order_id }}</span></h4>
-                            <div class="row">
-                                <div class="col-lg-3">
-                                    <div class="event-detail">
-                                        <img src="{{ url('images/upload/' . $order->event->image) }}">
-                                        <div class="p-3">
-                                            <h5 class="mb-0">{{ $order->event->name }}</h5>
-                                            <p>{{ __('By') }}: {{ $order->organization->name }}</P>
-                                            <h6 class="mb-0">{{ __('event on : ') }}</h6>
-                                            <p>{{ $order->event->start_time->format('l') . ', ' . $order->event->start_time->format('Y-m-d h:i a') . ' to ' . $order->event->start_time->format('Y-m-d h:i a') }}
-                                            </P>
-                                            <h6 class="mb-0">{{ __('Ticket Number: ') }}</h6>
-                                            <p class="mb-0">{{ $order->ticket->ticket_number }}</P>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="col-lg-9">
-                                    <div class="row">
-                                        <div class="col-lg-1">
-
-                                        </div>
-                                        <div class="col-3 order-left">
-                                            <h6>{{ __('Total tickets') }} : </h6>
-                                            <h6>{{ __('Order Status') }} :</h6>
-                                            <h6>{{ __('Payment Status') }} :</h6>
-                                            <h6>{{ __('Payment Gateway') }} :</h6>
-                                            <h6>{{ __('Payment Token') }} :</h6>
-                                            <h6>{{ __('Sub Total') }} :</h6>
-                                            <h6>{{ __('Coupon Discount') }} :</h6>
-                                            <h6>{{ __('Tax') }} :</h6>
-                                            <h6>{{ __('Final Payment') }} :</h6>
-                                        </div>
-
-                                        <div class="col-8 order-right">
-                                            <?php
-                                            if ($order->order_status == 'Pending') {
-                                                $status = 'badge-warning';
-                                            } elseif ($order->order_status == 'Cancel') {
-                                                $status = 'badge-danger';
-                                            } else {
-                                                $status = 'badge-success';
-                                            }
-                                            ?>
-                                            <h6>{{ $order->quantity . ' ticket' }}</h6>
-                                            <h6><span class="badge {{ $status }}">{{ $order->order_status }}</span>
-                                            </h6>
-                                            <h6><span
-                                                    class="badge {{ $order->payment_status == 1 ? 'badge-success' : 'badge-warning' }}">{{ $order->payment_status == 1 ? 'Complete' : 'Waiting' }}</span>
-                                            </h6>
-                                            <h6>{{ $order->payment_type }}</h6>
-                                            <h6>{{ $order->payment_type == 'LOCAL' || $order->payment_type == 'FREE' ? '-' : $order->payment_token }}
-                                            </h6>
-                                            @if ($order->payment_type == 'FREE')
-                                                <h6>{{ __('FREE') }}</h6>
-                                                <h6>{{ __('FREE') }}</h6>
-                                                <h6>{{ __('FREE') }}</h6>
-                                            @else
-                                                <h6>{{ $currency . ($order->payment + $order->coupon_discount - $order->tax) }}
-                                                </h6>
-                                                <h6>(-) {{ $currency . $order->coupon_discount }}</h6>
-                                                <h6>(+) {{ $currency . $order->tax }}</h6>
-                                                <h6>{{ $currency . $order->payment }}</h6>
-                                            @endif
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-
+                        <div>
+                            <p class="tw-text-xs tw-font-semibold tw-uppercase tw-tracking-wide tw-text-neutral-500 dark:tw-text-neutral-400">{{ __('Ticket Number: ') }}</p>
+                            <p class="tw-mt-1 tw-font-mono tw-text-sm tw-text-ink-800 dark:tw-text-neutral-200">{{ $order->ticket->ticket_number }}</p>
                         </div>
                     </div>
                 </div>
             </div>
+
+            <dl class="tw-grid tw-gap-x-4 tw-gap-y-2 tw-text-sm sm:tw-grid-cols-2 lg:tw-col-span-3">
+                <dt class="tw-font-semibold tw-text-neutral-600 dark:tw-text-neutral-300">{{ __('Total tickets') }} :</dt>
+                <dd class="tw-text-ink-900 dark:tw-text-neutral-100">{{ $order->quantity.' ticket' }}</dd>
+
+                <dt class="tw-font-semibold tw-text-neutral-600 dark:tw-text-neutral-300">{{ __('Order Status') }} :</dt>
+                <dd><x-badge :tone="$orderTone">{{ $order->order_status }}</x-badge></dd>
+
+                <dt class="tw-font-semibold tw-text-neutral-600 dark:tw-text-neutral-300">{{ __('Payment Status') }} :</dt>
+                <dd><x-badge :tone="$paymentTone">{{ $paymentLabel }}</x-badge></dd>
+
+                <dt class="tw-font-semibold tw-text-neutral-600 dark:tw-text-neutral-300">{{ __('Payment Gateway') }} :</dt>
+                <dd class="tw-text-ink-900 dark:tw-text-neutral-100">{{ $order->payment_type }}</dd>
+
+                <dt class="tw-font-semibold tw-text-neutral-600 dark:tw-text-neutral-300">{{ __('Payment Token') }} :</dt>
+                <dd class="tw-break-all tw-font-mono tw-text-xs tw-text-ink-900 dark:tw-text-neutral-100">
+                    {{ $order->payment_type == 'LOCAL' || $order->payment_type == 'FREE' ? '-' : $order->payment_token }}
+                </dd>
+
+                @if ($order->payment_type == 'FREE')
+                    <dt class="tw-font-semibold tw-text-neutral-600 dark:tw-text-neutral-300">{{ __('Sub Total') }} :</dt>
+                    <dd class="tw-text-ink-900 dark:tw-text-neutral-100">{{ __('FREE') }}</dd>
+                    <dt class="tw-font-semibold tw-text-neutral-600 dark:tw-text-neutral-300">{{ __('Coupon Discount') }} :</dt>
+                    <dd class="tw-text-ink-900 dark:tw-text-neutral-100">{{ __('FREE') }}</dd>
+                    <dt class="tw-font-semibold tw-text-neutral-600 dark:tw-text-neutral-300">{{ __('Tax') }} :</dt>
+                    <dd class="tw-text-ink-900 dark:tw-text-neutral-100">{{ __('FREE') }}</dd>
+                    <dt class="tw-font-semibold tw-text-neutral-600 dark:tw-text-neutral-300">{{ __('Final Payment') }} :</dt>
+                    <dd class="tw-text-ink-900 dark:tw-text-neutral-100">{{ __('FREE') }}</dd>
+                @else
+                    <dt class="tw-font-semibold tw-text-neutral-600 dark:tw-text-neutral-300">{{ __('Sub Total') }} :</dt>
+                    <dd class="tw-text-ink-900 dark:tw-text-neutral-100">{{ $currency.($order->payment + $order->coupon_discount - $order->tax) }}</dd>
+                    <dt class="tw-font-semibold tw-text-neutral-600 dark:tw-text-neutral-300">{{ __('Coupon Discount') }} :</dt>
+                    <dd class="tw-text-ink-900 dark:tw-text-neutral-100">(-) {{ $currency.$order->coupon_discount }}</dd>
+                    <dt class="tw-font-semibold tw-text-neutral-600 dark:tw-text-neutral-300">{{ __('Tax') }} :</dt>
+                    <dd class="tw-text-ink-900 dark:tw-text-neutral-100">(+) {{ $currency.$order->tax }}</dd>
+                    <dt class="tw-font-semibold tw-text-neutral-600 dark:tw-text-neutral-300">{{ __('Final Payment') }} :</dt>
+                    <dd class="tw-text-lg tw-font-extrabold tw-text-primary-700 dark:tw-text-primary-300">{{ $currency.$order->payment }}</dd>
+                @endif
+            </dl>
         </div>
-    </section>
+    </x-card>
 @endsection
