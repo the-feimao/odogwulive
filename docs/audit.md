@@ -923,3 +923,29 @@ npm run build                                                                   
 3. The price enable/disable behavior still depends on the legacy `.ticket-form` radio handler; the form class, radio names/values and `#price` were preserved.
 4. Tests activate the seeded license inside a transaction only to render admin content. License-check and installer logic were not modified.
 5. No API route, request/response shape, auth behaviour, Passport setup, Spatie permission, order/payment calculation or license/installer code changed.
+
+## 31. Phase 5 addendum — remaining report pages (2026-11-20)
+
+### What changed
+
+- Migrated `admin/report/admin_settlement_report`, `admin/report/org_revenue` and `admin/report/view_settlement` to the Tailwind/Alpine admin design system through the additive `layouts/admin.blade.php` wrapper.
+- Extracted the duplicated payout modal into `admin/report/partials/payment-modal.blade.php` while preserving the Bootstrap modal hooks (`modal`, `fade`, `data-dismiss="modal"`, `data-toggle="modal"`, `data-target="#paymentModel"`) and the legacy script IDs (`#payment`, `#user_id`, `#paymentModelLabel`, `#paypal-button-container`, `payLocally()`, `.stripe-button`).
+- Preserved the settlement-report contract: `/admin-report/settlement`, `/view-settlement/{id}`, `settlement_report`, the seven-column footer consumed by the legacy DataTables `footerCallback`, `btn-pay`, `data-id`, `data-payment` and the admin-only gate.
+- Preserved the revenue-report contract: `GET|POST /organization-report/revenue`, `name="duration"` with `date duration`, `report_table`, `payment_type`, `payment_token`, `payment_status`, currency formatting and the organization-only gate.
+- Added `tests/Feature/AdminRemainingReportPagesTest.php` for rendering, footer-cell positions, filter value retention, payout hooks, the unchanged `/pay-to-organization` flow and role/owner authorization.
+
+### Verification
+
+```powershell
+C:\xampp\php\php.exe vendor\bin\phpunit --filter AdminRemainingReportPagesTest --testdox # OK (3 tests, 56 assertions)
+C:\xampp\php\php.exe vendor\bin\phpunit --testdox                                        # OK (76 tests, 917 assertions)
+npm run build                                                                            # OK; built in 19.97s with existing Sass deprecation warnings only
+```
+
+### Risks and manual checks
+
+1. `resources/views/master.blade.php` remains untouched, so legacy CDN assets and the license gate are still loaded on every migrated admin page.
+2. The payout modal deliberately keeps Bootstrap modal classes so the existing `data-toggle`/`data-target` handler and `data-dismiss` close button continue to work until the master layout is approved for migration.
+3. The PayPal SDK and Stripe checkout script still come from the legacy layout/external script; their container IDs, hidden fields and script attributes were preserved.
+4. Tests activate the seeded license inside a transaction only to render admin content. License-check and installer logic were not modified.
+5. No API route, request/response shape, auth behaviour, Passport setup, Spatie permission, order/payment calculation or license/installer code changed.

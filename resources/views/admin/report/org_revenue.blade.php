@@ -1,151 +1,67 @@
-@extends('master')
+@extends('layouts.admin')
 
-@section('content')
-<section class="section">
-    @include('admin.layout.breadcrumbs', [
-        'title' => __('Revenue Report'),            
-    ]) 
+@section('admin-content')
+    <x-admin-breadcrumb :title="__('Revenue Report')" />
 
-    <div class="section-body">
-        <div class="row">
-            <div class="col-lg-8"><h2 class="section-title"> {{__('Revenue Report')}}</h2></div>            
-        </div>       
-       
-        <div class="row">
-            <div class="col-12">
-                @if (session('status'))
-                <div class="alert alert-success alert-dismissible fade show" role="alert">
-                    {{ session('status') }}
-                    <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-                        <span aria-hidden="true">&times;</span>
-                    </button>
-                </div>
-                @endif
+    <x-flash-messages />
+
+    <x-card :padded="false">
+        <x-slot:header>
+            <div>
+                <h2 class="tw-text-lg tw-font-bold tw-text-ink-900 dark:tw-text-neutral-50">{{ __('Revenue Report') }}</h2>
+                <p class="tw-mt-0.5 tw-text-sm tw-text-neutral-500 dark:tw-text-neutral-400">
+                    {{ __('Review settlement payments made to your organization.') }}
+                </p>
             </div>
-            <div class="col-12">
-              <div class="card">     
-                <div class="card-body">
-                    <form method="post" action="{{url('organization-report/revenue')}}">
-                        @csrf 
-                        <div class="row">                                                     
-                            <div class="col-lg-3">
-                                <div class="form-group">
-                                    <label class="col-form-label">{{__('Duration')}}</label>                                                             
-                                    <input type="text" value="{{isset($request->duration)==true ? $request->duration:''}}" placeholder="{{ __('Choose date') }}" name="duration"  class="form-control date duration">                                                                                                    
-                                </div> 
-                            </div>
-                            <div class="col-lg-3">
-                                <div class="form-group mt-2">                                    
-                                    <input type="submit" class="btn btn-primary mt-4" value="Apply">                                                                                                    
-                                </div> 
-                            </div>
-                        </div>
-                    </form>
-                  <div class="table-responsive">                    
-                    <table class="table" id="report_table">
-                        <thead>
-                            <tr>
-                                <th></th>              
-                                <th>{{__('Organization Name')}}</th>                                                                                 
-                                                                                                                                                    
-                                <th>{{__('Payment Type')}}</th>    
-                                <th>{{__('Payment Token')}}</th>                                                                                                                           
-                                <th>{{__('Payment Status')}}</th>  
-                                <th>{{__('Payment')}}</th>                                                                                                                              
-                                <th>{{__('Payment on')}}</th>                                                                                                                           
+        </x-slot:header>
+
+        <div class="tw-space-y-5 tw-p-5">
+            <form method="post" action="{{ url('organization-report/revenue') }}" class="tw-grid tw-gap-4 sm:tw-grid-cols-2 lg:tw-max-w-lg lg:tw-items-end">
+                @csrf
+                <x-input name="duration" :label="__('Duration')" :value="$request->duration ?? ''"
+                    :placeholder="__('Choose date')" class="date duration" />
+                <x-button type="submit">{{ __('Apply') }}</x-button>
+            </form>
+
+            <div class="tw-overflow-x-auto">
+                <table id="report_table" class="tw-min-w-full tw-text-left tw-text-sm">
+                    <thead>
+                        <tr class="tw-border-b tw-border-neutral-200 tw-text-xs tw-uppercase tw-tracking-wide tw-text-neutral-500 dark:tw-border-neutral-700 dark:tw-text-neutral-400">
+                            <th class="tw-w-8 tw-px-3 tw-py-3"></th>
+                            <th class="tw-px-3 tw-py-3">{{ __('Organization Name') }}</th>
+                            <th class="tw-px-3 tw-py-3">{{ __('Payment Type') }}</th>
+                            <th class="tw-px-3 tw-py-3">{{ __('Payment Token') }}</th>
+                            <th class="tw-px-3 tw-py-3">{{ __('Payment Status') }}</th>
+                            <th class="tw-px-3 tw-py-3">{{ __('Payment') }}</th>
+                            <th class="tw-px-3 tw-py-3">{{ __('Payment on') }}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach ($data as $item)
+                            <tr class="tw-border-b tw-border-neutral-100 last:tw-border-0 dark:tw-border-neutral-800">
+                                <td class="tw-px-3 tw-py-3"></td>
+                                <td class="tw-px-3 tw-py-3">
+                                    <p class="tw-font-semibold tw-text-ink-900 dark:tw-text-neutral-100">{{ $item->user->first_name.' '.$item->user->last_name }}</p>
+                                    <p class="tw-mt-0.5 tw-text-xs tw-text-neutral-500 dark:tw-text-neutral-400">{{ $item->user->email }}</p>
+                                </td>
+                                <td class="tw-px-3 tw-py-3 tw-text-neutral-600 dark:tw-text-neutral-300">{{ $item->payment_type }}</td>
+                                <td class="tw-px-3 tw-py-3 tw-font-mono tw-text-xs tw-text-neutral-600 dark:tw-text-neutral-300">
+                                    {{ $item->payment_token == null ? '-' : $item->payment_token }}
+                                </td>
+                                <td class="tw-px-3 tw-py-3">
+                                    <x-badge :tone="$item->payment_status == 1 ? 'success' : 'warning'">
+                                        {{ $item->payment_status == 1 ? __('Compelete') : __('Waiting') }}
+                                    </x-badge>
+                                </td>
+                                <td class="tw-px-3 tw-py-3 tw-font-semibold tw-text-ink-900 dark:tw-text-neutral-100">{{ $currency.$item->payment }}</td>
+                                <td class="tw-px-3 tw-py-3 tw-text-neutral-600 dark:tw-text-neutral-300">{{ $item->created_at->format('Y-m-d , h:i a') }}</td>
                             </tr>
-                        </thead>
-                        <tbody>
-                            @foreach ($data as $item)
-                                <tr>
-                                    <td></td>                                    
-                                    <td> 
-                                       <h6>{{$item->user->first_name.' '.$item->user->last_name}}</h6> 
-                                       <p>{{$item->user->email}}</p>
-                                    </td>                                                                                                                       
-                                    <td>{{$item->payment_type}}</td>                                                                                                                                                   
-                                    <td>{{$item->payment_token==null?'-': $item->payment_token}}</td>                                                                                                                                                   
-                                    <td>
-                                        <span class="badge {{$item->payment_status==1?'badge-success':'badge-warning'}}">{{$item->payment_status==1?'Compelete':'Waiting'}}</span>
-                                    </td>  
-                                    <td>{{$currency.$item->payment}}</td>                                                                                                                                                   
-                                    <td>{{$item->created_at->format('Y-m-d , h:i a')}}</td>                                                                                                                                                   
-                                </tr>
-                            @endforeach                           
-                        </tbody>
-                    </table>
-                  </div>
-                </div>
-              </div>
+                        @endforeach
+                    </tbody>
+                </table>
             </div>
-          </div>
         </div>
-    </section>
+    </x-card>
 
-    <div class="modal fade" id="paymentModel" tabindex="-1" role="dialog" aria-labelledby="paymentModelLabel" aria-hidden="true">
-        <div class="modal-dialog" role="document">
-          <div class="modal-content">
-            <div class="modal-header">
-              <h5 class="modal-title" id="paymentModelLabel">{{ __('Choose Payment Gateway') }}</h5>
-              <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                <span aria-hidden="true">&times;</span>
-              </button>
-            </div>
-            <div class="modal-body">
-                <div class="all-payment">
-                    
-                    
-                    <div class="row b-bottom mb-4 mt-4">
-                        <div class="col-6">
-                            <h6>{{ __('Pay with Paypal') }}</h6>
-                        </div>
-                        <div class="col-6">
-                            <div class="paypal">
-                                <div id="paypal-button-container"></div>    
-                            </div> 
-                        </div>                           
-                    </div>   
-                   
-                    <div class="row b-bottom mb-4 pb-4">                                              
-                        <div class="col-6">
-                            <h6>{{ __('Pay with Stripe') }}</h6>
-                            </div>
-                        <div class="col-6">
-                            <form method="post" action="{{url('pay-to-org')}}">
-                                @csrf 
-                                <input type="hidden" id="payment"  name="payment">
-                                <input type="hidden" id="user_id" name="user_id">
-                                <input type="hidden" value="STRIPE" name="payment_type">
-                                <div class="stripe">
-                                    <div class="stripe-form">                                                                                      
-                                        <script src="https://checkout.stripe.com/checkout.js" class="stripe-button"
-                                        data-key= {{\App\Models\PaymentSetting::find(1)->stripePublicKey}}
-                                        data-amount=100
-                                        data-name=abc
-                                        data-description="nothing"
-                                        data-image = "https://stripe.com/img/documentation/checkout/marketplace.png"
-                                        data-locale="auto"
-                                        data-label="Pay with Stripe"
-                                        data-currency={{$currency}} ></script>                                            
-                                    </div> 
-                                </div> 
-                            </form>   
-                        </div>                                                                      
-                    </div> 
-                    <div class="row mb-4 pb-4">
-                        <div class="col-6">
-                            <h6>{{ __('Pay Locally') }}</h6>
-                        </div>
-                        <div class="col-6 w-100">
-                            <button type="button" onclick="payLocally()" class="btn w-100 btn-primary"> {{ __('Pay with Local') }}</button>
-                        </div>                           
-                    </div> 
-                                                            
-                </div>
-            </div>          
-          </div>
-        </div>
-    </div>
-
-
+    @include('admin.report.partials.payment-modal')
 @endsection
