@@ -1,98 +1,40 @@
-@extends('master')
+@extends('layouts.admin')
 
-@section('content')
-<section class="section">
-    @include('admin.layout.breadcrumbs', [
-        'title' => __('Add User'),  
-        'headerData' => __('Users') ,
-        'url' => 'users' ,          
-    ]) 
+@section('admin-content')
+    <x-admin-breadcrumb :title="__('Add User')" :parent="__('Users')" url="users" />
 
-    <div class="section-body">
-        <div class="row">
-            <div class="col-lg-8"><h2 class="section-title"> {{__('Add User')}}</h2></div>           
-        </div>       
-       
-        <div class="row">
-            <div class="col-12">
-              <div class="card">     
-                <div class="card-body">
-                    <form method="post" action="{{url('users')}}">
-                        @csrf
-                        <div class="row">
-                            <div class="col-lg-6">
-                                <div class="form-group">
-                                    <label>{{__('First Name')}}</label>
-                                    <input type="text" name="first_name" placeholder="{{__('First Name')}}" value="{{old('first_name')}}" class="form-control @error('first_name')? is-invalid @enderror">
-                                    @error('first_name')
-                                        <div class="invalid-feedback">{{$message}}</div>
-                                    @endif
-                                </div>
-                            </div>
-                            <div class="col-lg-6">
-                                <div class="form-group">
-                                    <label>{{__('Last Name')}}</label>
-                                    <input type="text" name="last_name" placeholder="{{__('Last Name')}}" value="{{old('last_name')}}" class="form-control @error('last_name')? is-invalid @enderror">
-                                    @error('last_name')
-                                        <div class="invalid-feedback">{{$message}}</div>
-                                    @endif
-                                </div>
-                            </div>
-                        </div>
-                      
-                        <div class="form-group">
-                            <label>{{__('Email')}}</label>
-                            <input type="email" name="email" placeholder="{{__('Email')}}" value="{{old('email')}}" class="form-control @error('email')? is-invalid @enderror">
-                            @error('email')
-                                <div class="invalid-feedback">{{$message}}</div>
-                            @endif
-                        </div>
-                        <div class="form-group">
-                            <label>{{__('Phone')}}</label>
-                            <input type="text" name="phone" placeholder="{{__('Phone')}}" value="{{old('phone')}}" class="form-control @error('phone')? is-invalid @enderror">
-                            @error('phone')
-                                <div class="invalid-feedback">{{$message}}</div>
-                            @endif
-                        </div>
-                        <div class="form-group">
-                            <label>{{__('Password')}}</label>
-                            <input type="password" name="password" placeholder="{{__('Password')}}" class="form-control @error('password')? is-invalid @enderror">
-                            @error('password')
-                                <div class="invalid-feedback">{{$message}}</div>
-                            @endif
-                        </div>
-                        <div class="form-group">
-                            <label>{{__('Roles')}}</label>
-                            <select name="roles[]" class="form-control select2" multiple="multiple" id="role">
-                                @foreach ($roles as $per)
-                                    <option value="{{$per['id']}}">{{$per['name']}}</option>
-                                @endforeach
-                            </select>
-                            @error('roles')
-                                <div class="invalid-feedback">{{$message}}</div>
-                            @endif
-                        </div>
-                        <div class="form-group display-none" id="org">
-                            <label>{{__('Organization')}}</label>
-                            <select name="organization" class="form-control select2">
-                                @foreach ($orgs as $org)
-                                    <option value="{{$org['id']}}">{{$org['first_name'] .' '. $org['last_name']}}</option>
-                                @endforeach
-                            </select>
-                            @error('organization')
-                                <div class="invalid-feedback">{{$message}}</div>
-                            @endif
-                        </div>
-                        <div class="form-group">
-                            
-                            <button type="submit" class="btn btn-primary">{{__('Submit')}}</button>
-                            
-                        </div>
-                    </form>
-                </div>
-              </div>
+    <x-flash-messages />
+
+    <x-card :title="__('Add User')" :subtitle="__('Create a staff or organization account and assign its roles.')">
+        <form method="post" action="{{ url('users') }}" class="tw-grid tw-gap-6">
+            @csrf
+
+            <div class="tw-grid tw-gap-5 md:tw-grid-cols-2">
+                <x-input name="first_name" :label="__('First Name')" :placeholder="__('First Name')" />
+                <x-input name="last_name" :label="__('Last Name')" :placeholder="__('Last Name')" />
             </div>
-          </div>
-        </div>
-    </section>
+
+            <x-input name="email" type="email" :label="__('Email')" :placeholder="__('Email')" />
+            <x-input name="phone" :label="__('Phone')" :placeholder="__('Phone')" />
+            <x-input name="password" type="password" :label="__('Password')" :placeholder="__('Password')" />
+
+            <x-select name="roles[]" :label="__('Roles')" id="role" class="select2" multiple="multiple">
+                @foreach ($roles as $role)
+                    <option value="{{ $role['id'] }}">{{ $role['name'] }}</option>
+                @endforeach
+            </x-select>
+
+            <div id="org" class="display-none">
+                <x-select name="organization" :label="__('Organization')" class="select2">
+                    @foreach ($orgs as $org)
+                        <option value="{{ $org['id'] }}">{{ $org['first_name'].' '.$org['last_name'] }}</option>
+                    @endforeach
+                </x-select>
+            </div>
+
+            <div>
+                <x-button type="submit">{{ __('Submit') }}</x-button>
+            </div>
+        </form>
+    </x-card>
 @endsection

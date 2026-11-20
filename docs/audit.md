@@ -871,3 +871,30 @@ npm run build                                                                   
 3. The template page still depends on Summernote from the legacy admin bundle for `textarea_editor`; no rich-text editor replacement was made in this view-only group.
 4. Tests activate the seeded license inside a transaction only to render admin content. License-check and installer logic were not modified.
 5. No API route, request/response shape, auth behaviour, Passport setup, Spatie permission, order/payment calculation or license/installer code changed.
+
+## 29. Phase 5 addendum — blog, attendees and organization users (2026-11-20)
+
+### What changed
+
+- Migrated all nine `admin/blog/{index,create,edit}`, `admin/appUser/{index,create,view}` and `admin/user/{index,create,edit}` views to the Tailwind/Alpine admin design system through the additive `layouts/admin.blade.php` wrapper.
+- Preserved the blog contracts: `blog` resource routes, `report_table`, `deleteData('blog','id')`, multipart forms, `title`, `description`, `category_id`, `tags`, `status`, `image`, `#image-preview`, `#image-upload`, `#image-label`, `select2` and `inputtags`.
+- Preserved the attendee contracts: `app-user` routes, `view-user/{id}`, `block-user/{id}`, status-based block/unblock links, multipart create form, `name`, `email`, `password`, `status`, `image`, the image-preview hooks and the Bootstrap tab IDs (`myTab`, `upcoming-tab`, `past-tab`, `upcoming`, `past`) with `data-toggle="tab"`.
+- Preserved the user contracts: `users` resource routes, `first_name`, `last_name`, `email`, `phone`, `password`, `roles[]` with `id="role"`, `organization` with `id="org"` and `display-none`, `select2`, readonly email on edit, `users.update` and the admin no-edit rule.
+- Fixed the old malformed attendee `placeholder={{__('Full Name')}}alue=...` attribute while keeping the `name` field and its submitted value unchanged.
+- Added `tests/Feature/AdminBlogAppUserUserPagesTest.php` for rendering, hook preservation, role/admin protections and the unchanged store, update, block and detail flows.
+
+### Verification
+
+```powershell
+C:\xampp\php\php.exe vendor\bin\phpunit --filter AdminBlogAppUserUserPagesTest --testdox # OK (3 tests, 121 assertions)
+C:\xampp\php\php.exe vendor\bin\phpunit --testdox                                           # OK (71 tests, 800 assertions)
+npm run build                                                                               # OK; built in 19.40s with existing Sass deprecation warnings only
+```
+
+### Risks and manual checks
+
+1. `resources/views/master.blade.php` remains untouched, so legacy CDN assets and the license gate are still loaded on every migrated admin page.
+2. Blog and attendee image inputs still rely on the legacy `jquery.uploadPreview` script from `master.blade.php`; the IDs and wrapper hooks were preserved so that initialization is unchanged.
+3. `inputtags`, `select2` and the customer-detail Bootstrap tabs remain on their legacy scripts until the shared master layout is approved for migration.
+4. Tests activate the seeded license inside a transaction only to render admin content. License-check and installer logic were not modified.
+5. No API route, request/response shape, auth behaviour, Passport setup, Spatie permission, order/payment calculation or license/installer code changed.

@@ -1,94 +1,45 @@
-@extends('master')
+@extends('layouts.admin')
 
-@section('content')
-<section class="section">
-    @include('admin.layout.breadcrumbs', [
-        'title' => __('Edit User'),  
-        'headerData' => __('Users') ,
-        'url' => 'users' ,          
-    ]) 
+@section('admin-content')
+    <x-admin-breadcrumb :title="__('Edit User')" :parent="__('Users')" url="users" />
 
-    <div class="section-body">
-        <div class="row">
-            <div class="col-lg-8"><h2 class="section-title"> {{__('Edit User')}}</h2></div>          
-        </div>       
-       
-        <div class="row">
-            <div class="col-12">
-              <div class="card">     
-                <div class="card-body">
-                    <form method="post" action="{{ route("users.update", [$user->id]) }}">
-                        @csrf
-                        @method('PUT')
-                        <div class="row">
-                            <div class="col-lg-6">
-                                <div class="form-group">
-                                    <label>{{__('First Name')}}</label>
-                                    <input type="text" name="first_name" value="{{$user->first_name}}" class="form-control @error('first_name')? is-invalid @enderror">
-                                    @error('first_name')
-                                        <div class="invalid-feedback">{{$message}}</div>
-                                    @endif
-                                </div>
-                            </div>
-                            <div class="col-lg-6">
-                                <div class="form-group">
-                                    <label>{{__('Last Name')}}</label>
-                                    <input type="text" name="last_name" value="{{$user->last_name}}" class="form-control @error('last_name')? is-invalid @enderror">
-                                    @error('last_name')
-                                        <div class="invalid-feedback">{{$message}}</div>
-                                    @endif
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label>{{__('Email')}}</label>
-                            <input type="email" readonly name="email" value="{{$user->email}}" class="form-control @error('email')? is-invalid @enderror">
-                            @error('email')
-                                <div class="invalid-feedback">{{$message}}</div>
-                            @endif
-                        </div>  
-                        <div class="form-group">
-                            <label>{{__('Phone')}}</label>
-                            <input type="text" name="phone" value="{{$user->phone}}" class="form-control @error('phone')? is-invalid @enderror">
-                            @error('phone')
-                                <div class="invalid-feedback">{{$message}}</div>
-                            @endif
-                        </div>               
-                        <div class="form-group">
-                            <label>{{__('Roles')}}</label>
-                            <select name="roles[]" class="form-control select2" multiple="multiple" id="role">
-                                @foreach ($roles as $roles)
-                                    <option value="{{$roles['id']}}"
-                                    {{ (in_array($roles->id, old('roles', [])) || isset($user) && $user->roles->contains($roles->id)) ? 'selected' : '' }}>
-                                    {{$roles['name']}}</option>
-                                @endforeach
-                            </select>
-                            @error('roles')
-                                <div class="invalid-feedback">{{$message}}</div>
-                            @endif
-                        </div>
-                        <div class="form-group {{ $user->org_id == null? 'display-none':'' }}" id="org">
-                            <label>{{__('Organization')}}</label>
-                            <select name="organization" class="form-control select2">
-                                @foreach ($orgs as $org)
-                                    <option value="{{$org['id']}}" {{$user->org_id == $org['id']? 'selected':''}}>{{$org['first_name'] .' '. $org['last_name']}}</option>
-                                @endforeach
-                            </select>
-                            @error('organization')
-                                <div class="invalid-feedback">{{$message}}</div>
-                            @endif
-                        </div>
-                        <div class="form-group">
-                            
-                            <button type="submit" class="btn btn-primary">{{__('Submit')}}</button>
-                            
-                        </div>
-                    </form>
-                </div>
-              </div>
+    <x-flash-messages />
+
+    <x-card :title="__('Edit User')" :subtitle="__('Update the account details and role assignments.')">
+        <form method="post" action="{{ route('users.update', [$user->id]) }}" class="tw-grid tw-gap-6">
+            @csrf
+            @method('PUT')
+
+            <div class="tw-grid tw-gap-5 md:tw-grid-cols-2">
+                <x-input name="first_name" :label="__('First Name')" :value="$user->first_name" />
+                <x-input name="last_name" :label="__('Last Name')" :value="$user->last_name" />
             </div>
-          </div>
-        </div>
-    </section>
+
+            <x-input name="email" type="email" :label="__('Email')" :value="$user->email" readonly />
+            <x-input name="phone" :label="__('Phone')" :value="$user->phone" />
+
+            <x-select name="roles[]" :label="__('Roles')" id="role" class="select2" multiple="multiple">
+                @foreach ($roles as $role)
+                    <option value="{{ $role['id'] }}"
+                        {{ (in_array($role->id, old('roles', [])) || $user->roles->contains($role->id)) ? 'selected' : '' }}>
+                        {{ $role['name'] }}
+                    </option>
+                @endforeach
+            </x-select>
+
+            <div id="org" class="{{ $user->org_id == null ? 'display-none' : '' }}">
+                <x-select name="organization" :label="__('Organization')" class="select2">
+                    @foreach ($orgs as $org)
+                        <option value="{{ $org['id'] }}" {{ $user->org_id == $org['id'] ? 'selected' : '' }}>
+                            {{ $org['first_name'].' '.$org['last_name'] }}
+                        </option>
+                    @endforeach
+                </x-select>
+            </div>
+
+            <div>
+                <x-button type="submit">{{ __('Submit') }}</x-button>
+            </div>
+        </form>
+    </x-card>
 @endsection

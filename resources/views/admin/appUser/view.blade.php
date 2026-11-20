@@ -1,178 +1,182 @@
-@extends('master')
+@extends('layouts.admin')
 
-@section('content')
-<section class="section">
-    @include('admin.layout.breadcrumbs', [
-        'title' => __('Customer Detail'),            
-    ]) 
+@section('admin-content')
+    <x-admin-breadcrumb :title="__('Customer Detail')" />
 
-    <div class="section-body">
-        <h2 class="section-title">{{$user->name.' '.$user->last_name}}</h2>
-       
-        <div class="row mt-sm-4">
-            <div class="col-12">
-                @if (session('status'))
-                <div class="alert alert-success alert-dismissible fade show" role="alert">
-                    {{ session('status') }}
-                    <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-                        <span aria-hidden="true">&times;</span>
-                    </button>
-                </div>
-                @endif
-            </div>
-            <div class="col-12 col-md-12 col-lg-5">
-              <div class="card profile-widget">
-                <div class="profile-widget-header">
-                  <img alt="image" src="{{url('images/upload/'.$user->image)}}" class="rounded-circle profile-widget-picture">
-                  <div class="profile-widget-items">                                        
-                        <div class="profile-widget-item">
-                            <div class="profile-widget-item-label">{{__('Pending Order')}}</div>
-                            <div class="profile-widget-item-value">{{$user->pending}}</div>
-                        </div>
-                        <div class="profile-widget-item">
-                            <div class="profile-widget-item-label">{{__('Complete Order')}}</div>
-                            <div class="profile-widget-item-value">{{$user->complete}}</div>
-                        </div>    
-                        <div class="profile-widget-item">
-                            <div class="profile-widget-item-label">{{__('Cancel Order')}}</div>
-                            <div class="profile-widget-item-value">{{$user->cancel}}</div>
-                        </div>                                                    
-                  </div>
-                </div>
-                <div class="profile-widget-description">
-                  <div class="profile-widget-name">{{$user->name.' '.$user->last_name}}</div>
-                   <b>{{$user->email}}</b>
-                   <p>{{$user->address}}</p>
-                </div>              
-              </div>
+    <x-flash-messages />
 
-                
-                <div class="card mt-4">
-                    <div class="card-header">
-                        <h4>{{__('Following ('.count($user->following).')')}}</h4>
-                    </div>
-                    <div class="card-body scroll-type">
-                        @if(count($user->following)==0)
-                            <div class="row">
-                                <div class="col-12 text-center">
-                                    <div class="empty-data">
-                                        <div class="card-icon shadow-primary">
-                                        <i class="fas fa-search"></i>
-                                        </div>
-                                        <h6 class="mt-3">{{__('No Data found')}} </h6>
-                                    </div>                                    
-                                </div>
-                            </div>
-                        @else 
-                            <ul class="list-unstyled list-unstyled-border">                              
-                                @foreach ($user->following as $item)
-                                    <li class="media">
-                                        <img class="mr-3 avatar" width="50" src="{{url('images/upload/'.$item->image)}}" alt="avatar">
-                                        <div class="media-body">                                      
-                                            <div class="media-title">{{$item->first_name.' '.$item->last_name}}</div>
-                                            <span class="text-small text-muted">{{$item->email}}</span>
-                                        </div>
-                                     </li>                                                                  
-                                @endforeach                               
-                            </ul>
-                        @endif                                                                              
-                    </div>
-                </div>
-             
-            </div>
-            <div class="col-12 col-md-12 col-lg-7">
-              <div class="card mt-4">
-                  <div class="card-header">
-                    <h4>{{__('All Orders')}}({{($user->pending+ $user->cancel + $user->complete)}})</h4>
-                  </div>
-                                   
-                  <div class="card-body">
-                    <ul class="nav nav-tabs" id="myTab" role="tablist">
-                        <li class="nav-item">
-                          <a class="nav-link active" id="upcoming-tab" data-toggle="tab" href="#upcoming" role="tab" aria-controls="upcoming" aria-selected="true">{{ __('Upcoming') }}</a>
-                        </li>
-                        <li class="nav-item">
-                          <a class="nav-link" id="past-tab" data-toggle="tab" href="#past" role="tab" aria-controls="past" aria-selected="false">{{ __('Past') }}</a>
-                        </li>                      
-                      </ul>
-                      <div class="tab-content" id="myTabContent">
-                        <div class="tab-pane fade show active" id="upcoming" role="tabpanel" aria-labelledby="upcoming-tab">
-                            @if(count($user->upcoming)==0)
-                                <div class="row">
-                                    <div class="col-12 text-center">
-                                        <div class="empty-data">
-                                            <div class="card-icon shadow-primary">
-                                            <i class="fas fa-search"></i>
-                                            </div>
-                                            <h6 class="mt-3">{{__('No Orders found')}} </h6>
-                                        </div>                                  
-                                    </div>
-                                </div>
-                            @else                            
-                                @foreach ($user->upcoming as $item)
-                                    <?php 
-                                        if($item->order_status=="Pending"){ $status= "badge-warning"; }
-                                        else if($item->order_status=="Complete"){ $status= "badge-success"; }
-                                        else if($item->order_status=="Cancel"){ $status= "badge-danger"; }
-                                    ?>
-                                    <div class="row all-orders mb-4">
-                                        <div class="col-lg-6">
-                                            <a href="{{url('order-invoice/'.$item->id)}}"><span>{{$item->order_id}}</span></a>
-                                            <h6 class="mb-0">{{$item->event->name .' ('. $item->quantity.' Tickets)'}}</h6>                                       
-                                            <p>{{$item->event->start_time->format('Y-m-d H:i a')}}</p>
-                                        </div>    
-                                        <div class="col-lg-6 text-right">
-                                            <button class="btn pr-0"><strong>{{$currency.$item->payment.'.00'}}</strong></button>                                            
-                                            <h6><span class="badge {{$status}}">{{$item->order_status}}</span></h6>
-                                        </div>                                       
-                                    </div>  
-                                @endforeach
-                            @endif
-                        </div>
-                        <div class="tab-pane fade" id="past" role="tabpanel" aria-labelledby="past-tab">
-                            @if(count($user->past)==0)
-                                <div class="row">
-                                    <div class="col-12 text-center">
-                                        <div class="empty-data">
-                                            <div class="card-icon shadow-primary">
-                                            <i class="fas fa-search"></i>
-                                            </div>
-                                            <h6 class="mt-3">{{__('No Orders found')}} </h6>
-                                        </div>                                    
-                                    </div>
-                                </div>
-                            @else
-                                @foreach ($user->past as $item)
-                                    <?php 
-                                        if($item->order_status=="Pending"){ $status= "badge-warning"; }
-                                        else if($item->order_status=="Complete"){ $status= "badge-success"; }
-                                        else if($item->order_status=="Cancel"){ $status= "badge-danger"; }
-                                    ?>
-                                    <div class="row all-orders mb-4">
-                                        <div class="col-lg-6">
-                                            <a href="{{url('order-invoice/'.$item->id)}}"><span>{{$item->order_id}}</span></a>
-                                            <h6 class="mb-0">{{$item->event->name .' ('. $item->quantity.' Tickets)'}}</h6>                                       
-                                            <p>{{$item->event->start_time->format('Y-m-d H:i a')}}</p>
-                                        </div>    
-                                        <div class="col-lg-6 text-right">
-                                            <button class="btn pr-0"><strong>{{$currency.$item->payment.'.00'}}</strong></button>                                            
-                                            <h6><span class="badge {{$status}}">{{$item->order_status}}</span></h6>
-                                        </div>                                       
-                                    </div>  
-                                @endforeach
-                            @endif
-                        </div>
-                      
-                      </div>
-                                                
-                  </div>
-                 
-               
-              </div>
-            </div>
-          </div>
-
-        
+    <div class="tw-flex tw-flex-wrap tw-items-end tw-justify-between tw-gap-4">
+        <div>
+            <h1 class="tw-text-2xl tw-font-extrabold tw-tracking-tight tw-text-ink-900 dark:tw-text-neutral-50">
+                {{ $user->name.' '.$user->last_name }}
+            </h1>
+            <p class="tw-mt-1 tw-text-sm tw-text-neutral-600 dark:tw-text-neutral-300">
+                {{ __('Attendee profile, orders and followed organizers.') }}
+            </p>
+        </div>
     </div>
-</section>
+
+    <div class="tw-grid tw-gap-5 lg:tw-grid-cols-[minmax(0,320px)_minmax(0,1fr)]">
+        <div class="tw-space-y-5">
+            <x-card :padded="false">
+                <x-slot:header>
+                    <div class="tw-flex tw-items-center tw-gap-3">
+                        <img src="{{ url('images/upload/'.$user->image) }}" alt="{{ $user->name }}"
+                            loading="lazy" width="56" height="56"
+                            class="tw-h-14 tw-w-14 tw-rounded-pill tw-object-cover">
+                        <div>
+                            <h2 class="tw-text-base tw-font-bold tw-text-ink-900 dark:tw-text-neutral-50">
+                                {{ $user->name.' '.$user->last_name }}
+                            </h2>
+                            <p class="tw-text-sm tw-text-neutral-500 dark:tw-text-neutral-400">{{ $user->email }}</p>
+                        </div>
+                    </div>
+                </x-slot:header>
+
+                <div class="tw-p-5">
+                    @if ($user->address)
+                        <p class="tw-text-sm tw-text-neutral-600 dark:tw-text-neutral-300">{{ $user->address }}</p>
+                    @endif
+
+                    <div class="tw-mt-4 tw-grid tw-grid-cols-3 tw-gap-3">
+                        <div class="tw-rounded-stub tw-bg-warning-50 tw-p-3 tw-text-center dark:tw-bg-warning-500/10">
+                            <p class="tw-text-xl tw-font-extrabold tw-text-warning-700 dark:tw-text-warning-300">{{ $user->pending }}</p>
+                            <p class="tw-mt-0.5 tw-text-xs tw-font-semibold tw-text-warning-800 dark:tw-text-warning-200/80">{{ __('Pending Order') }}</p>
+                        </div>
+                        <div class="tw-rounded-stub tw-bg-success-50 tw-p-3 tw-text-center dark:tw-bg-success-500/10">
+                            <p class="tw-text-xl tw-font-extrabold tw-text-success-700 dark:tw-text-success-300">{{ $user->complete }}</p>
+                            <p class="tw-mt-0.5 tw-text-xs tw-font-semibold tw-text-success-800 dark:tw-text-success-200/80">{{ __('Complete Order') }}</p>
+                        </div>
+                        <div class="tw-rounded-stub tw-bg-danger-50 tw-p-3 tw-text-center dark:tw-bg-danger-500/10">
+                            <p class="tw-text-xl tw-font-extrabold tw-text-danger-700 dark:tw-text-danger-300">{{ $user->cancel }}</p>
+                            <p class="tw-mt-0.5 tw-text-xs tw-font-semibold tw-text-danger-800 dark:tw-text-danger-200/80">{{ __('Cancel Order') }}</p>
+                        </div>
+                    </div>
+                </div>
+            </x-card>
+
+            <x-card :title="__('Following ('.count($user->following).')')">
+                @if (count($user->following) == 0)
+                    <x-empty-state :title="__('No Data found')" />
+                @else
+                    <ul class="tw-space-y-3">
+                        @foreach ($user->following as $item)
+                            <li class="tw-flex tw-items-center tw-gap-3">
+                                <img src="{{ url('images/upload/'.$item->image) }}" alt="{{ $item->first_name }}"
+                                    loading="lazy" width="40" height="40"
+                                    class="tw-h-10 tw-w-10 tw-rounded-pill tw-object-cover">
+                                <div class="tw-min-w-0">
+                                    <p class="tw-truncate tw-text-sm tw-font-semibold tw-text-ink-900 dark:tw-text-neutral-100">
+                                        {{ $item->first_name.' '.$item->last_name }}
+                                    </p>
+                                    <p class="tw-truncate tw-text-xs tw-text-neutral-500 dark:tw-text-neutral-400">{{ $item->email }}</p>
+                                </div>
+                            </li>
+                        @endforeach
+                    </ul>
+                @endif
+            </x-card>
+        </div>
+
+        <x-card :padded="false">
+            <x-slot:header>
+                <h2 class="tw-text-lg tw-font-bold tw-text-ink-900 dark:tw-text-neutral-50">
+                    {{ __('All Orders').'('.($user->pending + $user->cancel + $user->complete).')' }}
+                </h2>
+            </x-slot:header>
+
+            <div class="tw-p-5">
+                <ul class="nav nav-tabs tw-flex tw-gap-1 tw-border-b tw-border-neutral-200 dark:tw-border-neutral-800" id="myTab" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <a class="nav-link active tw-rounded-t-stub tw-border-b-2 tw-border-accent-600 tw-px-3 tw-py-2 tw-text-sm tw-font-semibold tw-text-ink-900 dark:tw-text-neutral-50"
+                            id="upcoming-tab" data-toggle="tab" href="#upcoming" role="tab" aria-controls="upcoming" aria-selected="true">
+                            {{ __('Upcoming') }}
+                        </a>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <a class="nav-link tw-rounded-t-stub tw-border-b-2 tw-border-transparent tw-px-3 tw-py-2 tw-text-sm tw-font-semibold tw-text-neutral-500 dark:tw-text-neutral-400"
+                            id="past-tab" data-toggle="tab" href="#past" role="tab" aria-controls="past" aria-selected="false">
+                            {{ __('Past') }}
+                        </a>
+                    </li>
+                </ul>
+
+                <div class="tab-content" id="myTabContent">
+                    <div class="tab-pane fade show active" id="upcoming" role="tabpanel" aria-labelledby="upcoming-tab">
+                        @if (count($user->upcoming) == 0)
+                            <x-empty-state :title="__('No Orders found')" />
+                        @else
+                            <div class="tw-divide-y tw-divide-neutral-100 dark:tw-divide-neutral-800">
+                                @foreach ($user->upcoming as $item)
+                                    @php
+                                        $tone = match ($item->order_status) {
+                                            'Pending' => 'warning',
+                                            'Complete' => 'success',
+                                            'Cancel' => 'danger',
+                                            default => 'neutral',
+                                        };
+                                    @endphp
+                                    <div class="tw-flex tw-flex-wrap tw-items-center tw-justify-between tw-gap-3 tw-py-4">
+                                        <div class="tw-min-w-0">
+                                            <a href="{{ url('order-invoice/'.$item->id) }}"
+                                                class="tw-text-sm tw-font-bold tw-text-accent-600 tw-transition hover:tw-text-accent-500 dark:tw-text-accent-300">
+                                                {{ $item->order_id }}
+                                            </a>
+                                            <p class="tw-mt-0.5 tw-text-sm tw-font-semibold tw-text-ink-900 dark:tw-text-neutral-100">
+                                                {{ $item->event->name.' ('.$item->quantity.' Tickets)' }}
+                                            </p>
+                                            <p class="tw-text-xs tw-text-neutral-500 dark:tw-text-neutral-400">
+                                                {{ $item->event->start_time->format('Y-m-d H:i a') }}
+                                            </p>
+                                        </div>
+                                        <div class="tw-text-left sm:tw-text-right">
+                                            <p class="tw-text-sm tw-font-bold tw-text-ink-900 dark:tw-text-neutral-50">{{ $currency.$item->payment.'.00' }}</p>
+                                            <x-badge :tone="$tone" class="tw-mt-1">{{ $item->order_status }}</x-badge>
+                                        </div>
+                                    </div>
+                                @endforeach
+                            </div>
+                        @endif
+                    </div>
+
+                    <div class="tab-pane fade" id="past" role="tabpanel" aria-labelledby="past-tab">
+                        @if (count($user->past) == 0)
+                            <x-empty-state :title="__('No Orders found')" />
+                        @else
+                            <div class="tw-divide-y tw-divide-neutral-100 dark:tw-divide-neutral-800">
+                                @foreach ($user->past as $item)
+                                    @php
+                                        $tone = match ($item->order_status) {
+                                            'Pending' => 'warning',
+                                            'Complete' => 'success',
+                                            'Cancel' => 'danger',
+                                            default => 'neutral',
+                                        };
+                                    @endphp
+                                    <div class="tw-flex tw-flex-wrap tw-items-center tw-justify-between tw-gap-3 tw-py-4">
+                                        <div class="tw-min-w-0">
+                                            <a href="{{ url('order-invoice/'.$item->id) }}"
+                                                class="tw-text-sm tw-font-bold tw-text-accent-600 tw-transition hover:tw-text-accent-500 dark:tw-text-accent-300">
+                                                {{ $item->order_id }}
+                                            </a>
+                                            <p class="tw-mt-0.5 tw-text-sm tw-font-semibold tw-text-ink-900 dark:tw-text-neutral-100">
+                                                {{ $item->event->name.' ('.$item->quantity.' Tickets)' }}
+                                            </p>
+                                            <p class="tw-text-xs tw-text-neutral-500 dark:tw-text-neutral-400">
+                                                {{ $item->event->start_time->format('Y-m-d H:i a') }}
+                                            </p>
+                                        </div>
+                                        <div class="tw-text-left sm:tw-text-right">
+                                            <p class="tw-text-sm tw-font-bold tw-text-ink-900 dark:tw-text-neutral-50">{{ $currency.$item->payment.'.00' }}</p>
+                                            <x-badge :tone="$tone" class="tw-mt-1">{{ $item->order_status }}</x-badge>
+                                        </div>
+                                    </div>
+                                @endforeach
+                            </div>
+                        @endif
+                    </div>
+                </div>
+            </div>
+        </x-card>
+    </div>
 @endsection
