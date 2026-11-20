@@ -4,16 +4,20 @@ namespace App\View\Composers;
 
 use App\Models\Category;
 use App\Models\Event;
-use App\Models\Setting;
 use App\Models\Ticket;
+use App\Support\RequestData;
 use Carbon\Carbon;
 use Illuminate\View\View;
 
 class PublicHomeComposer
 {
+    public function __construct(private RequestData $requestData)
+    {
+    }
+
     public function compose(View $view): void
     {
-        $setting = Setting::find(1);
+        $setting = $this->requestData->setting();
         $timezone = $setting->timezone ?? config('app.timezone');
         $now = Carbon::now($timezone)->format('Y-m-d H:i:s');
 

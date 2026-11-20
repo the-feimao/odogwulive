@@ -58,7 +58,7 @@
                                 {{ __('Followers') }}
                             </p>
                             <p class="tw-mt-1 tw-text-xl tw-font-extrabold tw-text-ink-900 dark:tw-text-neutral-50">
-                                {{ count(Auth::user()->followers) }}
+                                {{ count($followerIds ?? []) }}
                             </p>
                         </div>
                     @endif
@@ -80,7 +80,7 @@
 
             @if (Auth::user()->hasRole('organization'))
                 @php
-                    $followers = \App\Models\AppUser::whereIn('id', Auth::user()->followers)->get();
+                    $followers = \App\Models\AppUser::whereIn('id', $followerIds ?? [])->get();
                 @endphp
 
                 <x-card :title="__('Followers ('.count($followers).')')">

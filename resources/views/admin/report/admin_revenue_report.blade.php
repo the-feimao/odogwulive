@@ -5,11 +5,6 @@
 
     <x-flash-messages />
 
-    @php
-        $organizers = App\Models\User::role('organization')->orderBy('id', 'DESC')->get();
-        $customers = App\Models\AppUser::orderBy('id', 'DESC')->get();
-    @endphp
-
     <x-card :padded="false">
         <x-slot:header>
             <h2 class="tw-text-lg tw-font-bold tw-text-ink-900 dark:tw-text-neutral-50">{{ __('Revenue Report') }}</h2>

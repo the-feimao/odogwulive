@@ -1,5 +1,6 @@
 <?php
 use App\Http\Controllers\FrontendController;
+use App\Http\Controllers\SitemapController;
 
 
 Route::get('/', [FrontendController::class, 'main']);
@@ -34,6 +35,7 @@ Route::group(['prefix' => 'user'], function () {
     Route::get('/all-blogs', [FrontendController::class, 'blogs']);
     Route::get('/blog-detail/{id}/{name}', [FrontendController::class, 'blogDetail']);
     Route::get('/contact', [FrontendController::class, 'contact']);
+    Route::get('/sitemap.xml', [SitemapController::class, 'index'])->name('sitemap.xml');
 
     Route::group(['middleware' =>'appuser'], function () {
         Route::get('/checkout/{id}', [FrontendController::class, 'checkout']);

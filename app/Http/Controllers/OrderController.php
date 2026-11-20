@@ -22,6 +22,56 @@ use Illuminate\Http\Request;
 
 class OrderController extends Controller
 {
+    /**
+     * Group a report aggregate by the supplied key so report pages do not run
+     * one query per row.
+     */
+    private function groupedAggregate($query, string $key, string $expression)
+    {
+        return $query->select($key)
+            ->selectRaw($expression.' as total')
+            ->groupBy($key)
+            ->pluck('total', $key);
+    }
+
+    /**
+     * Prepare review rows for the admin page without touching API appends.
+     */
+    private function prepareReviewRows($reviews): void
+    {
+        $reviews->each->setAppends([]);
+        $userIds = $reviews->pluck('user_id')->filter()->unique()->values();
+        $eventIds = $reviews->pluck('event_id')->filter()->unique()->values();
+
+        $users = $userIds->isNotEmpty()
+            ? AppUser::whereIn('id', $userIds)->get(['id', 'name', 'last_name', 'image', 'email'])->keyBy('id')
+            : collect();
+        $events = $eventIds->isNotEmpty()
+            ? Event::whereIn('id', $eventIds)->get(['id', 'name'])->keyBy('id')
+            : collect();
+
+        foreach ($reviews as $review) {
+            $review->reviewer = $users->get($review->user_id);
+            $review->eventName = $events->get($review->event_id)?->name;
+        }
+    }
+
+    /**
+     * Attach settlement owners with one user query for all rows.
+     */
+    private function attachSettlementUsers($settlements): void
+    {
+        $userIds = $settlements->pluck('user_id')->filter()->unique()->values();
+
+        if ($userIds->isEmpty()) {
+            return;
+        }
+
+        $users = User::whereIn('id', $userIds)->get()->keyBy('id');
+        foreach ($settlements as $settlement) {
+            $settlement->user = $users->get($settlement->user_id);
+        }
+    }
     public function index()
     {
         if(Auth::user()->hasRole('admin')){
@@ -41,13 +91,14 @@ class OrderController extends Controller
 
     public function orderInvoice($id){
         $order = Order::with(['customer','event','organization','ticket'])->find($id);
-        $order->tax_data= OrderTax::where('order_id',$order->id)->get();
+        $order->tax_data = OrderTax::with('tax')->where('order_id', $order->id)->get();
         $order->ticket_data= OrderChild::where('order_id',$order->id)->get();
         return view('admin.order.invoice', compact('order'));
     }
 
     public function userReview(){
         $data = Review::orderBy('id','DESC')->get();
+        $this->prepareReviewRows($data);
         return view('admin.review', compact('data'));
     }
 
@@ -71,8 +122,13 @@ class OrderController extends Controller
         }
         $data = $data->get();
 
+        $buyTickets = $this->groupedAggregate(
+            Order::where('organization_id', Auth::user()->id)->whereIn('customer_id', $data->pluck('id')),
+            'customer_id',
+            'SUM(quantity)'
+        );
         foreach ($data as $value) {
-            $value->buy_tickets = Order::where('customer_id',$value->id)->sum('quantity');
+            $value->buy_tickets = (int) ($buyTickets->get($value->id) ?? 0);
         }
         return view('admin.report.org_customer_report', compact('data','request'));
     }
@@ -88,9 +144,13 @@ class OrderController extends Controller
             $data->whereBetween('created_at', [ $start_date." 00:00:00", $end_date." 23:59:59"]);
         }
 
-        $data = $data->orderBy('id','DESC')->get();
+        $data = $data->with([
+            'customer:id,name,last_name,email',
+            'event:id,name,start_time',
+        ])->orderBy('id','DESC')->get();
+        $customers = AppUser::orderBy('id','DESC')->get();
 
-        return view('admin.report.org_orders_report', compact('data','request'));
+        return view('admin.report.org_orders_report', compact('data','request','customers'));
     }
 
     public function orgRevenueReport(Request $request){
@@ -102,9 +162,8 @@ class OrderController extends Controller
         }
         $data = $data->get();
 
-        foreach ($data as $value) {
-            $value->user = User::find($value->user_id);
-        }
+        $this->attachSettlementUsers($data);
+
         return view('admin.report.org_revenue', compact('data','request'));
     }
 
@@ -117,8 +176,13 @@ class OrderController extends Controller
             $data->whereBetween('created_at', [ $start_date." 00:00:00", $end_date." 23:59:59"]);
         }
         $data = $data->get();
+        $buyTickets = $this->groupedAggregate(
+            Order::whereIn('customer_id', $data->pluck('id')),
+            'customer_id',
+            'SUM(quantity)'
+        );
         foreach ($data as $value) {
-            $value->buy_tickets = Order::where('customer_id',$value->id)->sum('quantity');
+            $value->buy_tickets = (int) ($buyTickets->get($value->id) ?? 0);
         }
         return view('admin.report.admin_customer_report', compact('data','request'));
     }
@@ -131,10 +195,26 @@ class OrderController extends Controller
             $data->whereBetween('created_at', [ $start_date." 00:00:00", $end_date." 23:59:59"]);
         }
         $data = $data->get();
+        $organizationIds = $data->pluck('id');
+        $eventCounts = $this->groupedAggregate(
+            Event::whereIn('user_id', $organizationIds),
+            'user_id',
+            'COUNT(*)'
+        );
+        $ticketTotals = $this->groupedAggregate(
+            Ticket::where('is_deleted', 0)->whereIn('user_id', $organizationIds),
+            'user_id',
+            'SUM(quantity)'
+        );
+        $soldTotals = $this->groupedAggregate(
+            Order::whereIn('organization_id', $organizationIds),
+            'organization_id',
+            'SUM(quantity)'
+        );
         foreach ($data as $value) {
-            $value->total_events= Event::where('user_id',$value->id)->count();
-            $value->total_tickets= Ticket::where([['user_id',$value->id],['is_deleted',0]])->sum('quantity');
-            $value->sold_tickets= Order::where('organization_id',$value->id)->sum('quantity');
+            $value->total_events = (int) ($eventCounts->get($value->id) ?? 0);
+            $value->total_tickets = (int) ($ticketTotals->get($value->id) ?? 0);
+            $value->sold_tickets = (int) ($soldTotals->get($value->id) ?? 0);
         }
         return view('admin.report.admin_org_report', compact('data','request'));
     }
@@ -154,8 +234,10 @@ class OrderController extends Controller
         }
 
         $data = $data->orderBy('id','DESC')->get();
+        $organizers = User::role('organization')->orderBy('id','DESC')->get();
+        $customers = AppUser::orderBy('id','DESC')->get();
 
-        return view('admin.report.admin_revenue_report', compact('data','request'));
+        return view('admin.report.admin_revenue_report', compact('data','request','organizers','customers'));
     }
 
     public function getStatistics($month){
@@ -178,14 +260,34 @@ class OrderController extends Controller
 
     public function settlementReport(){
         $data = User::role('organization')->orderBy('id','DESC')->get();
+        $organizationIds = $data->pluck('id');
+        $orderCounts = $this->groupedAggregate(
+            Order::whereIn('organization_id', $organizationIds),
+            'organization_id',
+            'COUNT(*)'
+        );
+        $commissionExpression = 'SUM(org_commission + tax)';
+        $totalCommission = $this->groupedAggregate(
+            Order::where('payment_status', 1)->whereIn('organization_id', $organizationIds),
+            'organization_id',
+            $commissionExpression
+        );
+        $paidCommission = $this->groupedAggregate(
+            Order::where([['payment_status', 1], ['org_pay_status', 1]])->whereIn('organization_id', $organizationIds),
+            'organization_id',
+            $commissionExpression
+        );
+        $unpaidCommission = $this->groupedAggregate(
+            Order::where([['payment_status', 1], ['org_pay_status', 0]])->whereIn('organization_id', $organizationIds),
+            'organization_id',
+            $commissionExpression
+        );
+
         foreach ($data as $value) {
-            $value->total_orders = Order::where('organization_id',$value->id)->count();
-            $value->total_commission = Order::where([['organization_id',$value->id],['payment_status',1]])
-            ->sum(DB::raw('org_commission + tax'));
-            $value->pay_commission = Order::where([['organization_id',$value->id],['payment_status',1],['org_pay_status',1]])
-            ->sum(DB::raw('org_commission + tax'));
-            $value->organization_commission = Order::where([['organization_id',$value->id],['payment_status',1],['org_pay_status',0]])
-            ->sum(DB::raw('org_commission + tax'));
+            $value->total_orders = (int) ($orderCounts->get($value->id) ?? 0);
+            $value->total_commission = (float) ($totalCommission->get($value->id) ?? 0);
+            $value->pay_commission = (float) ($paidCommission->get($value->id) ?? 0);
+            $value->organization_commission = (float) ($unpaidCommission->get($value->id) ?? 0);
         }
 
         return view('admin.report.admin_settlement_report', compact('data'));
@@ -193,9 +295,8 @@ class OrderController extends Controller
 
     public function viewSettlement($id){
         $data = Settlement::where('user_id',$id)->orderBy('id','DESC')->get();
-        foreach ($data as $value) {
-            $value->user = User::find($value->user_id);
-        }
+        $this->attachSettlementUsers($data);
+
         return view('admin.report.view_settlement', compact('data'));
     }
 
@@ -246,7 +347,7 @@ class OrderController extends Controller
     public function orderInvoicePrint($order_id)
     {
         $order = Order::with(['customer','event','organization','ticket'])->find($order_id);
-        $order->tax_data= OrderTax::where('order_id',$order->id)->get();
+        $order->tax_data = OrderTax::with('tax')->where('order_id', $order->id)->get();
         $order->ticket_data= OrderChild::where('order_id',$order->id)->get();
         return view('admin.order.invoicePrint',compact('order'));
     }

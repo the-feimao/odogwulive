@@ -1,2 +1,5 @@
 User-agent: *
 Disallow:
+
+# Replace with the absolute BRAND_CANONICAL_URL when deploying.
+Sitemap: /sitemap.xml

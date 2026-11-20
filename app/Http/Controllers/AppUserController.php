@@ -89,8 +89,8 @@ class AppUserController extends Controller
             $user->pending = Order::where([['customer_id',$user->id],['order_status','Pending']])->orderBy('id','DESC')->count();
             $user->complete = Order::where([['customer_id',$user->id],['order_status','Complete']])->orderBy('id','DESC')->count();
             $user->cancel = Order::where([['customer_id',$user->id],['order_status','Cancel']])->orderBy('id','DESC')->count();
-            $user->upcoming = Order::where([['customer_id',$user->id],['order_status','Pending']])->orderBy('id','DESC')->get();
-            $user->past = Order::where([['customer_id',$user->id],['order_status','Complete']])
+            $user->upcoming = Order::with('event:id,name,start_time')->where([['customer_id',$user->id],['order_status','Pending']])->orderBy('id','DESC')->get();
+            $user->past = Order::with('event:id,name,start_time')->where([['customer_id',$user->id],['order_status','Complete']])
             ->orWhere([['customer_id',$user->id],['order_status','Cancel']])
             ->orderBy('id','DESC')->get();
         }
@@ -98,8 +98,8 @@ class AppUserController extends Controller
             $user->pending = Order::where([['customer_id',$user->id],['organization_id',Auth::user()->id],['order_status','Pending']])->orderBy('id','DESC')->count();
             $user->complete = Order::where([['customer_id',$user->id],['organization_id',Auth::user()->id],['order_status','Complete']])->orderBy('id','DESC')->count();
             $user->cancel = Order::where([['customer_id',$user->id],['organization_id',Auth::user()->id],['order_status','Cancel']])->orderBy('id','DESC')->count();
-            $user->upcoming = Order::where([['customer_id',$user->id],['organization_id',Auth::user()->id],['order_status','Pending']])->orderBy('id','DESC')->get();
-            $user->past = Order::where([['customer_id',$user->id],['organization_id',Auth::user()->id],['order_status','Complete']])
+            $user->upcoming = Order::with('event:id,name,start_time')->where([['customer_id',$user->id],['organization_id',Auth::user()->id],['order_status','Pending']])->orderBy('id','DESC')->get();
+            $user->past = Order::with('event:id,name,start_time')->where([['customer_id',$user->id],['organization_id',Auth::user()->id],['order_status','Complete']])
             ->orWhere([['customer_id',$user->id],['organization_id',Auth::user()->id],['order_status','Cancel']])
             ->orderBy('id','DESC')->get();
         }

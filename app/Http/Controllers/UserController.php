@@ -24,6 +24,38 @@ use Illuminate\Http\Request;
 
 class UserController extends Controller
 {
+    /**
+     * Populate dashboard event aggregates with two grouped queries instead of
+     * querying tickets and orders once per event.
+     */
+    private function applyEventAggregates($eventCollections): void
+    {
+        $events = collect($eventCollections)->flatMap(fn ($collection) => $collection);
+        $eventIds = $events->pluck('id')->filter()->values();
+
+        if ($eventIds->isEmpty()) {
+            return;
+        }
+
+        $ticketTotals = Ticket::whereIn('event_id', $eventIds)
+            ->select('event_id')
+            ->selectRaw('SUM(quantity) as total')
+            ->groupBy('event_id')
+            ->pluck('total', 'event_id');
+
+        $soldTotals = Order::whereIn('event_id', $eventIds)
+            ->select('event_id')
+            ->selectRaw('SUM(quantity) as total')
+            ->groupBy('event_id')
+            ->pluck('total', 'event_id');
+
+        foreach ($events as $event) {
+            $event->tickets = (int) ($ticketTotals->get($event->id) ?? 0);
+            $event->sold_ticket = (int) ($soldTotals->get($event->id) ?? 0);
+            $event->average = $event->tickets == 0 ? 0 : $event->sold_ticket * 100 / $event->tickets;
+            $event->avaliable = $event->tickets - $event->sold_ticket;
+        }
+    }
     public function index()
     {                    
         abort_if(Gate::denies('user_access'), Response::HTTP_FORBIDDEN, '403 Forbidden');
@@ -112,15 +144,8 @@ class UserController extends Controller
         ->where([['status',1],['is_deleted',0]])
         ->orderBy('id','DESC')->get();
       
-        foreach ($monthEvent as $value) {
-            $value->tickets = Ticket::where('event_id',$value->id)->sum('quantity');
-            $value->sold_ticket = Order::where('event_id',$value->id)->sum('quantity');         
-            $value->average = $value->tickets==0? 0: $value->sold_ticket*100/$value->tickets;           
-        }
+        $this->applyEventAggregates([$monthEvent, $events]);
         foreach ($events as $value) {
-            $tickets = Ticket::where('event_id',$value->id)->sum('quantity');
-            $sold_ticket = Order::where('event_id',$value->id)->sum('quantity'); 
-            $value->avaliable = $tickets - $sold_ticket;
             array_push( $master['eventDate'],$value->start_time->format('Y-m-d'));
         }
     
@@ -141,18 +166,11 @@ class UserController extends Controller
         ->where([['status',1],['user_id',Auth::user()->id],['is_deleted',0]])
         ->orderBy('id','DESC')->get();      
 
-        foreach ($monthEvent as $value) {
-            $value->tickets = Ticket::where('event_id',$value->id)->sum('quantity');
-            $value->sold_ticket = Order::where('event_id',$value->id)->sum('quantity');         
-            $value->average = $value->tickets==0? 0: $value->sold_ticket*100/$value->tickets;           
-        }
-
         $events = Event::where([['status',1],['user_id',Auth::user()->id],['is_deleted',0]])->orderBy('id','DESC')->get(); 
+        $this->applyEventAggregates([$monthEvent, $events]);
+
         $master['eventDate'] = array();
         foreach ($events as $value) {
-            $tickets = Ticket::where('event_id',$value->id)->sum('quantity');
-            $sold_ticket = Order::where('event_id',$value->id)->sum('quantity'); 
-            $value->avaliable = $tickets - $sold_ticket;
             array_push( $master['eventDate'],$value->start_time->format('Y-m-d'));
         }
     
@@ -161,7 +179,8 @@ class UserController extends Controller
 
     public function viewProfile(){
         $languages = Language::where('status',1)->get();
-        return view('admin.profile', compact('languages'));
+        $followerIds = Auth::user()->hasRole('organization') ? Auth::user()->followers : [];
+        return view('admin.profile', compact('languages', 'followerIds'));
     }
 
     public function editProfile(Request $request){

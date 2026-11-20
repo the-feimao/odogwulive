@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\NotificationTemplate;
 use App\Models\Notification;
+use App\Support\NotificationPresenter;
 use Auth;
 use Symfony\Component\HttpFoundation\Response;
 use Illuminate\Support\Facades\Gate;
@@ -61,9 +62,12 @@ class NotificationTemplateController extends Controller
         
     }
 
-    public function notification(){
-        $notification = Notification::where('organizer_id',Auth::user()->id)->orderBy('id','DESC')->get();
-        return view('admin.notification',compact('notification'));
+    public function notification(NotificationPresenter $presenter)
+    {
+        $user = Auth::user();
+        $notification = $presenter->forUser($user->id);
+
+        return view('admin.notification', compact('notification'));
     }
 
     public function deleteNotification($id){

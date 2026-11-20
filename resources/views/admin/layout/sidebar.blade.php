@@ -2,12 +2,12 @@
     <aside id="sidebar-wrapper">
         <div class="sidebar-brand">
             <a href="javascript:void(0)">
-                <img src="{{ url('images/upload/' . \App\Models\Setting::find(1)->logo) }}" class="header-logo">
+                <img src="{{ url('images/upload/' . (($sharedData ?? null)?->setting()?->logo)) }}" class="header-logo">
             </a>
         </div>
         <div class="sidebar-brand sidebar-brand-sm">
             <a href="javascript:void(0)">
-                <img src="{{ url('images/upload/' . \App\Models\Setting::find(1)->favicon) }}" class="header-sm-logo">
+                <img src="{{ url('images/upload/' . (($sharedData ?? null)?->setting()?->favicon)) }}" class="header-sm-logo">
             </a>
         </div>
         <ul class="sidebar-menu">

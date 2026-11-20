@@ -1,62 +1,137 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400"></a></p>
+# Event Management & Ticketing Platform
 
-<p align="center">
-<a href="https://travis-ci.org/laravel/framework"><img src="https://travis-ci.org/laravel/framework.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+A Laravel event management and ticketing application with a public event site, admin/organizer panels, attendee accounts, QR ticket scanning, and versioned-by-contract JSON APIs for user, organization, and scanner clients.
 
-## About Laravel
+> See [`overview.md`](overview.md) for a codebase map and [`docs/audit.md`](docs/audit.md) for the modernization audit history.
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## Stack
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+- **Backend:** PHP 8.2+, Laravel 12, Eloquent/MySQL, Laravel Passport 12, Spatie Laravel Permission 6
+- **Frontend:** Blade, Vite 6, Tailwind CSS 3, Alpine.js 3, Lucide Blade icons, Plus Jakarta Sans via `@fontsource`
+- **Legacy compatibility:** Bootstrap 4, jQuery and a small set of admin JavaScript libraries are still bundled for admin screens that are being migrated page by page
+- **Maps:** Leaflet with OpenStreetMap tiles (no Google Maps API key)
+- **Local mail:** Mailpit exposed under the existing `mailhog` service name
+- **Tests:** PHPUnit 11 feature tests using database transactions
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+There is no SPA rewrite. Interactivity uses Alpine and small Vite-bundled modules; Livewire is only appropriate for genuinely stateful flows if one is added later.
 
-## Learning Laravel
+## Requirements
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+- PHP 8.2+ with common extensions (pdo_mysql, mbstring, xml, curl, zip, gd/intl as needed)
+- Composer 2
+- Node.js 18+ and npm
+- MySQL 8 or a compatible database
+- Redis (optional, depending on queue/cache configuration)
+- OpenSSL CLI (tests generate ephemeral Passport keys)
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains over 1500 video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+## Local setup
 
-## Laravel Sponsors
+```bash
+composer install
+cp .env.example .env
+php artisan key:generate
+```
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the Laravel [Patreon page](https://patreon.com/taylorotwell).
+Configure `DB_*`, `APP_URL`, mail, payment, and notification values in `.env`. Never commit real credentials or generated Passport keys.
 
-### Premium Partners
+For a fresh local install, generate Passport keys:
 
-- **[Vehikl](https://vehikl.com/)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Cubet Techno Labs](https://cubettech.com)**
-- **[Cyber-Duck](https://cyber-duck.co.uk)**
-- **[Many](https://www.many.co.uk)**
-- **[Webdock, Fast VPS Hosting](https://www.webdock.io/en)**
-- **[DevSquad](https://devsquad.com)**
-- **[Curotec](https://www.curotec.com/)**
-- **[OP.GG](https://op.gg)**
+```bash
+php artisan passport:install
+```
 
-## Contributing
+Then prepare the database and assets:
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+```bash
+php artisan migrate
+php artisan storage:link
+npm install
+npm run build
+php artisan serve
+```
 
-## Code of Conduct
+The repository also contains installer assets under `installer/`. Installer and license-check logic must remain intact and must not be bypassed.
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+## Docker / Sail
 
-## Security Vulnerabilities
+`docker-compose.yml` provides app, MySQL, Redis, and mail services. The `mailhog` service name is retained for compatibility, but the image is Mailpit; existing `MAIL_HOST=mailhog` values keep working.
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+## Build commands
 
-## License
+```bash
+npm run dev       # Vite dev server with HMR
+npm run build     # production build into public/build
+npm run watch     # rebuild on file changes
+```
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+Current Vite inputs are listed in `vite.config.js`. Public and admin layouts include the generated assets with `@vite`; do not reintroduce Laravel Mix `mix()` calls.
+
+## Tests
+
+```bash
+php artisan test
+# or
+vendor/bin/phpunit
+```
+
+Useful focused runs:
+
+```bash
+php artisan test --filter=Phase6PerformanceTest
+php artisan test --filter=CheckoutAndOrderTest
+php artisan test --filter=ScannerApiTest
+```
+
+Tests cover registration/login, public event pages, checkout and order creation, coupon/tax calculation, QR generation, scanner API flows, admin shells/reports, PWA assets, and Phase 6 performance/SEO regressions.
+
+## API contracts
+
+The following route families are used by deployed mobile/client apps and are treated as frozen contracts:
+
+- `/api/user/...`
+- `/api/organization/...`
+- `/api/scanner/...`
+
+Do not rename routes, change request/response shapes, change Passport auth behavior, or alter scanner validation semantics without explicit approval. Existing Passport tokens must keep working.
+
+## SEO
+
+- `config/brand.php` defines `canonical_url`, `twitter_handle`, and `currency` defaults; set `BRAND_CANONICAL_URL` in production.
+- Public pages emit canonical, Open Graph, and Twitter meta tags from `resources/views/components/seo/meta.blade.php`.
+- Event detail pages emit schema.org `Event` JSON-LD from `resources/views/components/seo/event-json-ld.blade.php`.
+- `/sitemap.xml` is additive and lists public events, categories, blogs, and core pages.
+- `artesaos/seotools` remains installed and its existing controller calls are unchanged.
+
+## Style guide
+
+In local/dev environments, visit `/style-guide`. The route is registered in `routes/dev.php` and loaded only when the application is not in production.
+
+## Adding a Blade component
+
+1. Create `resources/views/components/example.blade.php`.
+2. Render it as `<x-example />` or `<x-example :prop="$value">...</x-example>`.
+3. Declare defaults with `@props([...])` when the component accepts parameters.
+4. Add a demo to `resources/views/style-guide-samples.blade.php`.
+5. If it needs JavaScript, add an input to `vite.config.js` and include it with `@vite` in the relevant layout/view.
+6. Run `npm run build` and `php artisan test`.
+
+Use Tailwind design tokens from `tailwind.config.js`; do not hard-code new brand colours in individual views.
+
+## Project structure
+
+- `app/` — controllers, models, providers, support helpers, mail
+- `routes/` — web, frontend, API, and dev-only route definitions
+- `resources/views/` — Blade layouts, components, and page templates
+- `resources/js/`, `resources/css/`, `resources/sass/` — Vite source assets
+- `database/` — migrations, factories, seeders
+- `config/` — application and package configuration
+- `public/build/` — generated Vite output (ignored by Git)
+- `installer/` — installer/license assets that must be preserved
+
+## Security and payments
+
+- Keep CSRF protection, validation, and authorization checks intact.
+- Payment SDK scripts (PayPal, Razorpay, Flutterwave, Stripe) are provider-hosted by design and must not be removed.
+- Twilio remains optional and off unless explicitly configured.
+- Never commit `.env` secrets, payment keys, OAuth keys, or production data.
+- Known API authorization/secret-redaction findings from Phase 6 are documented in `docs/audit.md` and require an explicit product decision before changing response shapes or auth behavior.

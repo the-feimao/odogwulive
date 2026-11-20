@@ -33,17 +33,17 @@
                                 <td class="tw-px-3 tw-py-3"></td>
                                 <td class="tw-px-3 tw-py-3">
                                     <span class="tw-inline-flex tw-items-center tw-gap-3">
-                                        <img src="{{ url('images/upload/'.$item->user->image) }}" alt="{{ $item->user->name }}"
+                                        <img src="{{ url('images/upload/'.$item->reviewer?->image) }}" alt="{{ $item->reviewer?->name }}"
                                             loading="lazy" class="tw-h-9 tw-w-9 tw-rounded-pill tw-object-cover">
                                         <span>
                                             <span class="tw-block tw-font-semibold tw-text-ink-900 dark:tw-text-neutral-100">
-                                                {{ $item->user->name.' '.$item->user->last_name }}
+                                                {{ trim(($item->reviewer?->name ?? '').' '.($item->reviewer?->last_name ?? '')) }}
                                             </span>
-                                            <span class="tw-block tw-text-xs tw-text-neutral-500 dark:tw-text-neutral-400">{{ $item->user->email }}</span>
+                                            <span class="tw-block tw-text-xs tw-text-neutral-500 dark:tw-text-neutral-400">{{ $item->reviewer?->email }}</span>
                                         </span>
                                     </span>
                                 </td>
-                                <td class="tw-px-3 tw-py-3 tw-text-neutral-600 dark:tw-text-neutral-300">{{ $item->event->name }}</td>
+                                <td class="tw-px-3 tw-py-3 tw-text-neutral-600 dark:tw-text-neutral-300">{{ $item->eventName }}</td>
                                 <td class="tw-px-3 tw-py-3 tw-text-neutral-600 dark:tw-text-neutral-300">{{ $item->message }}</td>
                                 <td class="tw-px-3 tw-py-3">
                                     <span class="tw-inline-flex tw-items-center tw-gap-0.5" aria-label="{{ $item->rate }} / 5">

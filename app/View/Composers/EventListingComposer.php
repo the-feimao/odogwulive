@@ -16,6 +16,13 @@ class EventListingComposer
     public function compose(View $view): void
     {
         $events = $view->getData()['events'] ?? collect();
+
+        // Aggregate accessors on Event run their own queries and are not used
+        // by these listing views. Keep them on API responses, but not here.
+        if ($events instanceof Collection) {
+            $events->each->setAppends([]);
+        }
+
         $eventIds = $events instanceof Collection ? $events->pluck('id') : collect($events)->pluck('id');
 
         $eventPrices = Ticket::whereIn('event_id', $eventIds)

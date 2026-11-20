@@ -15,7 +15,7 @@
                 @csrf
                 <x-select name="customer" :label="__('Customer')">
                     <option value="">{{ __('Select Customer') }}</option>
-                    @foreach (App\Models\AppUser::orderBy('id', 'DESC')->get() as $item)
+                    @foreach ($customers as $item)
                         <option value="{{ $item->id }}" {{ isset($request->customer) && $request->customer == $item->id ? 'selected' : '' }}>
                             {{ $item->name.' '.$item->last_name }}
                         </option>

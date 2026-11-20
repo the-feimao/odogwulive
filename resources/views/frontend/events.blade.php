@@ -1,6 +1,8 @@
 @extends('layouts.public')
 
 @section('title', __('Events').' — '.config('brand.name'))
+@section('seo.description', __('Browse upcoming events, festivals and experiences on '.config('brand.name').'.'))
+@section('seo.type', 'website')
 
 @section('content')
     @php

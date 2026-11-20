@@ -26,9 +26,9 @@
                 <x-empty-state :title="__('No Notification found')" :description="__('New activity will appear here.')" />
             @else
                 @foreach ($notification as $item)
-                    @if ($item->user != null)
+                    @if ($item->actor != null)
                         <div class="activity tw-flex tw-items-start tw-gap-4 tw-p-5">
-                            <img src="{{ url('images/upload/'.$item->user->image) }}" alt="{{ $item->user->name }}"
+                            <img src="{{ url('images/upload/'.$item->actor->image) }}" alt="{{ $item->actor->name }}"
                                 loading="lazy" class="tw-h-10 tw-w-10 tw-shrink-0 tw-rounded-pill tw-object-cover">
 
                             <div class="tw-min-w-0 tw-flex-1">
@@ -38,7 +38,7 @@
                                             {{ $item->created_at->diffForHumans() }}
                                         </p>
                                         <p class="tw-mt-0.5 tw-truncate tw-text-sm tw-font-semibold tw-text-ink-900 dark:tw-text-neutral-100">
-                                            {{ $item->user->name.' '.$item->user->last_name }}
+                                            {{ $item->actor->name.' '.$item->actor->last_name }}
                                         </p>
                                     </div>
 

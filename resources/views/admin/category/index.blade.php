@@ -52,7 +52,7 @@
                                 </td>
                                 <td class="tw-px-3 tw-py-3 tw-font-semibold tw-text-ink-900 dark:tw-text-neutral-100">{{ $item->name }}</td>
                                 <td class="tw-px-3 tw-py-3 tw-text-neutral-600 dark:tw-text-neutral-300">
-                                    {{ App\Models\Event::where([['is_deleted', 0], ['category_id', $item->id]])->count() }}
+                                    {{ $eventCounts->get($item->id, 0) }}
                                 </td>
                                 <td class="tw-px-3 tw-py-3">
                                     <x-badge :tone="$item->status == '1' ? 'success' : 'warning'">

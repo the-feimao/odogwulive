@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Category;
+use App\Models\Event;
 use Symfony\Component\HttpFoundation\Response;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Http\Request;
@@ -13,7 +14,12 @@ class CategoryController extends Controller
     {
         abort_if(Gate::denies('category_access'), Response::HTTP_FORBIDDEN, '403 Forbidden');
         $category = Category::OrderBy('id','DESC')->get();
-        return view('admin.category.index', compact('category'));
+        $eventCounts = Event::where('is_deleted', 0)
+            ->select('category_id')
+            ->selectRaw('COUNT(*) as total')
+            ->groupBy('category_id')
+            ->pluck('total', 'category_id');
+        return view('admin.category.index', compact('category', 'eventCounts'));
     }
 
     public function create()

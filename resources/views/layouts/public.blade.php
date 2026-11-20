@@ -9,6 +9,48 @@
 
     <title>@yield('title', config('brand.name').' — '.($publicSetting->app_name ?? config('app.name')))</title>
 
+    @php
+        $seoFallbackTitle = trim(view()->yieldContent('title', config('brand.name')));
+        if ($seoFallbackTitle === '') {
+            $seoFallbackTitle = config('brand.name');
+        }
+
+        $seoFallbackDescription = trim(view()->yieldContent('description', config('brand.about')));
+        if ($seoFallbackDescription === '') {
+            $seoFallbackDescription = config('brand.about');
+        }
+
+        $seoSectionTitle = trim(view()->yieldContent('seo.title'));
+        $seoTitle = $seoSectionTitle !== '' ? $seoSectionTitle : $seoFallbackTitle;
+
+        $seoSectionDescription = trim(view()->yieldContent('seo.description'));
+        $seoDescription = $seoSectionDescription !== '' ? $seoSectionDescription : $seoFallbackDescription;
+
+        $seoSectionImage = trim(view()->yieldContent('seo.image'));
+        $seoImage = $seoSectionImage !== ''
+            ? $seoSectionImage
+            : ($publicSetting?->logo
+                ? url('images/upload/'.$publicSetting->logo)
+                : rtrim(config('brand.canonical_url', config('app.url')), '/').'/'.ltrim((string) config('brand.logo'), '/'));
+
+        $seoType = trim(view()->yieldContent('seo.type', 'website')) ?: 'website';
+
+        $seoSectionUrl = trim(view()->yieldContent('seo.url'));
+        $seoUrl = $seoSectionUrl !== ''
+            ? $seoSectionUrl
+            : rtrim(config('brand.canonical_url', config('app.url')), '/').'/'.ltrim(request()->path(), '/');
+    @endphp
+
+    <x-seo.meta
+        :title="$seoTitle"
+        :description="$seoDescription"
+        :url="$seoUrl"
+        :image="$seoImage"
+        :type="$seoType"
+        :site-name="$publicSetting?->app_name ?? config('brand.name')"
+        :twitter-site="config('brand.twitter_handle')"
+    />
+
     <link rel="icon" href="{{ $publicSetting?->favicon ? url('images/upload/'.$publicSetting->favicon) : asset('web/logo.png') }}" type="image/png">
 
     <link rel="manifest" href="@yield('manifest', route('pwa.site-manifest'))">

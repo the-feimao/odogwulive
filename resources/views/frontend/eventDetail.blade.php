@@ -1,35 +1,56 @@
 @extends('layouts.public')
 
+@php
+    $galleryImages = collect([$data->image])
+        ->merge(explode(',', (string) $data->gallery))
+        ->filter()
+        ->map(fn ($image) => url('images/upload/'.trim($image)))
+        ->unique()
+        ->values()
+        ->all();
+
+    if (count($galleryImages) === 0) {
+        $galleryImages = [asset('web/bg/1.jpg')];
+    }
+
+    $heroImage = $galleryImages[0];
+    $isOnline = $data->type === 'online';
+    $locationLabel = $isOnline
+        ? __('Online event')
+        : ($data->address ?: __('Venue to be announced'));
+    $hasCoordinates = is_numeric($data->lat) && is_numeric($data->lang);
+    $osmUrl = $hasCoordinates
+        ? 'https://www.openstreetmap.org/?mlat='.(float) $data->lat.'&mlon='.(float) $data->lang.'#map=15/'.(float) $data->lat.'/'.(float) $data->lang
+        : null;
+    $tags = array_values(array_filter(array_map('trim', explode(',', (string) $data->tags))));
+    $reviews = $data->review ?? collect();
+    $categoryUrl = url('events-category/'.$data->category_id.'/'.(\Illuminate\Support\Str::slug((string) ($data->category?->name ?? '')) ?: 'category'));
+
+    $seoEventUrl = rtrim(config('brand.canonical_url', config('app.url')), '/').'/'.ltrim(request()->path(), '/');
+@endphp
+
 @section('title', $data->name.' — '.config('brand.name'))
 @section('description', \Illuminate\Support\Str::limit(strip_tags((string) $data->description), 160))
 
+{{-- Additive overrides; the original title/description sections stay unchanged. --}}
+@section('seo.title', $data->name.' — '.config('brand.name'))
+@section('seo.description', \Illuminate\Support\Str::limit(strip_tags((string) $data->description), 160))
+@section('seo.image', $heroImage)
+@section('seo.type', 'event')
+@section('seo.url', $seoEventUrl)
+
+@push('head')
+    <x-seo.event-json-ld
+        :event="$data"
+        :url="$seoEventUrl"
+        :image="$heroImage"
+        :organization="$data->organization"
+        :tickets="$data->paid_ticket->concat($data->free_ticket)"
+        :currency="$setting->currency ?? null"
+    />
+@endpush
+
 @section('content')
-    @php
-        $galleryImages = collect([$data->image])
-            ->merge(explode(',', (string) $data->gallery))
-            ->filter()
-            ->map(fn ($image) => url('images/upload/'.trim($image)))
-            ->unique()
-            ->values()
-            ->all();
-
-        if (count($galleryImages) === 0) {
-            $galleryImages = [asset('web/bg/1.jpg')];
-        }
-
-        $heroImage = $galleryImages[0];
-        $isOnline = $data->type === 'online';
-        $locationLabel = $isOnline
-            ? __('Online event')
-            : ($data->address ?: __('Venue to be announced'));
-        $hasCoordinates = is_numeric($data->lat) && is_numeric($data->lang);
-        $osmUrl = $hasCoordinates
-            ? 'https://www.openstreetmap.org/?mlat='.(float) $data->lat.'&mlon='.(float) $data->lang.'#map=15/'.(float) $data->lat.'/'.(float) $data->lang
-            : null;
-        $tags = array_values(array_filter(array_map('trim', explode(',', (string) $data->tags))));
-        $reviews = $data->review ?? collect();
-        $categoryUrl = url('events-category/'.$data->category_id.'/'.(\Illuminate\Support\Str::slug((string) ($data->category?->name ?? '')) ?: 'category'));
-    @endphp
 
     <section class="tw-relative tw-overflow-hidden tw-bg-ink-950">
         <img src="{{ $heroImage }}" alt="" width="1600" height="900"
@@ -184,11 +205,11 @@
                                 <x-card>
                                     <div class="tw-flex tw-items-start tw-gap-3">
                                         <div class="tw-flex tw-h-10 tw-w-10 tw-shrink-0 tw-items-center tw-justify-center tw-rounded-pill tw-bg-primary-100 tw-text-sm tw-font-bold tw-text-primary-900 dark:tw-bg-primary-500/20 dark:tw-text-primary-300">
-                                            {{ strtoupper(mb_substr((string) ($review->user?->name ?? '?'), 0, 1)) }}
+                                            {{ strtoupper(mb_substr((string) ($review->reviewer?->name ?? '?'), 0, 1)) }}
                                         </div>
                                         <div class="tw-min-w-0">
                                             <p class="tw-text-sm tw-font-bold tw-text-ink-950 dark:tw-text-neutral-50">
-                                                {{ trim(($review->user?->name ?? '').' '.($review->user?->last_name ?? '')) ?: __('Attendee') }}
+                                                {{ trim(($review->reviewer?->name ?? '').' '.($review->user?->last_name ?? '')) ?: __('Attendee') }}
                                             </p>
                                             <div class="tw-mt-1 tw-flex tw-gap-0.5" aria-label="{{ (int) $review->rate }} / 5">
                                                 @for ($star = 1; $star <= 5; $star++)

@@ -2,8 +2,8 @@
 
 namespace App\Providers;
 
-use \App\Models\Setting;
-use \App\Models\Currency;
+use App\Support\NotificationPresenter;
+use App\Support\RequestData;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\Schema;
 
@@ -16,7 +16,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register()
     {
-        //
+        $this->app->scoped(RequestData::class, fn () => new RequestData());
+        $this->app->scoped(NotificationPresenter::class, fn () => new NotificationPresenter());
     }
 
     /**
@@ -30,9 +31,11 @@ class AppServiceProvider extends ServiceProvider
         Schema::defaultStringLength(191);      
         view()->composer('*', function ($view) {
             if(env('DB_DATABASE')!=null){
-                $cur = Setting::find(1)->currency; 
-                $currency = Currency::where('code',$cur)->first()->symbol; 
-                $view->with('currency', $currency);
+                $data = app(RequestData::class);
+                $view->with([
+                    'currency' => $data->currencySymbol(),
+                    'sharedData' => $data,
+                ]);
             }         
         });
     }

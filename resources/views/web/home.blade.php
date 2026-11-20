@@ -1,6 +1,9 @@
 @extends('layouts.public')
 
 @section('title', config('brand.name').' — '.config('brand.headline'))
+@section('seo.description', config('brand.about'))
+@section('seo.image', asset('web/slider/wide5.jpg'))
+@section('seo.type', 'website')
 
 @section('content')
     @php

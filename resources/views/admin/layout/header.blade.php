@@ -11,7 +11,7 @@
     @if(Auth::user()->hasRole('organization'))
     <li>
       @php
-        $notification = \App\Models\Notification::where('organizer_id',Auth::user()->id)->orderBy('id','DESC')->get();
+        $notification = $headerNotifications ?? collect();
       @endphp
 
       <a href="javascript:void(0)" data-toggle="dropdown" class="nav-link notification-toggle nav-link-lg beep"><i class="far fa-bell"></i></a>
@@ -32,11 +32,11 @@
           @else 
             <div class="dropdown-list-content dropdown-list-icons"> 
               @foreach ($notification as $item)
-                @if($item->user!=null)
+                @if($item->actor!=null)
                 @if($loop->iteration<=3)
                   <a href="javascript:void(0)" class="dropdown-item">
                     <div class="dropdown-item-icon bg-danger text-white">                    
-                      <img class="avatar" src="{{url('images/upload/'.$item->user->image)}}">
+                      <img class="avatar" src="{{url('images/upload/'.$item->actor->image)}}">
                     </div>
                     <div class="dropdown-item-desc">
                         {{$item->message}}

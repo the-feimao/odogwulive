@@ -1040,3 +1040,39 @@ npm run build                                                                   
 5. The full npm audit still reports six dev-only vulnerabilities in the legacy build tooling; production dependencies report zero vulnerabilities. No `npm audit fix --force` was run because it would introduce breaking changes.
 6. Tests activate the seeded license inside a transaction only to render admin content. License-check and installer logic were not modified or bypassed.
 7. No API route, request/response shape, auth behaviour, Passport setup, Spatie permission, payment calculation or order/ticket flow changed.
+
+## 35. Phase 6 addendum - performance, SEO and cleanup (2026-11-20)
+
+### What changed
+
+- Added request-scoped `App\Support\RequestData` and `NotificationPresenter` bindings. Layout composers, category language/banner lookups, admin shell settings and notification rows now reuse data within one request instead of repeatedly querying the same `Setting`, `PaymentSetting`, `Notification` and related rows.
+- Replaced per-row ticket/order aggregates on public event listings, event detail ticket selection, saved events, organization/admin dashboards, category counts and report pages with grouped SQL queries. Displayed values and currency formatting are unchanged.
+- Eager-loaded report/event/customer relations and reworked admin review/notification presenter rows so appended model accessors do not issue one query per row. API model appends and API serialization were not changed.
+- Added `OrderTax::tax()` so invoice tax names can use an eager-loaded relation; the accessor still falls back to its original lookup when the relation is absent.
+- Added additive SEO output: canonical/OG/Twitter metadata component, schema.org `Event` JSON-LD on event detail pages, configurable canonical domain/Twitter handle/currency in `config/brand.php` and `.env.example`. Existing `artesaos/seotools` controller calls remain untouched.
+- Added `GET /sitemap.xml` plus `SitemapController`. It lists public events, active categories, published blogs and core pages using the canonical base URL. `public/robots.txt` now advertises the sitemap.
+- Rewrote `README.md` for the current Laravel 12/PHP 8.2/Vite/Tailwind/Passport stack, including setup, build, tests, API contract warnings and the local style-guide route.
+- Removed unused `axios` and `lodash` npm dependencies and their global bootstrapping. Remaining CDN-loaded assets are provider SDKs or legacy local bundles, not newly introduced core dependencies.
+- Added `tests/Feature/Phase6PerformanceTest.php` and `tests/Feature/SeoAndSitemapTest.php` covering grouped-query growth, invoice relation loading, SEO output, JSON-LD and sitemap generation.
+
+### Verification
+
+```powershell
+php artisan test --filter=Phase6PerformanceTest   # OK (8 tests, 42 assertions)
+php artisan test --filter=SeoAndSitemapTest       # OK (4 tests, 19 assertions)
+php artisan test                                  # OK (97 tests, 1213 assertions)
+npm run build                                     # OK; existing Sass @import deprecation warnings and admin-legacy chunk warning remain
+npm audit --omit=dev                              # OK; 0 production vulnerabilities
+npm audit                                         # 4 dev-only vulnerabilities (1 moderate, 3 high)
+```
+
+### Risks and manual checks
+
+1. `robots.txt` uses a relative `Sitemap: /sitemap.xml`; set `BRAND_CANONICAL_URL` correctly and replace it with the absolute production URL when deploying.
+2. SEO output is additive. Existing seotools tags still render, so pages currently contain both legacy and new metadata until the remaining public pages are individually reviewed.
+3. The query-growth tests assert that grouped queries do not scale with row count; they do not assert absolute query counts because the existing layouts still contain other N+1 candidates.
+4. Dormant legacy views, untracked `public/css/`, `public/js/`, `public/mix-manifest.json`, the staged PayPal fix and other pre-existing working-tree changes were deliberately left untouched and uncommitted.
+5. Security findings requiring product decisions remain open: redacting secrets from `/api/user/setting`, organization/scanner/order ownership guards, dedicated login/API throttles, checkout hardening and organization-login role behaviour. None were changed because they could alter API contracts, auth behaviour or payment flows.
+6. Production email provider is still undecided (host SMTP versus Brevo free tier). Local Mailpit configuration is unchanged.
+7. The pre-existing PayPal client-id fix in `resources/views/master.blade.php` remains unstaged. No secret, payment key, `.env` value, Passport token, license check or installer logic was modified.
+8. No route name, API request/response shape, Passport behaviour, Spatie permission, scanner validation, payment calculation or order/ticket creation flow changed.

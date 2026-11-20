@@ -45,6 +45,81 @@ use Artesaos\SEOTools\Facades\JsonLd;
 
 class FrontendController extends Controller
 {
+    /**
+     * Attach ticket totals to a collection of events with two grouped queries
+     * instead of one query per event.
+     */
+    private function applyEventTicketTotals($events): void
+    {
+        $eventIds = $events->pluck('id')->filter()->values();
+
+        if ($eventIds->isEmpty()) {
+            return;
+        }
+
+        $ticketTotals = Ticket::whereIn('event_id', $eventIds)
+            ->where([['is_deleted', 0], ['status', 1]])
+            ->select('event_id')
+            ->selectRaw('SUM(quantity) as total')
+            ->groupBy('event_id')
+            ->pluck('total', 'event_id');
+
+        $soldTotals = Order::whereIn('event_id', $eventIds)
+            ->select('event_id')
+            ->selectRaw('SUM(quantity) as total')
+            ->groupBy('event_id')
+            ->pluck('total', 'event_id');
+
+        foreach ($events as $event) {
+            $event->total_ticket = (int) ($ticketTotals->get($event->id) ?? 0);
+            $event->sold_ticket = (int) ($soldTotals->get($event->id) ?? 0);
+            $event->available_ticket = $event->total_ticket - $event->sold_ticket;
+        }
+    }
+
+    /**
+     * Prepare review authors once for a web page. The API appends on Review
+     * stay untouched; this only adds a page-local property.
+     */
+    private function attachReviewAuthors($reviews): void
+    {
+        $reviews->each->setAppends([]);
+        $userIds = $reviews->pluck('user_id')->filter()->unique()->values();
+
+        if ($userIds->isEmpty()) {
+            return;
+        }
+
+        $users = AppUser::whereIn('id', $userIds)
+            ->get(['id', 'name', 'last_name', 'image', 'email'])
+            ->keyBy('id');
+
+        foreach ($reviews as $review) {
+            $review->reviewer = $users->get($review->user_id);
+        }
+    }
+
+    /**
+     * Attach remaining quantities to tickets with one grouped order query.
+     */
+    private function applyTicketAvailability($tickets): void
+    {
+        $ticketIds = $tickets->pluck('id')->filter()->values();
+
+        if ($ticketIds->isEmpty()) {
+            return;
+        }
+
+        $used = Order::whereIn('ticket_id', $ticketIds)
+            ->select('ticket_id')
+            ->selectRaw('SUM(quantity) as used')
+            ->groupBy('ticket_id')
+            ->pluck('used', 'ticket_id');
+
+        foreach ($tickets as $ticket) {
+            $ticket->available_qty = $ticket->quantity - (int) ($used->get($ticket->id) ?? 0);
+        }
+    }
     public function main(){
         return view('web.home');
     }
@@ -72,15 +147,7 @@ class FrontendController extends Controller
           //  dd($data); 
     
             $data->review = Review::where('event_id',$data->id)->orderBy('id','DESC')->get();
-            foreach ($data->paid_ticket as $value) {
-                $used = Order::where('ticket_id',$value->id)->sum('quantity');
-                $value->available_qty = $value->quantity - $used;
-            }
-            
-            foreach ($data->free_ticket as $value) {
-                $used = Order::where('ticket_id',$value->id)->sum('quantity');
-                $value->available_qty = $value->quantity - $used;
-            }
+            $this->applyTicketAvailability($data->paid_ticket->concat($data->free_ticket));
            
         return view ('web.tickets', compact('data'));
     }
@@ -389,17 +456,13 @@ class FrontendController extends Controller
             $chip['date'] = $request->duration;           
         }
         $events = $events->orderBy('start_time','ASC')->get();
-        foreach ($events as $value) {
-            $value->total_ticket = Ticket::where([['event_id',$value->id],['is_deleted',0],['status',1]])->sum('quantity');
-            $value->sold_ticket = Order::where('event_id',$value->id)->sum('quantity');
-            $value->available_ticket = $value->total_ticket - $value->sold_ticket;
-        }
+        $this->applyEventTicketTotals($events);
         return view('frontend.events',compact('events','chip'));
 
     }
     
     public function eventDetail($id,$name){
-        $setting = Setting::first(['app_name','logo']);
+        $setting = Setting::first(['app_name','logo','currency']);
         $data = Event::with(['category:id,name,image','organization:id,first_name,name,bio,last_name,image'])->find($id);      
 
         SEOMeta::setTitle($data->name)
@@ -452,19 +515,10 @@ class FrontendController extends Controller
         $data->free_ticket = Ticket::where([['event_id',$data->id],['is_deleted',0],['type','free'],['status',1],['end_time', '>=',$date->format('Y-m-d H:i:s')],['start_time', '<=',$date->format('Y-m-d H:i:s')]])->orderBy('id','DESC')->get();
 
         $data->review = Review::where('event_id',$data->id)->orderBy('id','DESC')->get();
+        $this->attachReviewAuthors($data->review);
+        $this->applyTicketAvailability($data->paid_ticket->concat($data->free_ticket));
 
-        foreach ($data->paid_ticket as $value) {
-            $used = Order::where('ticket_id',$value->id)->sum('quantity');
-            $value->available_qty = $value->quantity - $used;
-        }
-        
-        foreach ($data->free_ticket as $value) {
-            $used = Order::where('ticket_id',$value->id)->sum('quantity');
-            $value->available_qty = $value->quantity - $used;
-        }
-
-        
-        return view('frontend.eventDetail',compact('data'));
+        return view('frontend.eventDetail',compact('data','setting'));
     }
     
     public function orgDetail($id,$name){
@@ -988,11 +1042,7 @@ class FrontendController extends Controller
         $user->saved_event = Event::whereIn('id',array_filter(explode(',',$user->favorite)))->where([['status',1],['is_deleted',0]])->get();       
         $user->saved_blog = Blog::whereIn('id',array_filter(explode(',',$user->favorite_blog)))->where('status',1)->get();               
         $user->following = User::whereIn('id',array_filter(explode(',',$user->following)))->get();
-        foreach ($user->saved_event as $value) {
-            $value->total_ticket = Ticket::where([['event_id',$value->id],['is_deleted',0],['status',1]])->sum('quantity');
-            $value->sold_ticket = Order::where('event_id',$value->id)->sum('quantity');
-            $value->available_ticket = $value->total_ticket - $value->sold_ticket;
-        }
+        $this->applyEventTicketTotals($user->saved_event);
         return view('frontend.profile',compact('user'));
     }
 

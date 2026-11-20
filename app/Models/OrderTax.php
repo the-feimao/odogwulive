@@ -16,15 +16,20 @@ class OrderTax extends Model
     protected $table = 'order_tax';
     protected $appends = ['taxName'];
 
+    public function tax()
+    {
+        return $this->belongsTo(Tax::class, 'tax_id', 'id');
+    }
+
     public function getTaxNameAttribute()
     {
-        $tax =  Tax::find($this->attributes['tax_id']);
-        if($tax){
-            return $tax->name;
+        if ($this->relationLoaded('tax')) {
+            return $this->tax?->name;
         }
-        else{
-            return null;
-        }
+
+        $tax = Tax::find($this->attributes['tax_id']);
+
+        return $tax?->name;
     }
     
 
