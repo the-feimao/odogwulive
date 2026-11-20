@@ -1,126 +1,58 @@
-@extends('master')
+@extends('layouts.admin')
 
-@section('content')
-<section class="section">
-    @include('admin.layout.breadcrumbs', [
-        'title' => __('Add Ticket'),  
-        'headerData' => __('Ticket') ,
-        'url' => $event->id.'/'.preg_replace('/\s+/', '-', $event->name).'/tickets' ,          
-    ]) 
+@section('admin-content')
+    <x-admin-breadcrumb :title="__('Add Ticket')" :parent="__('Ticket')"
+        :url="$event->id.'/'.preg_replace('/\s+/', '-', $event->name).'/tickets'" />
 
-    <div class="section-body">
-        <div class="row">
-            <div class="col-lg-8"><h2 class="section-title"> {{__('Add Ticket')}}</h2></div>            
-        </div>       
-       
-        <div class="row">
-            <div class="col-12">
-              <div class="card">     
-                <div class="card-body">
-                    <form method="post" class="ticket-form" action="{{url('ticket/create')}}" enctype="multipart/form-data" >
-                        @csrf
-                          
-                        <input type="hidden" name="event_id" value="{{$event->id}}">
-                        <div class="form-group">                            
-                            <div class="selectgroup">
-                              <label class="selectgroup-item">
-                                <input type="radio" name="type" {{old('type')=="free"? '' : 'checked'}} value="paid" class="selectgroup-input">
-                                <span class="selectgroup-button">{{__('Paid')}}</span>
-                              </label>
-                              <label class="selectgroup-item">
-                                <input type="radio" {{old('type')=="free"? 'checked' : ''}} name="type" value="free" class="selectgroup-input">
-                                <span class="selectgroup-button">{{__('Free')}}</span>
-                              </label>                                                       
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-lg-6">
-                                <div class="form-group">
-                                    <label>{{__('Name')}}</label>
-                                    <input type="text" name="name" placeholder="{{__('Name')}}" value="{{old('name')}}" class="form-control @error('name')? is-invalid @enderror">
-                                    @error('name')
-                                        <div class="invalid-feedback">{{$message}}</div>
-                                    @endif
-                                </div>
-                            </div>
-                            <div class="col-lg-6">
-                                <div class="form-group">
-                                    <label>{{__('Quantity')}}</label>
-                                    <input type="number" name="quantity" min="1" placeholder="{{__('Quantity')}}" value="{{old('quantity')}}" class="form-control @error('quantity')? is-invalid @enderror">
-                                    @error('quantity')
-                                        <div class="invalid-feedback">{{$message}}</div>
-                                    @endif
-                                </div>
-                            </div>
-                        </div>  
-                        <div class="row">
-                            <div class="col-lg-6">
-                                <div class="form-group">
-                                    <label>{{__('Price')}}</label>
-                                    <input type="number" name="price" min="1" placeholder="{{__('Price')}}" id="price" value="{{old('price')}}" class="form-control @error('price')? is-invalid @enderror">
-                                    @error('price')
-                                        <div class="invalid-feedback">{{$message}}</div>
-                                    @endif
-                                </div>
-                            </div> 
-                            <div class="col-lg-6">
-                                <div class="form-group">
-                                    <label>{{__('Maximum ticket per order')}}</label>
-                                    <input type="number" name="ticket_per_order" min="1" required placeholder="{{__('Maximum ticket per order')}}" id="ticket_per_order" value="{{old('ticket_per_order')}}" class="form-control @error('ticket_per_order')? is-invalid @enderror">
-                                    @error('ticket_per_order')
-                                        <div class="invalid-feedback">{{$message}}</div>
-                                    @endif
-                                </div>
-                            </div>   
-                        </div>                                             
-                        
-                        <div class="row">
-                            <div class="col-lg-6">
-                                <div class="form-group">
-                                    <label>{{__('Start Time')}}</label>
-                                    <input type="text" name="start_time" id="start_time" value="{{old('start_time')}}" placeholder="{{ __('Choose Start time') }}" class="form-control date @error('start_time')? is-invalid @enderror">
-                                    @error('start_time')
-                                        <div class="invalid-feedback">{{$message}}</div>
-                                    @endif
-                                </div>
-                            </div>
-                            <div class="col-lg-6">
-                                <div class="form-group">
-                                    <label>{{__('End Time')}}</label>
-                                    <input type="text" name="end_time" id="end_time" value="{{old('end_time')}}" placeholder="{{ __('Choose End time') }}" class="form-control date @error('end_time')? is-invalid @enderror">
-                                    @error('end_time')
-                                        <div class="invalid-feedback">{{$message}}</div>
-                                    @endif
-                                </div>
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label>{{__('Description')}}</label>
-                            <textarea name="description" placeholder="{{__('Description')}}" class="form-control @error('description')? is-invalid @enderror">{{old('description')}}</textarea>
-                            @error('description')
-                                <div class="invalid-feedback">{{$message}}</div>
-                            @endif
-                        </div>
-                       
-                        <div class="form-group">
-                            <label>{{__('status')}}</label>
-                            <select name="status" class="form-control select2">
-                                <option value="1">{{ __('Active') }}</option>
-                                <option value="0" {{old('status')=="0"?'selected':''}}>{{ __('Inactive') }}</option>
-                            </select>
-                            @error('status')
-                                <div class="invalid-feedback">{{$message}}</div>
-                            @endif
-                        </div>
-                        
-                        <div class="form-group">                            
-                            <button type="submit" class="btn btn-primary">{{__('Submit')}}</button>                            
-                        </div>
-                    </form>
+    <x-flash-messages />
+
+    <x-card :title="__('Add Ticket')" :subtitle="__('Set the ticket type, price, quantity and sales window.')">
+        <form method="post" class="ticket-form tw-grid tw-gap-6" action="{{ url('ticket/create') }}" enctype="multipart/form-data">
+            @csrf
+            <input type="hidden" name="event_id" value="{{ $event->id }}">
+
+            <fieldset class="ds-field tw-flex tw-flex-col tw-gap-2">
+                <legend class="tw-text-sm tw-font-semibold tw-text-ink-800 dark:tw-text-neutral-100">{{ __('Type') }}</legend>
+                <div class="tw-flex tw-flex-wrap tw-gap-3">
+                    <label class="tw-inline-flex tw-items-center tw-gap-2 tw-rounded-pill tw-border tw-border-neutral-200 tw-px-3 tw-py-2 tw-text-sm tw-font-semibold tw-text-ink-800 tw-transition hover:tw-border-accent-400 dark:tw-border-neutral-700 dark:tw-text-neutral-100">
+                        <input type="radio" name="type" value="paid" class="tw-h-4 tw-w-4 tw-accent-primary-500"
+                            {{ old('type') == 'free' ? '' : 'checked' }}>
+                        {{ __('Paid') }}
+                    </label>
+                    <label class="tw-inline-flex tw-items-center tw-gap-2 tw-rounded-pill tw-border tw-border-neutral-200 tw-px-3 tw-py-2 tw-text-sm tw-font-semibold tw-text-ink-800 tw-transition hover:tw-border-accent-400 dark:tw-border-neutral-700 dark:tw-text-neutral-100">
+                        <input type="radio" name="type" value="free" class="tw-h-4 tw-w-4 tw-accent-primary-500"
+                            {{ old('type') == 'free' ? 'checked' : '' }}>
+                        {{ __('Free') }}
+                    </label>
                 </div>
-              </div>
+            </fieldset>
+
+            <div class="tw-grid tw-gap-5 md:tw-grid-cols-2">
+                <x-input name="name" :label="__('Name')" :placeholder="__('Name')" />
+                <x-input name="quantity" type="number" min="1" :label="__('Quantity')" :placeholder="__('Quantity')" />
             </div>
-          </div>
-        </div>
-    </section>
+
+            <div class="tw-grid tw-gap-5 md:tw-grid-cols-2">
+                <x-input name="price" id="price" type="number" min="1" :label="__('Price')" :placeholder="__('Price')" />
+                <x-input name="ticket_per_order" id="ticket_per_order" type="number" min="1" required
+                    :label="__('Maximum ticket per order')" :placeholder="__('Maximum ticket per order')" />
+            </div>
+
+            <div class="tw-grid tw-gap-5 md:tw-grid-cols-2">
+                <x-input name="start_time" id="start_time" class="date" :label="__('Start Time')" :placeholder="__('Choose Start time')" />
+                <x-input name="end_time" id="end_time" class="date" :label="__('End Time')" :placeholder="__('Choose End time')" />
+            </div>
+
+            <x-textarea name="description" :label="__('Description')" :placeholder="__('Description')" />
+
+            <x-select name="status" :label="__('status')" class="select2">
+                <option value="1" {{ old('status', '1') == '1' ? 'selected' : '' }}>{{ __('Active') }}</option>
+                <option value="0" {{ old('status') == '0' ? 'selected' : '' }}>{{ __('Inactive') }}</option>
+            </x-select>
+
+            <div>
+                <x-button type="submit">{{ __('Submit') }}</x-button>
+            </div>
+        </form>
+    </x-card>
 @endsection

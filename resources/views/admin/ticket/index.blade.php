@@ -1,84 +1,98 @@
-@extends('master')
+@extends('layouts.admin')
 
-@section('content')
-<section class="section">
-    @include('admin.layout.breadcrumbs', [
-        'title' => __('Tickets'),   
-        'headerData' => __('Event') ,
-        'url' => 'events/'.$event->id,           
-    ]) 
+@section('admin-content')
+    <x-admin-breadcrumb :title="__('Tickets')" :parent="__('Event')" :url="'events/'.$event->id" />
 
-    <div class="section-body">
- 
-        <div class="row">
-            <div class="col-12">
-                @if (session('status'))
-                <div class="alert alert-success alert-dismissible fade show" role="alert">
-                    {{ session('status') }}
-                    <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-                        <span aria-hidden="true">&times;</span>
-                    </button>
-                </div>
-                @endif
-            </div>
-            <div class="col-12">
-              <div class="card">     
-                <div class="card-body">
-                    <div class="row mb-4 mt-2">
-                        <div class="col-lg-8"><h2 class="section-title mt-0"> {{__('View Tickets')}}</h2></div>
-                        <div class="col-lg-4 text-right">
-                            @can('ticket_create')
-                            <button class="btn btn-primary add-button"><a href="{{url($event->id.'/ticket/create')}}"><i class="fas fa-plus"></i> {{__('Add New')}}</a></button>                
-                            @endcan
-                        </div>
-                    </div> 
-                  <div class="table-responsive">
-                    <table class="table" id="report_table">
-                        <thead>
-                            <tr>
-                                <th></th>                               
-                                <th>{{__('Ticket Number')}}</th>
-                                <th>{{__('Name')}}</th>
-                                <th>{{__('Quantity')}}</th>
-                                <th>{{__('Price')}}</th>
-                                <th>{{__('Sales End')}}</th> 
-                                <th>{{__('Status')}}</th> 
-                                @if(Gate::check('ticket_edit') || Gate::check('ticket_delete'))                                   
-                                <th>{{__('Action')}}</th>
+    <div class="tw-flex tw-flex-wrap tw-items-end tw-justify-between tw-gap-4">
+        <div>
+            <h1 class="tw-text-2xl tw-font-extrabold tw-tracking-tight tw-text-ink-900 dark:tw-text-neutral-50">
+                {{ __('View Tickets') }}
+            </h1>
+            <p class="tw-mt-1 tw-text-sm tw-text-neutral-600 dark:tw-text-neutral-300">
+                {{ $event->name }}
+            </p>
+        </div>
+
+        @can('ticket_create')
+            <a href="{{ url($event->id.'/ticket/create') }}"
+                class="tw-inline-flex tw-h-10 tw-items-center tw-gap-2 tw-rounded-pill tw-bg-primary-500 tw-px-4 tw-text-sm tw-font-bold tw-text-ink-950 tw-transition hover:tw-bg-primary-400 focus-visible:tw-outline-none focus-visible:tw-ring-2 focus-visible:tw-ring-accent-600">
+                <x-lucide-plus class="tw-h-4 tw-w-4" />
+                {{ __('Add New') }}
+            </a>
+        @endcan
+    </div>
+
+    <x-flash-messages />
+
+    <x-card :padded="false">
+        @if ($ticket->isEmpty())
+            <x-empty-state :title="__('No tickets yet')" :description="__('Add a ticket to start selling for this event.')" />
+        @else
+            <div class="tw-overflow-x-auto">
+                <table id="report_table" class="tw-min-w-full tw-text-left tw-text-sm">
+                    <thead>
+                        <tr class="tw-border-b tw-border-neutral-200 tw-text-xs tw-uppercase tw-tracking-wide tw-text-neutral-500 dark:tw-border-neutral-700 dark:tw-text-neutral-400">
+                            <th class="tw-w-8 tw-px-3 tw-py-3"></th>
+                            <th class="tw-px-3 tw-py-3">{{ __('Ticket Number') }}</th>
+                            <th class="tw-px-3 tw-py-3">{{ __('Name') }}</th>
+                            <th class="tw-px-3 tw-py-3">{{ __('Quantity') }}</th>
+                            <th class="tw-px-3 tw-py-3">{{ __('Price') }}</th>
+                            <th class="tw-px-3 tw-py-3">{{ __('Sales End') }}</th>
+                            <th class="tw-px-3 tw-py-3">{{ __('Status') }}</th>
+                            @if (Gate::check('ticket_edit') || Gate::check('ticket_delete'))
+                                <th class="tw-px-3 tw-py-3">{{ __('Action') }}</th>
+                            @endif
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach ($ticket as $item)
+                            <tr class="tw-border-b tw-border-neutral-100 last:tw-border-0 dark:tw-border-neutral-800">
+                                <td class="tw-px-3 tw-py-3">
+                                    <span class="tw-inline-flex tw-h-8 tw-w-8 tw-items-center tw-justify-center tw-rounded-stub tw-bg-accent-100 tw-text-accent-700 dark:tw-bg-accent-500/20 dark:tw-text-accent-300">
+                                        <x-lucide-tag class="tw-h-4 tw-w-4" />
+                                    </span>
+                                </td>
+                                <td class="tw-px-3 tw-py-3 tw-font-mono tw-text-xs tw-text-neutral-600 dark:tw-text-neutral-300">
+                                    {{ $item->ticket_number }}
+                                </td>
+                                <td class="tw-px-3 tw-py-3 tw-font-semibold tw-text-ink-900 dark:tw-text-neutral-100">{{ $item->name }}</td>
+                                <td class="tw-px-3 tw-py-3">{{ $item->quantity }}</td>
+                                <td class="tw-px-3 tw-py-3">
+                                    {{ $item->type == 'paid' ? $currency.$item->price : __('FREE') }}
+                                </td>
+                                <td class="tw-px-3 tw-py-3 tw-text-neutral-600 dark:tw-text-neutral-300">
+                                    {{ Carbon\Carbon::parse($item->start_time)->format('l').', '.$item->end_time }}
+                                </td>
+                                <td class="tw-px-3 tw-py-3">
+                                    <x-badge :tone="$item->status == '1' ? 'success' : 'warning'">
+                                        {{ $item->status == '1' ? __('Active') : __('Inactive') }}
+                                    </x-badge>
+                                </td>
+                                @if (Gate::check('ticket_edit') || Gate::check('ticket_delete'))
+                                    <td class="tw-px-3 tw-py-3">
+                                        <span class="tw-inline-flex tw-items-center tw-gap-2">
+                                            @can('ticket_edit')
+                                                <a href="{{ url('ticket/edit/'.$item->id) }}" title="Edit Ticket"
+                                                    aria-label="{{ __('Edit') }} {{ $item->name }}"
+                                                    class="tw-inline-flex tw-h-9 tw-w-9 tw-items-center tw-justify-center tw-rounded-stub tw-text-accent-600 tw-transition hover:tw-bg-accent-50 focus-visible:tw-outline-none focus-visible:tw-ring-2 focus-visible:tw-ring-accent-600 dark:hover:tw-bg-accent-900/20">
+                                                    <x-lucide-pencil class="tw-h-4 tw-w-4" />
+                                                </a>
+                                            @endcan
+                                            @can('ticket_delete')
+                                                <a href="javascript:void(0)" onclick="deleteData('deleteTickets','{{ $item->id }}');"
+                                                    title="Delete Ticket" aria-label="{{ __('Delete') }} {{ $item->name }}"
+                                                    class="tw-inline-flex tw-h-9 tw-w-9 tw-items-center tw-justify-center tw-rounded-stub tw-border tw-border-danger-200 tw-text-danger-600 tw-transition hover:tw-bg-danger-100 focus-visible:tw-outline-none focus-visible:tw-ring-2 focus-visible:tw-ring-danger-600 dark:tw-border-danger-500/30 dark:tw-text-danger-300 dark:hover:tw-bg-danger-500/10">
+                                                    <x-lucide-trash-2 class="tw-h-4 tw-w-4" />
+                                                </a>
+                                            @endcan
+                                        </span>
+                                    </td>
                                 @endif
                             </tr>
-                        </thead>
-                        <tbody>
-                            @foreach ($ticket as $item)
-                                <tr>
-                                    <td></td>                                   
-                                    <th> {{$item->ticket_number}}</th>
-                                    <th> {{$item->name}}</th>
-                                    <td> {{$item->quantity}}</td>         
-                                    <td> {{$item->type=="paid" ? $currency.$item->price: 'FREE'}}</td>  
-                                    <td> {{Carbon\Carbon::parse($item->start_time)->format('l').', '.$item->end_time}}</td>                                                                               
-                                    <td>                                        
-                                        <h5><span class="badge {{$item->status=="1"?'badge-success': 'badge-warning'}}  m-1">{{$item->status=="1"?'Active': 'Inactive'}}</span></h5>
-                                    </td>
-                                    @if(Gate::check('ticket_edit') || Gate::check('ticket_delete')) 
-                                    <td>
-                                        @can('ticket_edit')
-                                        <a href="{{url('ticket/edit/'.$item->id)}}" class="btn-icon"><i class="fas fa-edit"></i></a>
-                                        @endcan
-                                        @can('ticket_delete')
-                                        <a href="javascript:void(0)" onclick="deleteData('deleteTickets','{{$item->id}}');"  class="btn-icon"><i class="fas fa-trash-alt text-danger"></i></a>
-                                        @endcan
-                                    </td>
-                                    @endif
-                                </tr>
-                            @endforeach                           
-                        </tbody>
-                    </table>
-                  </div>
-                </div>
-              </div>
+                        @endforeach
+                    </tbody>
+                </table>
             </div>
-          </div>
-        </div>
-    </section>
+        @endif
+    </x-card>
 @endsection

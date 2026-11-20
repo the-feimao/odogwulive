@@ -898,3 +898,28 @@ npm run build                                                                   
 3. `inputtags`, `select2` and the customer-detail Bootstrap tabs remain on their legacy scripts until the shared master layout is approved for migration.
 4. Tests activate the seeded license inside a transaction only to render admin content. License-check and installer logic were not modified.
 5. No API route, request/response shape, auth behaviour, Passport setup, Spatie permission, order/payment calculation or license/installer code changed.
+
+## 30. Phase 5 addendum — event tickets (2026-11-20)
+
+### What changed
+
+- Migrated `admin/ticket/{index,create,edit}` to the Tailwind/Alpine admin design system through the additive `layouts/admin.blade.php` wrapper.
+- Preserved the ticket contracts: event-scoped `/{id}/{name}/tickets` and `/{id}/ticket/create` URLs, `/ticket/create`, `/ticket/edit/{id}`, `/ticket/update/{id}`, `DELETE /deleteTickets/{id}`, `report_table`, `deleteData('deleteTickets','id')` and the `ticket_edit`/`ticket_delete` gates.
+- Preserved the form contract: `class="ticket-form"`, hidden `event_id`, `type` radios (`paid`/`free`), `name`, `quantity`, `price` with `#price`, `ticket_per_order`, `start_time` with `#start_time`, `end_time` with `#end_time`, `description`, `status`, `select2` and multipart encoding. The printed-type radio still toggles the price field through the legacy script.
+- Added `tests/Feature/AdminTicketPagesTest.php` for list hooks, form fields, free/paid behavior, event-ownership authorization and the unchanged store/update/delete flows.
+
+### Verification
+
+```powershell
+C:\xampp\php\php.exe vendor\bin\phpunit --filter AdminTicketPagesTest --testdox # OK (2 tests, 61 assertions)
+C:\xampp\php\php.exe vendor\bin\phpunit --testdox                                 # OK (73 tests, 861 assertions)
+npm run build                                                                     # OK; built in 29.02s with existing Sass deprecation warnings only
+```
+
+### Risks and manual checks
+
+1. `resources/views/master.blade.php` remains untouched, so legacy CDN assets and the license gate are still loaded on every migrated admin page.
+2. `#start_time` and `#end_time` still use the legacy Flatpickr initialization from `myCustom.js`; the IDs and `date` class were preserved.
+3. The price enable/disable behavior still depends on the legacy `.ticket-form` radio handler; the form class, radio names/values and `#price` were preserved.
+4. Tests activate the seeded license inside a transaction only to render admin content. License-check and installer logic were not modified.
+5. No API route, request/response shape, auth behaviour, Passport setup, Spatie permission, order/payment calculation or license/installer code changed.
