@@ -1,70 +1,70 @@
-@extends('master')
+@extends('layouts.admin')
 
-@section('content')
-<section class="section">
-    @include('admin.layout.breadcrumbs', [
-        'title' => __('Notification'),            
-    ]) 
+@section('admin-content')
+    <x-admin-breadcrumb :title="__('Notification')" />
 
-    <div class="section-body">
-        <h2 class="section-title">{{__('Notification')}}</h2>
-        <p class="section-lead">            
-        </p>    
-        <div class="row mt-sm-4">
-            <div class="col-12">
-                @if (session('status'))
-                <div class="alert alert-success alert-dismissible fade show" role="alert">
-                    {{ session('status') }}
-                    <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-                        <span aria-hidden="true">&times;</span>
-                    </button>
-                </div>
-                @endif
-            </div> 
-            <div class="col-12">
-                <div class="activities">
-                    @if(count($notification)==0)
-                      <div class="empty-data text-center">
-                        <div class="card-icon shadow-primary">
-                          <i class="fas fa-bell"></i>
-                        </div>
-                        <h6 class="mt-3">{{__('No Notification found')}} </h6>
-                      </div>
-                    @else 
-                      @foreach ($notification as $item)  
-                        @if($item->user!=null)                                                
-                            <div class="activity">
-                                <div class="activity-icon bg-primary text-white shadow-primary">                               
-                                <img src="{{url('images/upload/'.$item->user->image)}}" class="avatar">
-                                </div>
-                                <div class="activity-detail">
-                                <div class="mb-2">
-                                    <span class="text-job text-primary">{{$item->created_at->diffForHumans()}}</span>
-                                    <span class="bullet"></span>
-                                    <a class="text-job" href="javascript:void(0)">{{$item->user->name.' '.$item->user->last_name}}</a>
-                                    <div class="float-right dropdown">
-                                    <a href="javascript:void(0)" data-toggle="dropdown"><i class="fas fa-ellipsis-h"></i></a>
-                                    <div class="dropdown-menu">
-                                        <div class="dropdown-title">{{__('Options')}}</div>
-                                        <a href="{{url('orders/'.$item->order_id)}}" class="dropdown-item has-icon"><i class="fas fa-eye"></i> {{__('View')}}</a>                                        
-                                        <div class="dropdown-divider"></div>
-                                        <a href="{{url('delete-notification/'.$item->id)}}" class="dropdown-item has-icon text-danger" ><i class="fas fa-trash-alt"></i> {{__('Archive')}}</a>
-                                    </div>
-                                    </div>
-                                </div>
-                                <p>{{$item->message}}</p>
-                                </div>
-                            </div>   
-                        @endif                   
-                      @endforeach
-                    @endif
-                  
-                
-                </div>
-              </div>                   
-          </div>
-
-        
+    <div class="tw-flex tw-flex-wrap tw-items-end tw-justify-between tw-gap-4">
+        <div>
+            <h1 class="tw-text-2xl tw-font-extrabold tw-tracking-tight tw-text-ink-900 dark:tw-text-neutral-50">
+                {{ __('Notification') }}
+            </h1>
+            <p class="tw-mt-1 tw-text-sm tw-text-neutral-600 dark:tw-text-neutral-300">
+                {{ __('Recent order activity for your account.') }}
+            </p>
+        </div>
     </div>
-</section>
+
+    <x-flash-messages />
+
+    <x-card :padded="false">
+        <x-slot:header>
+            <h2 class="tw-text-lg tw-font-bold tw-text-ink-900 dark:tw-text-neutral-50">{{ __('Activity') }}</h2>
+        </x-slot:header>
+
+        <div class="activities tw-divide-y tw-divide-neutral-100 dark:tw-divide-neutral-800">
+            @if (count($notification) == 0)
+                <x-empty-state :title="__('No Notification found')" :description="__('New activity will appear here.')" />
+            @else
+                @foreach ($notification as $item)
+                    @if ($item->user != null)
+                        <div class="activity tw-flex tw-items-start tw-gap-4 tw-p-5">
+                            <img src="{{ url('images/upload/'.$item->user->image) }}" alt="{{ $item->user->name }}"
+                                loading="lazy" class="tw-h-10 tw-w-10 tw-shrink-0 tw-rounded-pill tw-object-cover">
+
+                            <div class="tw-min-w-0 tw-flex-1">
+                                <div class="tw-flex tw-flex-wrap items-start tw-justify-between tw-gap-3">
+                                    <div class="tw-min-w-0">
+                                        <p class="tw-text-xs tw-font-semibold tw-text-primary-700 dark:tw-text-primary-300">
+                                            {{ $item->created_at->diffForHumans() }}
+                                        </p>
+                                        <p class="tw-mt-0.5 tw-truncate tw-text-sm tw-font-semibold tw-text-ink-900 dark:tw-text-neutral-100">
+                                            {{ $item->user->name.' '.$item->user->last_name }}
+                                        </p>
+                                    </div>
+
+                                    <x-dropdown :label="__('Options')" align="right" class="tw-shrink-0">
+                                        <a href="{{ url('orders/'.$item->order_id) }}" role="menuitem"
+                                            class="tw-flex tw-items-center tw-gap-2 tw-rounded-stub tw-px-3 tw-py-2 tw-text-sm tw-text-ink-700 tw-transition hover:tw-bg-neutral-100 focus-visible:tw-outline-none focus-visible:tw-ring-2 focus-visible:tw-ring-accent-600 dark:tw-text-neutral-200 dark:hover:tw-bg-neutral-800">
+                                            <x-lucide-eye class="tw-h-4 tw-w-4" />
+                                            {{ __('View') }}
+                                        </a>
+                                        <div class="tw-my-1 tw-border-t tw-border-neutral-100 dark:tw-border-neutral-800"></div>
+                                        <a href="{{ url('delete-notification/'.$item->id) }}" role="menuitem"
+                                            class="tw-flex tw-items-center tw-gap-2 tw-rounded-stub tw-px-3 tw-py-2 tw-text-sm tw-font-semibold tw-text-danger-600 tw-transition hover:tw-bg-danger-100 focus-visible:tw-outline-none focus-visible:tw-ring-2 focus-visible:tw-ring-danger-600 dark:tw-text-danger-300 dark:hover:tw-bg-danger-500/10">
+                                            <x-lucide-archive class="tw-h-4 tw-w-4" />
+                                            {{ __('Archive') }}
+                                        </a>
+                                    </x-dropdown>
+                                </div>
+
+                                <p class="tw-mt-2 tw-text-sm tw-leading-relaxed tw-text-neutral-600 dark:tw-text-neutral-300">
+                                    {{ $item->message }}
+                                </p>
+                            </div>
+                        </div>
+                    @endif
+                @endforeach
+            @endif
+        </div>
+    </x-card>
 @endsection

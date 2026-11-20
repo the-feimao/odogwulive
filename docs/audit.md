@@ -790,3 +790,31 @@ npm run build                                                                   
 3. Report filters still use `date duration` classes for Flatpickr. Native selects now replace Select2 on the migrated reports, which is a visual change only.
 4. `master.blade.php` remains untouched, so legacy CDN assets still load on these pages.
 5. No API contract, order/payment calculation, Passport/Spatie behaviour or license/installer logic changed.
+
+## 26. Phase 5 addendum — review, notification, profile and feedback pages (2026-11-20)
+
+### What changed
+
+- Migrated `admin/review.blade.php`, `admin/notification.blade.php` and `admin/profile.blade.php` to the Tailwind/Alpine admin design system through the additive `layouts/admin.blade.php` wrapper.
+- Kept the review publish/delete URLs (`change-review-status/{id}`, `delete-review/{id}`) and the notification order/archive URLs (`orders/{id}`, `delete-notification/{id}`) exactly as before.
+- Kept both profile POST contracts (`edit-profile`, `change-password`) and all field names, including the read-only email field, `language`, `bio`, `current_password`, `password` and `confirm_password`. The organization branch still renders its followers list.
+- Migrated `admin/feedback/index.blade.php` and `admin/feedback/create.blade.php` while preserving the `feedback-form` class, hidden `name="rate"`, `addRate('N')` star handlers, `deleteData('feedback','id')` delete hook, multipart enctype and `feedback` route actions.
+- Added `tests/Feature/AdminAccountPagesTest.php` for page rendering, hook preservation, profile form submission, feedback creation and role permissions.
+
+### Verification
+
+```powershell
+C:\xampp\php\php.exe vendor\bin\phpunit --filter AdminAccountPagesTest --testdox # OK (7 tests, 58 assertions)
+C:\xampp\php\php.exe vendor\bin\phpunit --testdox                              # OK (62 tests, 524 assertions)
+npm run build                                                                  # OK; built in 19.82s with existing Sass deprecation warnings only
+```
+
+One stale `php -S 127.0.0.1:8099` worker from an earlier interrupted run was stopped before the full suite; no application code was changed for that workaround.
+
+### Risks and manual checks
+
+1. `resources/views/master.blade.php` remains untouched, so the legacy CDN assets and the license gate are still loaded on every migrated admin page.
+2. The feedback rating now uses Alpine for pressed/colour state but still calls the original `addRate()` function, so the hidden `rate` value and server-side validation path are unchanged.
+3. `resources/views/admin/feedback/edit.blade.php` is still absent although `FeedbackController@edit` returns `admin.feedback.edit`; this is a pre-existing issue and was not changed in this group.
+4. Tests activate the seeded license inside a transaction only to render admin content. License-check and installer logic were not modified.
+5. No API route, request/response shape, auth behaviour, Passport setup, Spatie permission, order/payment logic or license/installer code changed.
