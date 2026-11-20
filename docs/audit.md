@@ -738,3 +738,29 @@ No paid dependency was introduced. Passport, Spatie Permission, payment packages
 
 1. Should the legacy/admin CDN libraries be replaced during Phase 5, or may `resources/views/master.blade.php` be edited now despite the pre-existing local modifications?
 2. Which production email option should be documented/configured (host SMTP or Brevo free tier)? Credentials must be supplied through the environment, not committed.
+
+## 24. Phase 5 addendum — low-risk admin CRUD restyle (2026-11-20)
+
+### What changed
+
+- Added `resources/views/layouts/admin.blade.php` as an additive wrapper that extends the existing `master.blade.php`. The license gate, header, sidebar and legacy action scripts in `master.blade.php` remain untouched and continue to run unchanged.
+- Added `resources/views/components/admin-breadcrumb.blade.php`, a design-system breadcrumb with a safe fallback title.
+- Migrated the category, banner and FAQ `index`, `create` and `edit` views to the Tailwind/Alpine design system. Their route names, form actions, field names, enctype, validation-facing markup and `deleteData()` hooks are unchanged.
+- Added `tests/Feature/AdminLowRiskPagesTest.php` to cover list rendering, create/edit form contracts, the design-system wrapper and organizer permission behaviour.
+
+### Verification
+
+```powershell
+C:\xampp\php\php.exe vendor\bin\phpunit --filter AdminLowRiskPagesTest --testdox # OK (4 tests, 41 assertions)
+C:\xampp\php\php.exe vendor\bin\phpunit --testdox                              # OK (49 tests, 423 assertions)
+npm run build                                                                  # OK; existing Bootstrap Sass deprecation warnings only
+```
+
+A full-suite run initially appeared to hang after stale `php -S 127.0.0.1:8000` workers from interrupted verification runs were left spinning at high CPU. Only those orphaned dev-server workers were stopped; no test or application code was changed to work around it. The suite then completed green.
+
+### Risks and manual checks
+
+1. `resources/views/master.blade.php` still contains the legacy CDN libraries and pre-existing local modifications. They were deliberately left untouched, so Bootstrap/jQuery/Select2/Summernote/Flatpickr/SweetAlert2/Chart.js/DataTables remain loaded on these pages.
+2. The new layout renders the design system inside the existing master content section. This keeps the license gate intact, but the overall page still carries legacy global CSS/JS from the master layout.
+3. Tests activate the seeded license inside a transaction solely to render admin content. License-check and installer logic themselves were not modified.
+4. No API route, request/response shape, auth behaviour, Passport setup, Spatie permissions, order/payment logic or license/installer code changed.

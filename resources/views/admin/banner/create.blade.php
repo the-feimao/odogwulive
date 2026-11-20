@@ -1,84 +1,48 @@
-@extends('master')
+@extends('layouts.admin')
 
-@section('content')
-<section class="section">
-    @include('admin.layout.breadcrumbs', [
-        'title' => __('Add Banner'),
-        'headerData' => __('Banner') ,
-        'url' => 'banner' ,
-    ])
+@section('admin-content')
+    <x-admin-breadcrumb :title="__('Add Banner')" :parent="__('Banner')" url="banner" />
 
-    <div class="section-body">
-        <div class="row">
-            <div class="col-lg-8"><h2 class="section-title"> {{__('Add banner')}}</h2></div>
-        </div>
-       @if ($errors->any())
-            @foreach ($errors->all() as $error)
-            <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                {{ $error}}
-                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                </button>
-            </div>
-            @endforeach
-        @endif
-        <div class="row">
-            <div class="col-12">
-              <div class="card">
-                <div class="card-body">
-                    <form method="post" action="{{url('banner')}}" enctype="multipart/form-data" >
-                        @csrf
+    <div class="tw-space-y-5">
+        <x-flash-messages />
 
-                        <div class="row">
-                            <div class="col-lg-3">
-                                <div class="form-group center">
-                                    <label>{{__('Image')}}</label>
-                                    <div id="image-preview" class="image-preview">
-                                        <label for="image-upload" id="image-label"> <i class="fas fa-plus"></i></label>
-                                        <input type="file" name="image" id="image-upload" />
-                                    </div>
-                                    @error('image')
-                                        <div class="invalid-feedback">{{$message}}</div>
-                                    @endif
-                                </div>
-                            </div>
-                            <div class="col-lg-9">
-                                <div class="form-group">
-                                    <label>{{__('Title')}}</label>
-                                    <input type="text" name="title" placeholder="{{__('Title')}}" value="{{old('title')}}" class="form-control @error('title')? is-invalid @enderror">
-                                    @error('title')
-                                        <div class="invalid-feedback">{{$message}}</div>
-                                    @endif
-                                </div>
+        <x-card :title="__('Add banner')" :subtitle="__('Create a banner for the public site.')">
+            <form method="post" action="{{ url('banner') }}" enctype="multipart/form-data" class="tw-grid tw-gap-6">
+                @csrf
 
-                                <div class="form-group">
-                                    <label>{{__('Description')}}</label>
-                                    <textarea name="description" placeholder="{{__('Description')}}" class="form-control @error('description')? is-invalid @enderror">{{old('description')}}</textarea>
-                                    @error('description')
-                                        <div class="invalid-feedback">{{$message}}</div>
-                                    @endif
-                                </div>
-                                <div class="form-group">
-                                    <label>{{__('status')}}</label>
-                                    <select name="status" class="form-control select2">
-                                        <option value="1">{{ __('Active') }}</option>
-                                        <option value="0">{{ __('Inactive') }}</option>
-                                    </select>
-                                    @error('status')
-                                        <div class="invalid-feedback">{{$message}}</div>
-                                    @endif
-                                </div>
-                            </div>
+                <div class="tw-grid tw-gap-6 md:tw-grid-cols-[minmax(0,200px)_minmax(0,1fr)]">
+                    <div class="ds-field tw-flex tw-flex-col tw-gap-1.5">
+                        <label for="image-upload" class="tw-text-sm tw-font-semibold tw-text-ink-800 dark:tw-text-neutral-100">
+                            {{ __('Image') }}
+                        </label>
+                        <div id="image-preview" class="image-preview tw-flex tw-h-36 tw-items-center tw-justify-center tw-rounded-card tw-border tw-border-dashed tw-border-neutral-300 tw-bg-neutral-50 dark:tw-border-neutral-700 dark:tw-bg-ink-950">
+                            <label for="image-upload" id="image-label"
+                                class="tw-flex tw-h-10 tw-w-10 tw-cursor-pointer tw-items-center tw-justify-center tw-rounded-pill tw-bg-neutral-200 tw-text-neutral-600 dark:tw-bg-neutral-700 dark:tw-text-neutral-200">
+                                <x-lucide-plus class="tw-h-5 tw-w-5" />
+                                <span class="tw-sr-only">{{ __('Choose image') }}</span>
+                            </label>
                         </div>
+                        <input id="image-upload" name="image" type="file"
+                            class="tw-text-sm tw-text-neutral-600 file:tw-mr-3 file:tw-rounded-pill file:tw-bg-neutral-100 file:tw-px-3 file:tw-py-1.5 file:tw-font-semibold file:tw-text-ink-800 dark:tw-text-neutral-300 dark:file:tw-bg-neutral-800 dark:file:tw-text-neutral-100">
+                        @error('image')
+                            <p class="tw-text-xs tw-font-medium tw-text-danger-600">{{ $message }}</p>
+                        @enderror
+                    </div>
 
-                        <div class="form-group">
-                            <button type="submit" class="btn btn-primary">{{__('Submit')}}</button>
-                        </div>
-                    </form>
+                    <div class="tw-grid tw-gap-5">
+                        <x-input name="title" :label="__('Title')" :placeholder="__('Title')" :value="old('title')" required />
+                        <x-textarea name="description" :label="__('Description')" :placeholder="__('Description')" :value="old('description')" required />
+                        <x-select name="status" :label="__('status')">
+                            <option value="1" {{ old('status') == '1' ? 'selected' : '' }}>{{ __('Active') }}</option>
+                            <option value="0" {{ old('status') == '0' ? 'selected' : '' }}>{{ __('Inactive') }}</option>
+                        </x-select>
+                    </div>
                 </div>
-              </div>
-            </div>
-          </div>
-        </div>
-    </section>
+
+                <div>
+                    <x-button type="submit">{{ __('Submit') }}</x-button>
+                </div>
+            </form>
+        </x-card>
+    </div>
 @endsection

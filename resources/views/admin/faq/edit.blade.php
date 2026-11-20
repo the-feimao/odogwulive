@@ -1,49 +1,19 @@
-@extends('master')
+@extends('layouts.admin')
 
-@section('content')
-<section class="section">
-    @include('admin.layout.breadcrumbs', [
-        'title' => __('Edit Faq'),  
-        'headerData' => __('Faq') ,
-        'url' => 'faq' ,          
-    ]) 
+@section('admin-content')
+    <x-admin-breadcrumb :title="__('Edit Faq')" :parent="__('Faq')" url="faq" />
 
-    <div class="section-body">
-        <div class="row">
-            <div class="col-lg-8"><h2 class="section-title"> {{__('Edit Faq')}}</h2></div>            
-        </div>       
-       
-        <div class="row">
-            <div class="col-12">
-              <div class="card">     
-                <div class="card-body">
-                    <form method="post" action="{{url('faq/'.$faq->id)}}" enctype="multipart/form-data" >
-                        @csrf
-                        @method('PUT')
-                        <div class="form-group">
-                            <label>{{__('Question')}}</label>
-                            <input type="text" name="question" placeholder="{{__('Question')}}" value="{{$faq->question}}" class="form-control @error('question')? is-invalid @enderror">
-                            @error('question')
-                                <div class="invalid-feedback">{{$message}}</div>
-                            @endif
-                        </div>
+    <x-card :title="__('Edit Faq')" :subtitle="__('Update the question or answer.')">
+        <form method="post" action="{{ url('faq/'.$faq->id) }}" enctype="multipart/form-data" class="tw-grid tw-gap-5">
+            @csrf
+            @method('PUT')
 
-                        <div class="form-group">
-                            <label>{{__('Answer')}}</label>
-                            <textarea name="answer" placeholder="{{__('Answer')}}" class="form-control @error('answer')? is-invalid @enderror">{{$faq->answer}}</textarea>
-                            @error('answer')
-                                <div class="invalid-feedback">{{$message}}</div>
-                            @endif
-                        </div>                                        
-                        
-                        <div class="form-group">                            
-                            <button type="submit" class="btn btn-primary">{{__('Submit')}}</button>                            
-                        </div>
-                    </form>
-                </div>
-              </div>
+            <x-input name="question" :label="__('Question')" :placeholder="__('Question')" :value="$faq->question" required />
+            <x-textarea name="answer" :label="__('Answer')" :placeholder="__('Answer')" :value="$faq->answer" required />
+
+            <div>
+                <x-button type="submit">{{ __('Submit') }}</x-button>
             </div>
-          </div>
-        </div>
-    </section>
+        </form>
+    </x-card>
 @endsection
