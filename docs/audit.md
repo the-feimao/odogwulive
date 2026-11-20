@@ -949,3 +949,30 @@ npm run build                                                                   
 3. The PayPal SDK and Stripe checkout script still come from the legacy layout/external script; their container IDs, hidden fields and script attributes were preserved.
 4. Tests activate the seeded license inside a transaction only to render admin content. License-check and installer logic were not modified.
 5. No API route, request/response shape, auth behaviour, Passport setup, Spatie permission, order/payment calculation or license/installer code changed.
+
+## 32. Phase 5 addendum - admin event pages (2026-11-20)
+
+### What changed
+
+- Migrated `admin/event/{index,create,edit,view,gallery}` to the Tailwind/Alpine admin design system through the additive `layouts/admin.blade.php` wrapper.
+- Extracted the shared create/edit fields into `admin/event/partials/form.blade.php` while preserving `.event-form`, multipart encoding, `events` POST, `events.update` PUT, `@method('PUT')`, `#image-preview`, `#image-upload`, `#image-label`, `#start_time`, `#end_time`, `.date`, `#org-for-event`, `.scanner_id select2`, `.location-detail`, `.inputtags` and `.textarea_editor`.
+- Preserved the event list contract: `events` resource routes, `report_table`, `deleteData('events','id')`, `event_create`/`event_edit`/`event_delete` gates, admin organization column, organization scanner column, detail/gallery/edit/delete links and publish/draft badges.
+- Preserved the detail contract: sales table columns, currency formatting, `Manage Tickets` slug URL, ticket sales cards, and the `Add Ticket` link in the original no-tickets state only.
+- Preserved the gallery contract: `#data_id`, `data-toggle="dropzone"`, `data-dropzone-multiple`, `data-dropzone-url="/add-event-gallery"`, `#dropzoneMultipleUpload`, `name="image[]"`, `.dz-preview`, stored image list and `/remove-image/{image}/{id}` links.
+- Added `tests/Feature/AdminEventPagesTest.php` for list hooks, role columns, form hooks, admin/organization organization-field visibility, create/update/delete flow, detail ticket links, gallery hooks and authorization.
+
+### Verification
+
+```powershell
+C:\xampp\php\php.exe vendor\bin\phpunit --filter AdminEventPagesTest --testdox # OK (3 tests, 112 assertions)
+C:\xampp\php\php.exe vendor\bin\phpunit --testdox                              # OK (79 tests, 1029 assertions)
+npm run build                                                                  # OK; built in 19.28s with existing Sass deprecation warnings only
+```
+
+### Risks and manual checks
+
+1. `resources/views/master.blade.php` remains untouched, so legacy CDN assets and the license gate are still loaded on every migrated admin page.
+2. Image preview, Select2, Flatpickr, Summernote, tags input and Dropzone still depend on the legacy scripts loaded by the shared master layout; all of their IDs, classes and data attributes were preserved.
+3. The local CLI PHP does not have GD, so the store test uses `UploadedFile::fake()->create(..., 'image/jpeg')` instead of `fake()->image()`; the controller still receives a real JPEG upload with the same field name and extension.
+4. Tests activate the seeded license inside a transaction only to render admin content. License-check and installer logic were not modified.
+5. No API route, request/response shape, auth behaviour, Passport setup, Spatie permission, order/payment calculation or license/installer code changed.

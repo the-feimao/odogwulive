@@ -1,98 +1,118 @@
-@extends('master')
+@extends('layouts.admin')
 
-@section('content')
-<section class="section">
-    @include('admin.layout.breadcrumbs', [
-        'title' => __('Events'),            
-    ]) 
+@section('admin-content')
+    <x-admin-breadcrumb :title="__('Events')" />
 
-    <div class="section-body">
-               
-        <div class="row">
-            <div class="col-12">
-                @if (session('status'))
-                <div class="alert alert-success alert-dismissible fade show" role="alert">
-                    {{ session('status') }}
-                    <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-                        <span aria-hidden="true">&times;</span>
-                    </button>
-                </div>
-                @endif
-            </div>
-            <div class="col-12">
-              <div class="card">     
-                <div class="card-body">
-                    <div class="row mb-4 mt-2">
-                        <div class="col-lg-8"><h2 class="section-title mt-0"> {{__('All Events')}}</h2></div>
-                        <div class="col-lg-4 text-right">
-                            @can('event_create')
-                            <button class="btn btn-primary add-button"><a href="{{url('events/create')}}"><i class="fas fa-plus"></i> {{__('Add New')}}</a></button>                
-                            @endcan
-                        </div>
-                    </div>      
-                  <div class="table-responsive">
-                    <table class="table" id="report_table">
-                        <thead>
-                            <tr>
-                                <th></th>                                
-                                <th>{{__('Image')}}</th>
-                                <th>{{__('Name')}}</th>
-                                <th>{{__('Number of People')}}</th>
-                                <th>{{__('Category')}}</th>
-                                @if(Auth::user()->hasRole('admin'))
-                                <th>{{__('Organization')}}</th> 
-                                @endif
-                                @if(Auth::user()->hasRole('organization'))
-                                <th>{{__('Scanner')}}</th> 
-                                @endif
-                                <th>{{__('Status')}}</th> 
-                                @if(Gate::check('event_edit') || Gate::check('event_delete'))                                   
-                                <th>{{__('Action')}}</th>
-                                @endif
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach ($events as $item)
-                                <tr>
-                                    <td></td>                                    
-                                    <th> <img class="table-img" src="{{url('images/upload/'.$item->image)}}"> </th>
-                                    <td>
-                                        <h6 class="mb-0">{{$item->name}}</h6>
-                                        <p class="mb-0">{{$item->address}} </p>
-                                        <p class="mb-0">{{Carbon\Carbon::parse($item->start_time)->format('l').', '.$item->start_time->format('Y-m-d h:i a')}}</p>
-                                    </td>         
-                                    <td>{{$item->people}}</td>   
-                                    <td>{{$item->category->name}}</td>   
-                                    @if(Auth::user()->hasRole('admin'))
-                                    <td>{{$item->organization->first_name.' '.$item->organization->last_name}}</td>   
-                                    @endif  
-                                    @if(Auth::user()->hasRole('organization'))
-                                    <td>{{$item->scanner==null?'':$item->scanner->first_name.' '.$item->scanner->last_name}}</td>   
-                                    @endif                                                                           
-                                    <td>                                        
-                                        <h5><span class="badge {{$item->status=="1"?'badge-success': 'badge-warning'}}  m-1">{{$item->status=="1"?'Publish': 'Draft'}}</span></h5>
-                                    </td>
-                                    @if(Gate::check('event_edit') || Gate::check('event_delete')) 
-                                    <td>
-                                        <a href="{{ route('events.show', $item->id) }}" title="View Event" class="btn-icon"><i class="fas fa-eye"></i></a>
-                                        <a href="{{url('event-gallery/'.$item->id)}}" title="Event Gallery" class="btn-icon"><i class="far fa-images"></i></a>
-                                        @can('event_edit')
-                                        <a href="{{ route('events.edit', $item->id) }}" title="Edit Event" class="btn-icon"><i class="fas fa-edit"></i></a>
-                                        @endcan                                        
-                                        @can('event_delete')
-                                        <a href="javascript:void(0)" onclick="deleteData('events','{{$item->id}}');"  title="Delete Event" class="btn-icon text-danger"><i class="fas fa-trash-alt text-danger"></i></a>
-                                        @endcan
-                                    </td>
-                                    @endif
-                                </tr>
-                            @endforeach                           
-                        </tbody>
-                    </table>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
+    <div class="tw-flex tw-flex-wrap tw-items-end tw-justify-between tw-gap-4">
+        <div>
+            <h1 class="tw-text-2xl tw-font-extrabold tw-tracking-tight tw-text-ink-900 dark:tw-text-neutral-50">
+                {{ __('All Events') }}
+            </h1>
+            <p class="tw-mt-1 tw-text-sm tw-text-neutral-600 dark:tw-text-neutral-300">
+                {{ __('Manage events, tickets and assigned scanners.') }}
+            </p>
         </div>
-    </section>
+
+        @can('event_create')
+            <a href="{{ url('events/create') }}"
+                class="add-button tw-inline-flex tw-h-10 tw-items-center tw-gap-2 tw-rounded-pill tw-bg-primary-500 tw-px-4 tw-text-sm tw-font-bold tw-text-ink-950 tw-transition hover:tw-bg-primary-400 focus-visible:tw-outline-none focus-visible:tw-ring-2 focus-visible:tw-ring-accent-600">
+                <x-lucide-plus class="tw-h-4 tw-w-4" />
+                {{ __('Add New') }}
+            </a>
+        @endcan
+    </div>
+
+    <x-flash-messages />
+
+    <x-card :padded="false">
+        <div class="tw-overflow-x-auto">
+            <table id="report_table" class="tw-min-w-full tw-text-left tw-text-sm">
+                <thead>
+                    <tr class="tw-border-b tw-border-neutral-200 tw-text-xs tw-uppercase tw-tracking-wide tw-text-neutral-500 dark:tw-border-neutral-700 dark:tw-text-neutral-400">
+                        <th class="tw-w-8 tw-px-3 tw-py-3"></th>
+                        <th class="tw-px-3 tw-py-3">{{ __('Image') }}</th>
+                        <th class="tw-px-3 tw-py-3">{{ __('Name') }}</th>
+                        <th class="tw-px-3 tw-py-3">{{ __('Number of People') }}</th>
+                        <th class="tw-px-3 tw-py-3">{{ __('Category') }}</th>
+                        @if (Auth::user()->hasRole('admin'))
+                            <th class="tw-px-3 tw-py-3">{{ __('Organization') }}</th>
+                        @endif
+                        @if (Auth::user()->hasRole('organization'))
+                            <th class="tw-px-3 tw-py-3">{{ __('Scanner') }}</th>
+                        @endif
+                        <th class="tw-px-3 tw-py-3">{{ __('Status') }}</th>
+                        @if (Gate::check('event_edit') || Gate::check('event_delete'))
+                            <th class="tw-px-3 tw-py-3">{{ __('Action') }}</th>
+                        @endif
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach ($events as $item)
+                        <tr class="tw-border-b tw-border-neutral-100 last:tw-border-0 dark:tw-border-neutral-800">
+                            <td class="tw-px-3 tw-py-3"></td>
+                            <td class="tw-px-3 tw-py-3">
+                                <img class="table-img tw-h-12 tw-w-12 tw-rounded-stub tw-object-cover"
+                                    src="{{ url('images/upload/'.$item->image) }}" alt="{{ $item->name }}"
+                                    loading="lazy" width="48" height="48">
+                            </td>
+                            <td class="tw-px-3 tw-py-3">
+                                <p class="tw-font-semibold tw-text-ink-900 dark:tw-text-neutral-100">{{ $item->name }}</p>
+                                <p class="tw-mt-0.5 tw-text-xs tw-text-neutral-500 dark:tw-text-neutral-400">{{ $item->address }}</p>
+                                <p class="tw-mt-0.5 tw-text-xs tw-text-neutral-500 dark:tw-text-neutral-400">
+                                    {{ Carbon\Carbon::parse($item->start_time)->format('l').', '.$item->start_time->format('Y-m-d h:i a') }}
+                                </p>
+                            </td>
+                            <td class="tw-px-3 tw-py-3 tw-text-neutral-600 dark:tw-text-neutral-300">{{ $item->people }}</td>
+                            <td class="tw-px-3 tw-py-3 tw-text-neutral-600 dark:tw-text-neutral-300">{{ $item->category->name }}</td>
+                            @if (Auth::user()->hasRole('admin'))
+                                <td class="tw-px-3 tw-py-3 tw-text-neutral-600 dark:tw-text-neutral-300">
+                                    {{ $item->organization->first_name.' '.$item->organization->last_name }}
+                                </td>
+                            @endif
+                            @if (Auth::user()->hasRole('organization'))
+                                <td class="tw-px-3 tw-py-3 tw-text-neutral-600 dark:tw-text-neutral-300">
+                                    {{ $item->scanner == null ? '' : $item->scanner->first_name.' '.$item->scanner->last_name }}
+                                </td>
+                            @endif
+                            <td class="tw-px-3 tw-py-3">
+                                <x-badge :tone="$item->status == '1' ? 'success' : 'warning'">
+                                    {{ $item->status == '1' ? __('Publish') : __('Draft') }}
+                                </x-badge>
+                            </td>
+                            @if (Gate::check('event_edit') || Gate::check('event_delete'))
+                                <td class="tw-px-3 tw-py-3">
+                                    <span class="tw-inline-flex tw-items-center tw-gap-2">
+                                        <a href="{{ route('events.show', $item->id) }}" title="{{ __('View Event') }}"
+                                            aria-label="{{ __('View') }} {{ $item->name }}"
+                                            class="btn-icon tw-inline-flex tw-h-9 tw-w-9 tw-items-center tw-justify-center tw-rounded-stub tw-text-accent-600 tw-transition hover:tw-bg-accent-50 focus-visible:tw-outline-none focus-visible:tw-ring-2 focus-visible:tw-ring-accent-600 dark:hover:tw-bg-accent-900/20">
+                                            <x-lucide-eye class="tw-h-4 tw-w-4" />
+                                        </a>
+                                        <a href="{{ url('event-gallery/'.$item->id) }}" title="{{ __('Event Gallery') }}"
+                                            aria-label="{{ __('Gallery') }} {{ $item->name }}"
+                                            class="btn-icon tw-inline-flex tw-h-9 tw-w-9 tw-items-center tw-justify-center tw-rounded-stub tw-text-accent-600 tw-transition hover:tw-bg-accent-50 focus-visible:tw-outline-none focus-visible:tw-ring-2 focus-visible:tw-ring-accent-600 dark:hover:tw-bg-accent-900/20">
+                                            <x-lucide-images class="tw-h-4 tw-w-4" />
+                                        </a>
+                                        @can('event_edit')
+                                            <a href="{{ route('events.edit', $item->id) }}" title="{{ __('Edit Event') }}"
+                                                aria-label="{{ __('Edit') }} {{ $item->name }}"
+                                                class="btn-icon tw-inline-flex tw-h-9 tw-w-9 tw-items-center tw-justify-center tw-rounded-stub tw-text-accent-600 tw-transition hover:tw-bg-accent-50 focus-visible:tw-outline-none focus-visible:tw-ring-2 focus-visible:tw-ring-accent-600 dark:hover:tw-bg-accent-900/20">
+                                                <x-lucide-pencil class="tw-h-4 tw-w-4" />
+                                            </a>
+                                        @endcan
+                                        @can('event_delete')
+                                            <a href="javascript:void(0)" onclick="deleteData('events','{{ $item->id }}');"
+                                                title="{{ __('Delete Event') }}" aria-label="{{ __('Delete') }} {{ $item->name }}"
+                                                class="btn-icon tw-inline-flex tw-h-9 tw-w-9 tw-items-center tw-justify-center tw-rounded-stub tw-border tw-border-danger-200 tw-text-danger-600 tw-transition hover:tw-bg-danger-100 focus-visible:tw-outline-none focus-visible:tw-ring-2 focus-visible:tw-ring-danger-600 dark:tw-border-danger-500/30 dark:tw-text-danger-300 dark:hover:tw-bg-danger-500/10">
+                                                <x-lucide-trash-2 class="tw-h-4 tw-w-4" />
+                                            </a>
+                                        @endcan
+                                    </span>
+                                </td>
+                            @endif
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+    </x-card>
 @endsection

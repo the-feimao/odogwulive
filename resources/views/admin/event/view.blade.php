@@ -1,141 +1,148 @@
-@extends('master')
+@extends('layouts.admin')
 
-@section('content')
-    <section class="section">
-        @include('admin.layout.breadcrumbs', [
-            'title' => __('Event Detail'),  
-            'headerData' => __('Event') ,
-            'url' => 'events' ,          
-        ]) 
+@section('admin-content')
+    <x-admin-breadcrumb :title="__('Event Detail')" :parent="__('Event')" url="events" />
 
-      <div class="section-body">      
-         <div class="row event-single">
-             <div class="col-lg-8">                 
-                 <div class="card">
-                     <div class="card-body">
-                        <div class="row">
-                            <div class="col-12 mb-3">
-                                <div class="event-img w-100" style="background: url({{url('images/upload/'.$event->image)}})">                            
-                                </div>
-                            </div>
-                            <div class="col-12 event-description">
-                                <h2 class="mt-3">{{$event->name}} <button type="button" class="btn btn-primary "><a class="text-white" href="{{url($event->id.'/'.preg_replace('/\s+/', '-', $event->name).'/tickets')}}">{{__('Manage Tickets')}}</a></button></h2>
-                                <p> {!!$event->description!!}  </p>                                                               
-                            </div>                                                                                    
-                        </div> 
-                        <div class="row ml-0 mr-0 mt-4">
-                            <div class="col-lg-3">
-                                <div class="card single-card-light">
-                                    <div class="row">
-                                        <div class="col-3 text-center">
-                                            <i class="fas fa-users"></i>
-                                        </div>
-                                        <div class="col-9">
-                                            <p class="mb-0">{{__('People allowed')}}</p>
-                                            <span>{{$event->people}}</span>
-                                        </div>
-                                    </div>
-                                </div>                               
-                            </div>                         
-                            <div class="col-lg-4">
-                                <div class="card single-card-light">
-                                    <div class="row">
-                                        <div class="col-3 text-center">
-                                            <i class="far fa-calendar-alt"></i>
-                                        </div>
-                                        <div class="col-9">
-                                            <p class="mb-0">{{__('Date')}}</p>
-                                            <span>{{Carbon\Carbon::parse($event->start_time)->format('l').','}}</span>
-                                            <span>{{$event->start_time->format('d F Y')}}</span>
-                                        </div>
-                                    </div>
-                                </div>                               
-                            </div>
-                            <div class="col-lg-5">
-                                <div class="card single-card-light">
-                                    <div class="row">
-                                        <div class="col-2 text-center">
-                                            <i class="fas fa-map-marker-alt"></i>
-                                        </div>
-                                        <div class="col-9">
-                                            <p class="mb-0">{{__('Location')}}</p>
-                                            @if($event->type=="offline")
-                                            <span> {{$event->address}} </span>
-                                            @else 
-                                            <span> {{__('Online Event')}} </span>
-                                            @endif
-                                        </div>
-                                    </div>
-                                </div>                               
-                            </div>
-                        </div>                      
-                     </div>
-                </div>
-                <h2 class="section-title"> {{__('Recent Sales')}}</h2>
-                <div class="card">
-                    <div class="card-body">
-                        <div class="table-responsive">
-                            <table class="table" id="">
-                                <thead>
-                                    <tr>                                                                          
-                                        <th>{{__('Order Id')}}</th>
-                                        <th>{{__('Customer Name')}}</th>
-                                        <th>{{__('Ticket Name')}}</th>
-                                        <th>{{__('Date')}}</th>                                       
-                                        <th>{{__('Sold Ticket')}}</th>                                        
-                                        <th>{{__('Payment')}}</th>                                        
-                                        <th>{{__('Payment Gateway')}}</th>                                        
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach ($event->sales as $item)
-                                        <tr>
-                                            <td>{{$item->order_id}}</td>
-                                            <td>{{$item->customer->name}}</td>
-                                            <th>{{$item->ticket->name}}</th>
-                                            <th>{{$item->created_at->format('Y-m-d')}}</th>
-                                            <th>{{$item->quantity}}</th>
-                                            <th>{{$currency.$item->payment}}</th>
-                                            <th>{{$item->payment_type}}</th>                                                                                      
-                                        </tr>
-                                    @endforeach                           
-                                </tbody>
-                            </table>
+    <x-flash-messages />
+
+    <div class="event-single tw-grid tw-gap-5 lg:tw-grid-cols-3">
+        <div class="tw-space-y-5 lg:tw-col-span-2">
+            <x-card :padded="false">
+                <x-slot:header>
+                    <div class="tw-flex tw-flex-wrap tw-items-center tw-justify-between tw-gap-3">
+                        <div>
+                            <h2 class="tw-text-lg tw-font-bold tw-text-ink-900 dark:tw-text-neutral-50">{{ $event->name }}</h2>
+                            <p class="tw-mt-0.5 tw-text-sm tw-text-neutral-500 dark:tw-text-neutral-400">
+                                {{ __('Event overview and ticketing.') }}
+                            </p>
                         </div>
-                    </div> 
+                        <a href="{{ url($event->id.'/'.preg_replace('/\s+/', '-', $event->name).'/tickets') }}"
+                            class="tw-inline-flex tw-h-10 tw-items-center tw-gap-2 tw-rounded-pill tw-bg-primary-500 tw-px-4 tw-text-sm tw-font-bold tw-text-ink-950 tw-transition hover:tw-bg-primary-400 focus-visible:tw-outline-none focus-visible:tw-ring-2 focus-visible:tw-ring-accent-600">
+                            <x-lucide-ticket class="tw-h-4 tw-w-4" />
+                            {{ __('Manage Tickets') }}
+                        </a>
+                    </div>
+                </x-slot:header>
+
+                <div class="tw-space-y-6 tw-p-5">
+                    <div class="event-img tw-h-64 tw-rounded-card tw-bg-cover tw-bg-center"
+                        style="background-image: url('{{ url('images/upload/'.$event->image) }}')"
+                        role="img" aria-label="{{ $event->name }}"></div>
+
+                    <div class="event-description tw-prose tw-max-w-none tw-text-sm tw-text-ink-800 dark:tw-prose-invert dark:tw-text-neutral-200">
+                        {!! $event->description !!}
+                    </div>
+
+                    <div class="tw-grid tw-gap-3 sm:tw-grid-cols-3">
+                        <div class="tw-flex tw-items-start tw-gap-3 tw-rounded-card tw-bg-neutral-50 tw-p-4 dark:tw-bg-ink-950">
+                            <span class="tw-text-primary-600 dark:tw-text-primary-300"><x-lucide-users class="tw-h-5 tw-w-5" /></span>
+                            <span>
+                                <span class="tw-block tw-text-xs tw-font-semibold tw-uppercase tw-tracking-wide tw-text-neutral-500 dark:tw-text-neutral-400">{{ __('People allowed') }}</span>
+                                <span class="tw-mt-1 tw-block tw-lg tw-font-bold tw-text-ink-900 dark:tw-text-neutral-50">{{ $event->people }}</span>
+                            </span>
+                        </div>
+                        <div class="tw-flex tw-items-start tw-gap-3 tw-rounded-card tw-bg-neutral-50 tw-p-4 dark:tw-bg-ink-950">
+                            <span class="tw-text-primary-600 dark:tw-text-primary-300"><x-lucide-calendar-days class="tw-h-5 tw-w-5" /></span>
+                            <span>
+                                <span class="tw-block tw-text-xs tw-font-semibold tw-uppercase tw-tracking-wide tw-text-neutral-500 dark:tw-text-neutral-400">{{ __('Date') }}</span>
+                                <span class="tw-mt-1 tw-block tw-text-sm tw-font-bold tw-text-ink-900 dark:tw-text-neutral-50">
+                                    {{ Carbon\Carbon::parse($event->start_time)->format('l').', '.$event->start_time->format('d F Y') }}
+                                </span>
+                            </span>
+                        </div>
+                        <div class="tw-flex tw-items-start tw-gap-3 tw-rounded-card tw-bg-neutral-50 tw-p-4 dark:tw-bg-ink-950">
+                            <span class="tw-text-primary-600 dark:tw-text-primary-300"><x-lucide-map-pin class="tw-h-5 tw-w-5" /></span>
+                            <span>
+                                <span class="tw-block tw-text-xs tw-font-semibold tw-uppercase tw-tracking-wide tw-text-neutral-500 dark:tw-text-neutral-400">{{ __('Location') }}</span>
+                                <span class="tw-mt-1 tw-block tw-text-sm tw-font-bold tw-text-ink-900 dark:tw-text-neutral-50">
+                                    {{ $event->type == 'offline' ? $event->address : __('Online Event') }}
+                                </span>
+                            </span>
+                        </div>
+                    </div>
                 </div>
-             </div>
-             <div class="col-lg-4">
-                 @if(count($event->ticket)>0)
-                    @foreach ($event->ticket as $item)
-                        <div class="card card-hero">
-                            <div class="card-header">
-                                <p class="text-right">{{__('Sales end on')}}</p>
-                                <p class="text-right">{{$item->start_time->format('Y-m-d').','.$item->end_time->format('h:i a')}}</p>
-                                <div class="card-icon">
-                                    <i class="fas fa-ticket-alt"></i>
-                                </div>
-                                <div class="card-description">{{$item->name}} | <span>{{$currency.$item->price}}</span></div>
-                                <h4>{{$item->used_ticket.'/'.$item->quantity}} </h4>                                
+            </x-card>
+
+            <x-card :padded="false">
+                <x-slot:header>
+                    <h2 class="tw-text-lg tw-font-bold tw-text-ink-900 dark:tw-text-neutral-50">{{ __('Recent Sales') }}</h2>
+                </x-slot:header>
+
+                <div class="tw-overflow-x-auto">
+                    <table class="tw-min-w-full tw-text-left tw-text-sm">
+                        <thead>
+                            <tr class="tw-border-b tw-border-neutral-200 tw-text-xs tw-uppercase tw-tracking-wide tw-text-neutral-500 dark:tw-border-neutral-700 dark:tw-text-neutral-400">
+                                <th class="tw-px-3 tw-py-3">{{ __('Order Id') }}</th>
+                                <th class="tw-px-3 tw-py-3">{{ __('Customer Name') }}</th>
+                                <th class="tw-px-3 tw-py-3">{{ __('Ticket Name') }}</th>
+                                <th class="tw-px-3 tw-py-3">{{ __('Date') }}</th>
+                                <th class="tw-px-3 tw-py-3">{{ __('Sold Ticket') }}</th>
+                                <th class="tw-px-3 tw-py-3">{{ __('Payment') }}</th>
+                                <th class="tw-px-3 tw-py-3">{{ __('Payment Gateway') }}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach ($event->sales as $item)
+                                <tr class="tw-border-b tw-border-neutral-100 last:tw-border-0 dark:tw-border-neutral-800">
+                                    <td class="tw-px-3 tw-py-3 tw-font-mono tw-text-xs tw-text-neutral-600 dark:tw-text-neutral-300">{{ $item->order_id }}</td>
+                                    <td class="tw-px-3 tw-py-3 tw-font-semibold tw-text-ink-900 dark:tw-text-neutral-100">{{ $item->customer->name }}</td>
+                                    <td class="tw-px-3 tw-py-3 tw-text-neutral-600 dark:tw-text-neutral-300">{{ $item->ticket->name }}</td>
+                                    <td class="tw-px-3 tw-py-3 tw-text-neutral-600 dark:tw-text-neutral-300">{{ $item->created_at->format('Y-m-d') }}</td>
+                                    <td class="tw-px-3 tw-py-3 tw-text-neutral-600 dark:tw-text-neutral-300">{{ $item->quantity }}</td>
+                                    <td class="tw-px-3 tw-py-3 tw-text-neutral-600 dark:tw-text-neutral-300">{{ $currency.$item->payment }}</td>
+                                    <td class="tw-px-3 tw-py-3 tw-text-neutral-600 dark:tw-text-neutral-300">{{ $item->payment_type }}</td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            </x-card>
+        </div>
+
+        <div class="tw-space-y-4">
+            @if (count($event->ticket) > 0)
+                @foreach ($event->ticket as $item)
+                    <x-card class="card-hero" :padded="false">
+                        <div class="tw-border-b tw-border-primary-500/20 tw-bg-primary-500/10 tw-p-5">
+                            <p class="tw-text-xs tw-font-semibold tw-uppercase tw-tracking-wide tw-text-primary-900 dark:tw-text-primary-200">
+                                {{ __('Sales end on') }}
+                            </p>
+                            <p class="tw-mt-1 tw-text-sm tw-font-semibold tw-text-ink-900 dark:tw-text-neutral-50">
+                                {{ $item->start_time->format('Y-m-d').','.$item->end_time->format('h:i a') }}
+                            </p>
+                            <div class="tw-mt-4 tw-flex tw-items-start tw-gap-3">
+                                <span class="tw-flex tw-h-10 tw-w-10 tw-shrink-0 tw-items-center tw-justify-center tw-rounded-stub tw-bg-primary-500 tw-text-ink-950">
+                                    <x-lucide-ticket class="tw-h-5 tw-w-5" />
+                                </span>
+                                <span>
+                                    <span class="tw-block tw-text-sm tw-font-bold tw-text-ink-900 dark:tw-text-neutral-50">
+                                        {{ $item->name }} | {{ $currency.$item->price }}
+                                    </span>
+                                    <span class="tw-mt-1 tw-block tw-lg tw-font-extrabold tw-text-primary-700 dark:tw-text-primary-300">
+                                        {{ $item->used_ticket.'/'.$item->quantity }}
+                                    </span>
+                                </span>
                             </div>
-                        </div> 
-                    @endforeach
-                @else 
-                
-                <div class="card card-hero">
-                    <div class="card-header">
-                       
-                    <div class="card-icon">
-                        <i class="fas fa-ticket-alt"></i>
+                        </div>
+                    </x-card>
+                @endforeach
+            @else
+                <x-card class="card-hero" :padded="false">
+                    <div class="tw-flex tw-items-center tw-gap-4 tw-p-5">
+                        <span class="tw-flex tw-h-11 tw-w-11 tw-shrink-0 tw-items-center tw-justify-center tw-rounded-stub tw-bg-neutral-100 tw-text-neutral-500 dark:tw-bg-neutral-800 dark:tw-text-neutral-300">
+                            <x-lucide-ticket class="tw-h-5 tw-w-5" />
+                        </span>
+                        <span>
+                            <span class="tw-block tw-text-sm tw-text-sm tw-font-bold tw-text-ink-900 dark:tw-text-neutral-50">{{ __('No tickets') }}</span>
+                            <a href="{{ url($event->id.'/ticket/create') }}"
+                                class="tw-mt-1 tw-inline-flex tw-h-8 tw-items-center tw-gap-1 tw-rounded-pill tw-bg-primary-500 tw-px-3 tw-text-xs tw-font-bold tw-text-ink-950 tw-transition hover:tw-bg-primary-400 focus-visible:tw-outline-none focus-visible:tw-ring-2 focus-visible:tw-ring-accent-600">
+                                <x-lucide-plus class="tw-h-3.5 tw-w-3.5" />
+                                {{ __('Add Ticket') }}
+                            </a>
+                        </span>
                     </div>
-                    <div class="card-description">{{__('No tickets')}}</div>
-                    <a href="{{url($event->id.'/ticket/create')}}"><button type="button" class="btn btn-ticket" ><i class="fas fa-plus"></i> </button>  </a>                  
-                    </div>
-                </div> 
-                @endif
-                
-             </div>
-         </div>
-      </div>
-    </section>
+                </x-card>
+            @endif
+        </div>
+    </div>
 @endsection
