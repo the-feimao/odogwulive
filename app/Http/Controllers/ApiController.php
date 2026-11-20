@@ -24,6 +24,7 @@ use App\Mail\TicketBookOrg;
 use App\Models\NotificationTemplate;
 use App\Models\Notification;
 use App\Models\EventReport;
+use App\Support\CheckoutCalculator;
 use Carbon\Carbon;
 use OneSignal;
 use Config;
@@ -35,6 +36,18 @@ use Illuminate\Http\Request;
 
 class ApiController extends Controller
 {
+    private function authorizeCustomerOrder($id): Order
+    {
+        $order = Order::findOrFail($id);
+        $user = Auth::user();
+
+        if (!$user || (int) $order->customer_id !== (int) $user->id) {
+            abort(403);
+        }
+
+        return $order;
+    }
+
     public function userLogin(Request $request){
         $request->validate([
             'email' => 'bail|required|email',
@@ -544,15 +557,17 @@ class ApiController extends Controller
     }
     
     public function addReview(Request $request){
-        $request->validate([      
-            'event_id' => 'bail|required',          
-            'order_id' => 'bail|required',    
-            'message' => 'bail|required',          
-            'rate' => 'bail|required|numeric',                      
+        $request->validate([
+            'event_id' => 'bail|required',
+            'order_id' => 'bail|required',
+            'message' => 'bail|required',
+            'rate' => 'bail|required|numeric',
         ]);
+        $order = $this->authorizeCustomerOrder($request->order_id);
         $data = $request->all();
         $data['user_id'] = Auth::user()->id;
-        $data['organization_id'] = Event::find($request->event_id)->user_id;
+        $data['organization_id'] = $order->organization_id;
+        $data['event_id'] = $order->event_id;
         $data['status'] = 0;
         $review = Review::create($data);
         return response()->json(['success'=>true,'msg'=>null ,'data' =>$review ], 200);
@@ -564,78 +579,92 @@ class ApiController extends Controller
         return response()->json(['success'=>true,'msg'=>null ,'data' =>$data ], 200);
     }
 
-    public function createOrder(Request $request){  
-      
-        $request->validate([      
-            'event_id' => 'bail|required',          
-            'ticket_id' => 'bail|required', 
-            'quantity' => 'bail|required',          
-            'coupon_discount' => 'bail|required', 
-            'payment' => 'bail|required|numeric', 
-            'tax' => 'bail|required|numeric', 
-            'payment_type' => 'bail|required',                  
-            'payment_token' => 'required_if:payment_type,STRIPE,PAYPAL,RAZOR',
-        ]);
-        $data = $request->all();
-        $data['order_id'] = '#'.rand(9999,100000);
-        $data['organization_id'] = Event::find($request->event_id)->user_id;        
-        $data['customer_id'] = Auth::user()->id;
-        if($request->payment_type=="LOCAL" || $request->payment_type == "FLUTTERWAVE"){
-            $data['payment_status'] = 0;
-        }
-        else{
-            $data['payment_status'] = 1;
-        }
-        $com = Setting::find(1,['org_commission_type','org_commission']);
-        $p =   $request->payment- $request->tax; 
-        if($request->payment_type=="FREE"){
-            $data['org_commission']  = 0;
-        }
-        else{
-            if($com->org_commission_type == "percentage"){
-                $data['org_commission'] =  $p*$com->org_commission/100;
-            }
-            else if($com->org_commission_type=="amount"){
-                $data['org_commission']  = $com->org_commission;
-            }
-        }
-                        
-        if($request->coupon_id != null){      
-            $count = Coupon::find($request->coupon_id)->use_count;
-            $count = $count +1;           
-            Coupon::find($request->coupon_id)->update(['use_count'=>$count]);
-        } 
-        if($request->payment_type=="STRIPE"){
-            $currency = Setting::find(1)->currency;
-            $stripe_secret = PaymentSetting::find(1)->stripeSecretKey;
-            Stripe\Stripe::setApiKey($stripe_secret);
-            $stripe_payment = $currency == "USD" || $currency == "EUR" ? $request->payment * 100 : $request->payment;
+    public function createOrder(Request $request){
+         $request->validate([
+             'event_id' => 'bail|required|integer',
+             'ticket_id' => 'bail|required|integer',
+             'quantity' => 'bail|required|integer|min:1',
+             'coupon_discount' => 'bail|required|numeric',
+             'payment' => 'bail|required|numeric',
+             'tax' => 'bail|required|numeric',
+             'payment_type' => 'bail|required|in:FREE,LOCAL,FLUTTERWAVE,STRIPE,PAYPAL,RAZOR',
+             'payment_token' => 'required_if:payment_type,STRIPE,PAYPAL,RAZOR',
+             'coupon_id' => 'nullable|integer',
+         ]);
 
-            $stripeDetail =  Stripe\Charge::create ([
-                "amount" => $stripe_payment,
-                "currency" => $currency,
-                "source" => $request->payment_token,
-            ]);
-            $data['payment_token'] = $stripeDetail->id;
-        }
-        $data = Order::create($data);
-      
-        for ($i=1; $i <= $request->quantity; $i++) { 
-            $child['ticket_number'] = uniqid();
-            $child['ticket_id'] = $request->ticket_id;
-            $child['order_id'] = $data->id;
-            $child['customer_id'] = Auth::user()->id;
-            OrderChild::create($child);         
-        } 
+         $calculator = new CheckoutCalculator();
+         $event = Event::findOrFail($request->event_id);
+         $ticket = Ticket::findOrFail($request->ticket_id);
+         $calculator->assertSellable($event, $ticket);
+         $quantity = (int) $request->quantity;
+         $calculator->assertQuantityAvailable($ticket, $quantity);
 
-        if(isset($request->tax_data)){
-            foreach (json_decode($request->tax_data) as $value) {
-                $tax['order_id'] = $data->id;
-                $tax['tax_id'] = $value->tax_id;
-                $tax['price'] = $value->price;
-                OrderTax::create($tax);
-            }
-        }
+         if ($request->payment_type === 'FREE' && (int) $ticket->price !== 0) {
+             throw \Illuminate\Validation\ValidationException::withMessages([
+                 'payment_type' => 'This ticket cannot be ordered as free.',
+             ]);
+         }
+
+         $coupon = $calculator->validateCoupon($request->coupon_id, $event);
+         $totals = $calculator->calculate($event, $ticket, $quantity, $coupon, $request->payment_type);
+
+         $data = $request->all();
+         $data['order_id'] = '#'.rand(9999,100000);
+         $data['organization_id'] = $event->user_id;
+         $data['customer_id'] = Auth::user()->id;
+         $data['payment'] = $totals['payment'];
+         $data['tax'] = $totals['tax'];
+         $data['coupon_discount'] = $totals['discount'];
+         $data['coupon_id'] = $coupon ? $coupon->id : null;
+         $data['org_commission'] = $totals['commission'];
+         if($request->payment_type=="LOCAL" || $request->payment_type == "FLUTTERWAVE"){
+             $data['payment_status'] = 0;
+         }
+         else{
+             $data['payment_status'] = 1;
+         }
+
+         if($request->payment_type=="STRIPE"){
+             $currency = Setting::find(1)->currency;
+             $stripe_secret = PaymentSetting::find(1)->stripeSecretKey;
+             Stripe\Stripe::setApiKey($stripe_secret);
+             $stripe_payment = $calculator->gatewayAmount($totals['payment']);
+
+             $stripeDetail =  Stripe\Charge::create ([
+                 "amount" => $stripe_payment,
+                 "currency" => $currency,
+                 "source" => $request->payment_token,
+             ]);
+             $data['payment_token'] = $stripeDetail->id;
+         }
+
+         $customerId = (int) Auth::user()->id;
+         $data = DB::transaction(function () use ($data, $ticket, $quantity, $totals, $coupon, $customerId) {
+             $order = Order::create($data);
+
+             for ($i=1; $i <= $quantity; $i++) {
+                 OrderChild::create([
+                     'ticket_number' => uniqid(),
+                     'ticket_id' => $ticket->id,
+                     'order_id' => $order->id,
+                     'customer_id' => $customerId,
+                 ]);
+             }
+
+             foreach ($totals['taxes'] as $taxRow) {
+                 OrderTax::create([
+                     'order_id' => $order->id,
+                     'tax_id' => $taxRow->id,
+                     'price' => $taxRow->price,
+                 ]);
+             }
+
+             if ($coupon) {
+                 $coupon->increment('use_count');
+             }
+
+             return $order;
+         });
               
         $user = AppUser::find($data->customer_id);
         $setting = Setting::find(1);
@@ -751,23 +780,37 @@ class ApiController extends Controller
     }
 
     public function viewSingleOrder($id){
+        $this->authorizeCustomerOrder($id);
         $data = Order::with(['event','ticket','organization'])->find($id);
         return response()->json(['success'=>true,'msg'=>null ,'data' =>$data ], 200);  
     }
 
     public function allSetting(){
-        $general = Setting::find(1,['app_name','app_version','logo','map_key','currency','onesignal_app_id','onesignal_project_number','onesignal_api_key','onesignal_auth_key','help_center','privacy_policy','cookie_policy','terms_services','acknowledgement','primary_color']);     
+        $general = Setting::find(1,[
+            'app_name','app_version','logo','currency',
+            'onesignal_app_id','onesignal_project_number',
+            'help_center','privacy_policy','cookie_policy',
+            'terms_services','acknowledgement','primary_color',
+        ]);
         $general->currency_symbol = Currency::where('code',$general->currency)->first()->symbol;
-        $general->stripe = PaymentSetting::find(1)->stripe;
-        $general->cod = PaymentSetting::find(1)->cod;
-        $general->paypal = PaymentSetting::find(1)->paypal;
-        $general->razor = PaymentSetting::find(1)->razor;
-        $general->flutterwave = PaymentSetting::find(1)->flutterwave;
-        $general->stripeSecretKey = PaymentSetting::find(1)->stripeSecretKey;
-        $general->stripePublicKey = PaymentSetting::find(1)->stripePublicKey;
-        $general->paypalClientId = PaymentSetting::find(1)->paypalClientId;
-        $general->razorPublishKey = PaymentSetting::find(1)->razorPublishKey;
-        $general->razorSecretKey = PaymentSetting::find(1)->razorSecretKey;
+
+        $payments = PaymentSetting::find(1);
+        $general->stripe = $payments->stripe;
+        $general->cod = $payments->cod;
+        $general->paypal = $payments->paypal;
+        $general->razor = $payments->razor;
+        $general->flutterwave = $payments->flutterwave;
+
+        // Preserve the response keys for mobile clients, but never expose
+        // server-side credentials.
+        $general->map_key = null;
+        $general->onesignal_api_key = null;
+        $general->onesignal_auth_key = null;
+        $general->stripeSecretKey = null;
+        $general->stripePublicKey = $payments->stripePublicKey;
+        $general->paypalClientId = $payments->paypalClientId;
+        $general->razorPublishKey = $payments->razorPublishKey;
+        $general->razorSecretKey = null;
         return response()->json(['success'=>true,'msg'=>null ,'data' =>$general ], 200);  
     }
 
@@ -790,6 +833,7 @@ class ApiController extends Controller
     }
 
     public function singleOrder($id){
+        $this->authorizeCustomerOrder($id);
         $data = Order::with(['event','ticket'])->find($id);
         return response()->json(['success'=>true,'msg'=>null ,'data' =>$data ], 200); 
     }

@@ -19,6 +19,19 @@ use Illuminate\Http\Request;
 
 class ScannerApiController extends Controller
 {
+    private function assignedEvent($id): Event
+    {
+        $event = Event::where('id', $id)
+            ->where('scanner_id', Auth::user()->id)
+            ->where('status', 1)
+            ->where('is_deleted', 0)
+            ->first();
+
+        abort_if(!$event, 403);
+
+        return $event;
+    }
+
     public function scannerLogin(Request $request){
         $request->validate([
             'email' => 'bail|required|email',            
@@ -88,8 +101,9 @@ class ScannerApiController extends Controller
     }
 
     public function eventDetail($id){
+        $this->assignedEvent($id);
         $img = array();
-        $data = Event::find($id)->makeHidden(['created_at','updated_at']); 
+        $data = Event::find($id)->makeHidden(['created_at','updated_at']);
         foreach (array_filter(explode(',',$data->gallery)) as $value) {
             array_push($img,url('images/upload/').'/'.$value);
         }
@@ -107,7 +121,8 @@ class ScannerApiController extends Controller
     }
 
     public function eventUsers($id){
-        $order = Order::where('event_id',$id)->pluck('id');  
+        $this->assignedEvent($id);
+        $order = Order::where('event_id',$id)->pluck('id');
         $orderChild = OrderChild::whereIn('order_id',$order)->get();
         foreach ($orderChild as $value) {
             $o = Order::find($value->order_id);
@@ -133,7 +148,13 @@ class ScannerApiController extends Controller
 
     public function scanTicket($code,$event_id)
     {
+        $this->assignedEvent($event_id);
+
         $child = OrderChild::where('ticket_number',$code)->first();
+        if (!$child) {
+            return response()->json(['msg'=> 'Ticket can not be found.','success'=>false], 200);
+        }
+
         $order = Order::find($child->order_id);
         if($order->event_id == $event_id)
         {

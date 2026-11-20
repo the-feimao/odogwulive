@@ -91,7 +91,7 @@ class ScannerApiTest extends TestCase
         $organizer = $this->organizer();
         $scanner = $this->scannerUser($organizer);
         $event = $this->event($organizer, ['scanner_id' => $scanner->id]);
-        $otherEvent = $this->event($organizer);
+        $otherEvent = $this->event($organizer, ['scanner_id' => $scanner->id]);
         $ticket = $this->ticket($event);
         $customer = $this->customer();
         $order = $this->order($event, $ticket, $customer, $organizer);

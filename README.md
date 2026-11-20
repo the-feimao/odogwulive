@@ -56,6 +56,23 @@ The repository also contains installer assets under `installer/`. Installer and 
 
 `docker-compose.yml` provides app, MySQL, Redis, and mail services. The `mailhog` service name is retained for compatibility, but the image is Mailpit; existing `MAIL_HOST=mailhog` values keep working.
 
+## Production email with Brevo free tier
+
+Brevo's free tier can be used through Laravel's built-in SMTP transport; no package or code change is required. Create a Brevo account, verify the sender address/domain, generate an SMTP key, then set these values in the production `.env` (never commit them):
+
+```dotenv
+MAIL_MAILER=smtp
+MAIL_HOST=smtp-brevo.com
+MAIL_PORT=587
+MAIL_ENCRYPTION=tls
+MAIL_USERNAME=your-brevo-login-email
+MAIL_PASSWORD=your-brevo-smtp-key
+MAIL_FROM_ADDRESS=verified-sender@example.com
+MAIL_FROM_NAME="${APP_NAME}"
+```
+
+Use port `465` with `MAIL_ENCRYPTION=ssl` only if your Brevo account is configured for it. The free tier has provider limits and sending rules; review Brevo's current plan terms before relying on it for production volume. Local Mailpit configuration is unchanged, and no paid email service is required for development or tests.
+
 ## Build commands
 
 ```bash
@@ -131,7 +148,11 @@ Use Tailwind design tokens from `tailwind.config.js`; do not hard-code new brand
 ## Security and payments
 
 - Keep CSRF protection, validation, and authorization checks intact.
-- Payment SDK scripts (PayPal, Razorpay, Flutterwave, Stripe) are provider-hosted by design and must not be removed.
+- `/api/user/setting` keeps its response keys for mobile clients, but map/OneSignal/payment secrets are returned as `null`; only public keys and feature flags are populated.
+- Ownership checks apply to customer orders/reviews, organizer events/tickets/taxes/coupons/orders, staff payment pages, and scanner-assigned events. Unauthorized requests receive `403`.
+- Named login throttles limit each login endpoint to 5 attempts per minute per `email|ip`; excess attempts receive `429`.
+- Checkout totals, taxes, coupon discounts, quantities, and Stripe amounts are recalculated on the server; client-supplied monetary fields are not trusted.
+- Payment SDK scripts (PayPal, Razorpay, Flutterwave, Stripe) are provider-hosted by design and must not be removed. Public gateway callbacks stay reachable, but they do not mark an order paid without verified gateway confirmation.
 - Twilio remains optional and off unless explicitly configured.
 - Never commit `.env` secrets, payment keys, OAuth keys, or production data.
-- Known API authorization/secret-redaction findings from Phase 6 are documented in `docs/audit.md` and require an explicit product decision before changing response shapes or auth behavior.
+- The approved follow-up hardening and its behavior changes are documented in `docs/audit.md`. License-check and installer logic must remain intact and unchanged.

@@ -38,6 +38,10 @@ class OrganizationApiController extends Controller
 
         $userdata = array( 'email' => $request->email, 'password' => $request->password );
         if(Auth::attempt($userdata)){
+            if (!Auth::user()->hasRole('organization')) {
+                return response()->json(['msg' => 'Only organization can login.','success'=>false], 200);
+            }
+
             $user = Auth::user();
             User::find($user->id)->update(['device_token'=>$request->device_token]);
             $user['token'] = $user->createToken('eventRight')->accessToken; 
@@ -175,9 +179,10 @@ class OrganizationApiController extends Controller
             'status' => 'bail|required|numeric',
             'description' => 'bail|required',
             'people' => 'bail|required|numeric',                                     
-        ]);         
-        $data = $request->all();            
-        $data['user_id'] = Auth::user()->id; 
+        ]);
+        $this->ownedScanner($request->scanner_id);
+        $data = $request->all();
+        $data['user_id'] = Auth::user()->id;
         if($request->tags != null){
             $data['tags'] = array();
             foreach ($request->tags as $key) {          
@@ -241,24 +246,28 @@ class OrganizationApiController extends Controller
             }
             $data['gallery'] = implode(',',$gallery);
         }
+        $this->ownedEvent($request->id);
         $event = Event::find($request->id)->update($data);
 
         return response()->json(['data' => $event,'success'=>true], 200);       
     }
 
     public function cancelEvent($id){
+        $this->ownedEvent($id);
         Event::find($id)->update(['event_status'=>'Cancel']);
         return response()->json(['msg' => 'Event Canceled successfully.','success'=>true], 200);       
     }
 
     public function deleteEvent($id){
+        $this->ownedEvent($id);
         Event::find($id)->update(['is_deleted'=>1,'event_status'=>'Deleted']);
         $ticket = Ticket::where('event_id',$id)->update(['is_deleted'=>1]);        
         return response()->json(['msg' => 'Event deleted successfully.','success'=>true], 200);   
     }
 
     public function eventDetail($id){
-        $data = Event::with(['category:id,name'])->find($id);    
+        $this->ownedEvent($id);
+        $data = Event::with(['category:id,name'])->find($id);
         $data->startTime = $data->start_time->format('h:i a');
         $data->endTime = $data->end_time->format('h:i a');  
         $data->tags = array_filter(explode(',',$data->tags));  
@@ -276,16 +285,19 @@ class OrganizationApiController extends Controller
     }
 
     public function eventGuestList($id){
+        $this->ownedEvent($id);
         $data = Order::with(['customer:name,id,email,phone','ticket:id,ticket_number'])->where('event_id',$id)->orderBy('id','DESC')->get()->each->setAppends([])->makeHidden(['payment_type','updated_at','payment_token','coupon_discount','coupon_id','order_status']);
         return response()->json(['data' => $data,'success'=>true], 200);  
     }
 
     public function orderDetail($id){
+        $this->ownedOrder($id);
         $data = Order::with(['customer:name,id,email,phone','ticket:id,ticket_number'])->find($id)->setAppends([])->makeHidden(['updated_at','payment_token','coupon_discount','coupon_id','order_status']);
         return response()->json(['data' => $data,'success'=>true], 200);  
     }
 
     public function eventTickets($id){
+        $this->ownedEvent($id);
         $data = Ticket::where('event_id',$id)->orderBy('id','DESC')->get();
         foreach ($data as $value) {
             $value->use_ticket = Order::where('ticket_id',$value->id)->sum('quantity');
@@ -310,6 +322,7 @@ class OrganizationApiController extends Controller
     }
 
     public function ticketDetail($id){
+        $this->ownedTicket($id);
         $data = Ticket::find($id);
         $data->use_ticket = Order::where('ticket_id',$data->id)->sum('quantity');
         $data->startTime = $data->start_time->format('Y-m-d\TH:i:s'.'.000000');
@@ -336,8 +349,8 @@ class OrganizationApiController extends Controller
             $data['price'] = 0;
         }
         $data['ticket_number'] = chr(rand(65,90)).chr(rand(65,90)).'-'.rand(999,10000);
-        $event = Event::find($request->event_id); 
-        $data['user_id'] = $event->user_id; 
+        $event = $this->ownedEvent($request->event_id);
+        $data['user_id'] = $event->user_id;
         $ticket = Ticket::create($data);  
         return response()->json(['data' => $ticket,'success'=>true], 200);  
     }
@@ -365,12 +378,15 @@ class OrganizationApiController extends Controller
         }      
         $data['start_time'] = $request->start_date.' '.$request->start_time;     
         $data['end_time']  = $request->end_date.' '.$request->end_time;                
-        Ticket::find($request->id)->update($data);  
+        $this->ownedTicket($request->id);
+        $this->ownedEvent($request->event_id);
+        Ticket::find($request->id)->update($data);
         $ticket = Ticket::find($request->id);
         return response()->json(['data' => $ticket,'success'=>true], 200);  
     }
 
     public function deleteTicket($id){
+        $this->ownedTicket($id);
         Ticket::find($id)->delete();
         return response()->json(['msg' => 'Ticket deleted successfully.','success'=>true], 200);  
     }
@@ -392,11 +408,13 @@ class OrganizationApiController extends Controller
     }
 
     public function taxDetail($id){
+        $this->ownedTax($id);
         $data = Tax::find($id);
         return response()->json(['data' => $data,'success'=>true], 200);    
     }
 
     public function deleteOrder($id){
+        $this->ownedOrder($id);
         $data = Order::find($id);
         $data->delete();
         return response()->json(['msg' => 'Order deleted successfully.','success'=>true], 200);    
@@ -421,19 +439,22 @@ class OrganizationApiController extends Controller
             'price' => 'bail|required|numeric',
             'allow_all_bill'=> 'bail|required|numeric',           
         ]);   
-        $data = $request->all();        
+        $data = $request->all();
+        $this->ownedTax($request->id);
         Tax::find($request->id)->update($data);
         $tax =Tax::find($request->id);
         return response()->json(['data' => $tax,'success'=>true], 200);    
     }
 
     public function deleteTax($id){
+        $this->ownedTax($id);
         Tax::find($id)->delete();
         return response()->json(['msg' =>'Tax deleted successfully.' ,'success'=>true], 200);    
 
     }
 
     public function changeStatusTax($id,$status){
+        $this->ownedTax($id);
         Tax::find($id)->update(['status'=>$status]);
         $data = Tax::find($id);
         return response()->json(['data' =>$data ,'success'=>true], 200);    
@@ -517,7 +538,8 @@ class OrganizationApiController extends Controller
             'max_use' => 'bail|required',
             'description' => 'bail|required',        
         ]);   
-        $data = $request->all(); 
+        $this->ownedEvent($request->event_id);
+        $data = $request->all();
         $data['user_id'] = Auth::user()->id;
         $data['status'] = 1;
         $data['coupon_code'] =  chr(rand(65,90)).chr(rand(65,90)).'-'.rand(9999,100000);
@@ -536,18 +558,22 @@ class OrganizationApiController extends Controller
             'max_use' => 'bail|required',
             'description' => 'bail|required',        
         ]);   
-        $data = $request->all();                         
-        $coupon =  Coupon::find($request->id)->update($data);        
+        $data = $request->all();
+        $this->ownedCoupon($request->id);
+        $this->ownedEvent($request->event_id);
+        $coupon =  Coupon::find($request->id)->update($data);
         return response()->json(['success'=>true,'msg'=>null,'data' =>$coupon ], 200);
     }
 
     public function couponDetail($id){
+        $this->ownedCoupon($id);
         $data = Coupon::find($id)->makeHidden(['created_at','updated_at']);
         $data->event_name = Event::find($data->event_id)->name;
         return response()->json(['success'=>true,'msg'=>null,'data' =>$data ], 200);
     }
 
     public function deleteCoupon($id){
+        $this->ownedCoupon($id);
         $data = Coupon::find($id);
         $data->delete();
         return response()->json(['success'=>true,'msg'=>'Coupon deleted successfully.' ], 200);
@@ -558,7 +584,8 @@ class OrganizationApiController extends Controller
             'image' => 'bail|required',   
             'id' => 'bail|required',          
         ]);
-        $gallery = array_filter(explode(',',Event::find($request->id)->gallery)); 
+        $this->ownedEvent($request->id);
+        $gallery = array_filter(explode(',',Event::find($request->id)->gallery));
         if(count(array_keys($gallery,$request->image))>0){
             if (($key = array_search($request->image, $gallery)) !== false) {
                 unset($gallery[$key]);
@@ -569,6 +596,65 @@ class OrganizationApiController extends Controller
         $data->gallery =$aa;
         $data->update();    
         return response()->json(['success'=>true,'msg'=>null ], 200);
+    }
+
+    private function ownedEvent($id): Event
+    {
+        $event = Event::findOrFail($id);
+        abort_unless((int) $event->user_id === (int) Auth::user()->id, 403);
+
+        return $event;
+    }
+
+    private function ownedTicket($id): Ticket
+    {
+        $ticket = Ticket::findOrFail($id);
+        $this->ownedEvent($ticket->event_id);
+
+        return $ticket;
+    }
+
+    private function ownedTax($id): Tax
+    {
+        $tax = Tax::findOrFail($id);
+        abort_unless((int) $tax->user_id === (int) Auth::user()->id, 403);
+
+        return $tax;
+    }
+
+    private function ownedCoupon($id): Coupon
+    {
+        $coupon = Coupon::findOrFail($id);
+        abort_unless((int) $coupon->user_id === (int) Auth::user()->id, 403);
+
+        return $coupon;
+    }
+
+    private function ownedOrder($id): Order
+    {
+        $order = Order::with('event')->findOrFail($id);
+        $userId = (int) Auth::user()->id;
+
+        if ((int) $order->organization_id === $userId) {
+            return $order;
+        }
+
+        if ($order->event && (int) $order->event->user_id === $userId) {
+            return $order;
+        }
+
+        abort(403);
+    }
+
+    private function ownedScanner($id): User
+    {
+        $scanner = User::where('id', $id)
+            ->where('org_id', Auth::user()->id)
+            ->firstOrFail();
+
+        abort_unless($scanner->hasRole('scanner'), 403);
+
+        return $scanner;
     }
 
 }

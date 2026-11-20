@@ -32,8 +32,10 @@ use App\Mail\ResetPassword;
 use App\Mail\TicketBook;
 use App\Mail\TicketBookOrg;
 use App\Models\Language;
+use App\Support\CheckoutCalculator;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 
 use Artesaos\SEOTools\Facades\JsonLdMulti;
@@ -581,6 +583,18 @@ class FrontendController extends Controller
         return redirect()->back()->withStatus(__('Report is submitted successfully.'));  
     }
 
+    private function authorizeCustomerOrder($id): Order
+    {
+        $order = Order::findOrFail($id);
+        $user = Auth::guard('appuser')->user();
+
+        if (!$user || (int) $order->customer_id !== (int) $user->id) {
+            abort(403);
+        }
+
+        return $order;
+    }
+
     public function checkout($id){
         $data = Ticket::find($id);
         $data->event = Event::find($data->event_id);
@@ -623,76 +637,92 @@ class FrontendController extends Controller
     }
     
     public function createOrder(Request $request){
+        $request->validate([
+            'ticket_id' => 'bail|required|integer',
+            'quantity' => 'bail|required|integer|min:1',
+            'payment_type' => 'bail|required|in:FREE,LOCAL,FLUTTERWAVE,STRIPE,PAYPAL,RAZOR',
+            'coupon_id' => 'nullable|integer',
+            'payment' => 'bail|required|numeric',
+            'tax' => 'bail|required|numeric',
+            'coupon_discount' => 'bail|required|numeric',
+        ]);
+
+        $calculator = new CheckoutCalculator();
+        $ticket = Ticket::findOrFail($request->ticket_id);
+        $event = Event::findOrFail($ticket->event_id);
+        $calculator->assertSellable($event, $ticket);
+        $quantity = (int) $request->quantity;
+        $calculator->assertQuantityAvailable($ticket, $quantity);
+
+        if ($request->payment_type === 'FREE' && (int) $ticket->price !== 0) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'payment_type' => 'This ticket cannot be ordered as free.',
+            ]);
+        }
+
+        $coupon = $calculator->validateCoupon($request->coupon_id, $event);
+        $totals = $calculator->calculate($event, $ticket, $quantity, $coupon, $request->payment_type);
+
         $data = $request->all();
-        $ticket = Ticket::find($request->ticket_id);
-        $event = Event::find($ticket->event_id);
-        
-        $org = User::find($event->user_id);
-        $user = AppUser::find(Auth::guard('appuser')->user()->id);
+        $org = User::findOrFail($event->user_id);
+        $user = AppUser::findOrFail(Auth::guard('appuser')->user()->id);
         $data['order_id'] = '#'.rand(9999,100000);
         $data['event_id'] = $event->id;
         $data['customer_id'] = $user->id;
         $data['organization_id'] = $org->id;
-        $data['order_status'] = 'Pending';  
-        if($request->payment_type=='LOCAL' ||$request->payment_type=='FLUTTERWAVE' ){            
+        $data['order_status'] = 'Pending';
+        $data['payment'] = $totals['payment'];
+        $data['tax'] = $totals['tax'];
+        $data['coupon_discount'] = $totals['discount'];
+        $data['coupon_id'] = $coupon ? $coupon->id : null;
+        $data['org_commission'] = $totals['commission'];
+        if($request->payment_type=='LOCAL' ||$request->payment_type=='FLUTTERWAVE' ){
             $data['payment_status'] = 0;
         }
         else{
             $data['payment_status'] = 1;
         }
-        $com = Setting::find(1,['org_commission_type','org_commission']);
-        $p =   $request->payment- $request->tax; 
-        if($request->payment_type=="FREE"){
-            $data['org_commission']  = 0;
-        }
-        else{
-            if($com->org_commission_type == "percentage"){
-                $data['org_commission'] =  $p*$com->org_commission/100;
-            }
-            else if($com->org_commission_type=="amount"){
-                $data['org_commission']  = $com->org_commission;
-            }
-        }
-        
-        if($request->payment_type == "STRIPE"){  
-            $currency_code = Setting::first()->currency;  
-            $stripe_payment = $currency_code == "USD" || $currency_code == "EUR" ? $request->payment * 100 : $request->payment;
 
-            $cur = Setting::find(1)->currency;        
-            $stripe_secret =  PaymentSetting::find(1)->stripeSecretKey;  
+        if($request->payment_type == "STRIPE"){
+            $stripe_payment = $calculator->gatewayAmount($totals['payment']);
+            $cur = Setting::find(1)->currency;
+            $stripe_secret =  PaymentSetting::find(1)->stripeSecretKey;
             Stripe\Stripe::setApiKey($stripe_secret);
-            $token = $_POST['stripeToken'];
+            $token = $request->input('stripeToken');
             $stripeDetail =  Stripe\Charge::create ([
                     "amount" => $stripe_payment,
                     "currency" => $cur,
                     "source" => $token,
-            ]);         
+            ]);
             $data['payment_token'] = $stripeDetail->id;
-        } 
-
-        if($request->coupon_id != null){      
-            $count = Coupon::find($request->coupon_id)->use_count;
-            $count = $count +1;           
-            Coupon::find($request->coupon_id)->update(['use_count'=>$count]);
-        } 
-          
-           
-        $order = Order::create($data);
-        for ($i=1; $i <= $request->quantity; $i++) { 
-            $child['ticket_number'] = uniqid();
-            $child['ticket_id'] = $request->ticket_id;
-            $child['order_id'] = $order->id;
-            $child['customer_id'] = Auth::guard('appuser')->user()->id;
-            OrderChild::create($child);         
-        } 
-        if(isset($request->tax_data)){
-            foreach (json_decode($data['tax_data']) as $value) {
-                $tax['order_id'] = $order->id;
-                $tax['tax_id'] = $value->id;
-                $tax['price'] = $value->price;             
-                OrderTax::create($tax);
-            }
         }
+
+        $order = DB::transaction(function () use ($data, $ticket, $quantity, $totals, $coupon, $user) {
+            $order = Order::create($data);
+
+            for ($i=1; $i <= $quantity; $i++) {
+                OrderChild::create([
+                    'ticket_number' => uniqid(),
+                    'ticket_id' => $ticket->id,
+                    'order_id' => $order->id,
+                    'customer_id' => $user->id,
+                ]);
+            }
+
+            foreach ($totals['taxes'] as $taxRow) {
+                OrderTax::create([
+                    'order_id' => $order->id,
+                    'tax_id' => $taxRow->id,
+                    'price' => $taxRow->price,
+                ]);
+            }
+
+            if ($coupon) {
+                $coupon->increment('use_count');
+            }
+
+            return $order;
+        });
         
         $user = AppUser::find($order->customer_id);
         $setting = Setting::find(1);
@@ -1275,6 +1305,7 @@ class FrontendController extends Controller
     }
 
     public function getOrder($id){
+        $this->authorizeCustomerOrder($id);
         $data = Order::with(['event:id,name,image,start_time,type,end_time,address','ticket:id,ticket_number,name,price,type','organization:id,first_name,last_name,image'])->find($id);
         $data->review=Review::where('order_id',$id)->first();
         $data->time = $data->event->start_time->format('D').', '.$data->event->start_time->format('d M Y').' at '.$data->event->start_time->format('h:i a');
@@ -1284,26 +1315,49 @@ class FrontendController extends Controller
     }
 
     public function makePayment($id){
+        $this->authorizeCustomerOrder($id);
         $order = Order::with(['customer'])->find($id);
         return view('frontend.createPayment', compact('order'));
     }
 
     public function initialize(Request $request,$id)
     {
+      $this->authorizeCustomerOrder($id);
       Rave::initialize(route('frontendCallback',$id));
     }
 
-    public function callback(Request $request,$id)
-    {       
-        $payment_token = json_decode($request->resp)->tx->paymentId;
-        $order = Order::find($id)->update(['payment_status'=>1,'payment_token'=> $payment_token]);
-        return view('frontend.createPayment');        
-    }  
+    public function callback(Request $request, $id)
+    {
+        $order = $this->authorizeCustomerOrder($id);
+
+        $paymentToken = null;
+        $resp = $request->input('resp');
+        if (is_string($resp)) {
+            $decoded = json_decode($resp);
+            $paymentToken = data_get($decoded, 'tx.paymentId') ?? data_get($decoded, 'data.id');
+        } elseif (is_array($resp)) {
+            $paymentToken = data_get($resp, 'tx.paymentId') ?? data_get($resp, 'data.id');
+        }
+
+        $transactionId = $request->input('transaction_id');
+        if (empty($paymentToken) && !empty($transactionId)) {
+            $paymentToken = $transactionId;
+        }
+
+        if (!empty($paymentToken)) {
+            $order->payment_token = $paymentToken;
+            $order->save();
+        }
+
+        // Do not mark the order as paid without server-side gateway verification.
+        return view('frontend.createPayment');
+    }
 
     public function addReview(Request $request){
+        $order = $this->authorizeCustomerOrder($request->order_id);
         $data = $request->all();
-        $data['organization_id'] = Order::find($request->order_id)->organization_id;
-        $data['event_id'] = Order::find($request->order_id)->event_id;
+        $data['organization_id'] = $order->organization_id;
+        $data['event_id'] = $order->event_id;
         $data['user_id'] = Auth::guard('appuser')->user()->id;
         $data['status'] = 0;
         Review::create($data);

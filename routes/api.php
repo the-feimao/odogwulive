@@ -22,7 +22,7 @@ Route::middleware('auth:api')->get('/user', function (Request $request) {
     return $request->user();
 });
 
-Route::post('/user/login',[ApiController::class, 'userLogin']);
+Route::post('/user/login',[ApiController::class, 'userLogin'])->middleware('throttle:login');
 Route::post('/user/register',[ApiController::class, 'userRegister']);
 Route::post('/user/forget-password',[ApiController::class, 'forgetPassword']);
 Route::get('/user/setting',[ApiController::class, 'allSetting']);
@@ -61,7 +61,7 @@ Route::group(['prefix' => 'user','middleware' => ['auth:userApi']], function () 
 });
 
 // organization
-Route::post('/organization/login',[OrganizationApiController::class, 'organizationLogin']);
+Route::post('/organization/login',[OrganizationApiController::class, 'organizationLogin'])->middleware('throttle:login');
 Route::post('/organization/forget-password',[OrganizationApiController::class, 'forgetPassword']);
 Route::post('/organization/register',[OrganizationApiController::class, 'organizationRegister']);
 Route::get('/organization/setting',[OrganizationApiController::class, 'organizationSetting']);
@@ -112,7 +112,7 @@ Route::group(['prefix' => 'organization','middleware' => ['auth:api']], function
 
 // scanner
 
-Route::post('/scanner/login',[ScannerApiController::class, 'scannerLogin']);
+Route::post('/scanner/login',[ScannerApiController::class, 'scannerLogin'])->middleware('throttle:login');
 Route::post('/scanner/forget-password',[ScannerApiController::class, 'forgetPassword']);
 Route::get('/scanner/setting',[ScannerApiController::class, 'scannerSetting']);
 Route::group(['prefix' => 'scanner','middleware' => ['auth:api']], function () {

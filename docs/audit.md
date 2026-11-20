@@ -1076,3 +1076,36 @@ npm audit                                         # 4 dev-only vulnerabilities (
 6. Production email provider is still undecided (host SMTP versus Brevo free tier). Local Mailpit configuration is unchanged.
 7. The pre-existing PayPal client-id fix in `resources/views/master.blade.php` remains unstaged. No secret, payment key, `.env` value, Passport token, license check or installer logic was modified.
 8. No route name, API request/response shape, Passport behaviour, Spatie permission, scanner validation, payment calculation or order/ticket creation flow changed.
+
+## 36. Follow-up addendum - security hardening, Brevo documentation and cleanup (2026-11-20)
+
+### What changed
+
+- `/api/user/setting` no longer returns `map_key`, OneSignal API/auth keys, `stripeSecretKey` or `razorSecretKey`. The existing response keys remain with `null` values so mobile clients do not break; public IDs, public payment keys and gateway feature flags are still returned.
+- Added authorization guards for customer order/review access in the user API and frontend controllers, organizer-owned event/ticket/tax/coupon/order/scanner endpoints, staff payment pages and admin order detail/invoice pages. Unauthorized access now returns `403` instead of exposing another user's or organizer's record.
+- Organization API login now accepts only users with the `organization` role. The failure response keeps the existing `success`/`msg` shape and does not issue a token.
+- Scanner API event detail, guest list and ticket scanning now require the event to be assigned to the authenticated scanner. Unknown ticket codes are handled without dereferencing `null`.
+- Added a named `login` limiter (5 attempts/minute keyed by `email|ip`) to web, frontend, admin and user/organization/scanner API login routes. Excess attempts receive `429` without changing successful-login responses.
+- Added `App\Support\CheckoutCalculator`. Web and API checkout now derive price, coupon discount, taxes, order total, organizer commission, ticket quantity and Stripe amount from persisted records. Client-supplied totals and `tax_data` rows are ignored; coupon/event/date/use-count and remaining-seat/per-order checks are enforced.
+- Public payment callbacks remain reachable, but callbacks no longer mark an order paid without server-side gateway verification. Payment gateway integrations, Stripe amount units and Passport tokens were otherwise left intact.
+- Removed four untracked legacy Mix artifacts (`public/css/app.css`, `public/js/app.js`, `public/js/app.js.LICENSE.txt`, `public/mix-manifest.json`) and 15 unreferenced Blade views: `main`, `home`, `welcome`, `frontend/master`, `frontend/home`, `frontend/auth/app`, `web/slider`, `web/footer`, `errors/layout`, `errors/illustrated-layout`, `admin/layout/breadcrumbs`, and `frontend/layout/{breadcrumbs,footer,header,search}`.
+- Documented Brevo free-tier SMTP configuration in `README.md` using the existing standard `MAIL_*` variables and placeholders only. Local Mailpit setup was not changed.
+- Added regression coverage: `ApiSettingTest`, `CustomerOwnershipTest`, `LoginThrottleTest`, `OrganizationApiSecurityTest`, `ScannerApiSecurityTest`, and new checkout-hardening cases in `CheckoutAndOrderTest`.
+
+### Verification
+
+```powershell
+php -l (all new/modified PHP files)                           # passed
+php artisan test                                               # OK (110 tests, 1306 assertions)
+npm run build                                                  # OK; existing Sass @import deprecation warnings and admin-legacy chunk warning remain
+```
+
+The checkout test expectation was updated intentionally: a 2-ticket order at 1000 with a 10% coupon and a 100 tax now stores discount `200`, tax `100` and payment `1900`, instead of trusting client totals.
+
+### Risks and manual checks
+
+1. These are intentional, approved behavior changes. Clients that previously relied on secret values in `/api/user/setting`, cross-customer access, unassigned scanner access, non-organization organization logins, or client-chosen checkout totals will observe different results.
+2. The frozen route names, request fields and response keys are preserved, and successful flows are covered by tests. Verify the deployed mobile clients against the redacted settings response, `403` authorization responses, `429` login throttles and server-derived totals before rolling out.
+3. Verify a real Stripe checkout and each public gateway callback with sandbox credentials. Tests use `payment_type=LOCAL` and do not contact payment providers.
+4. The staged PayPal client-id fix, `.env.example`, license/installer changes, payment-view changes and unrelated admin/controller formatting remain deliberately excluded from this commit. They are still present in the working tree.
+5. No real `.env` value, payment key, Passport key, production data, license check or installer logic was modified. `AGENTS.md`, `overview.md` and the untracked `vendor.partial.20261119091812/` directory were left untouched.

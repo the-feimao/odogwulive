@@ -72,27 +72,54 @@ class OrderController extends Controller
             $settlement->user = $users->get($settlement->user_id);
         }
     }
+    private function authorizeOrderAccess(Order $order): void
+    {
+        $user = Auth::user();
+
+        if (!$user) {
+            abort(403);
+        }
+
+        if ($user->hasRole('admin')) {
+            return;
+        }
+
+        if ($user->hasRole('organization') && (int) $order->organization_id === (int) $user->id) {
+            return;
+        }
+
+        abort(403);
+    }
+
     public function index()
     {
-        if(Auth::user()->hasRole('admin')){
-            $orders = Order::with(['customer','event'])->OrderBy('id','DESC')->get();
+        if (Auth::user()->hasRole('admin')) {
+            $orders = Order::with(['customer', 'event'])->OrderBy('id', 'DESC')->get();
+        } elseif (Auth::user()->hasRole('organization')) {
+            $orders = Order::with(['customer', 'event'])->where('organization_id', Auth::user()->id)->OrderBy('id', 'DESC')->get();
+        } else {
+            abort(403);
         }
-        elseif(Auth::user()->hasRole('organization')){
-            $orders = Order::with(['customer','event'])->where('organization_id',Auth::user()->id)->OrderBy('id','DESC')->get();
-        }
+
         return view('admin.order.index', compact('orders'));
     }
 
     public function show($id)
     {
-        $order = Order::with(['customer','event','organization','ticket'])->find($id);
+        $order = Order::with(['customer', 'event', 'organization', 'ticket'])->findOrFail($id);
+        $this->authorizeOrderAccess($order);
+
         return view('admin.order.view', compact('order'));
     }
 
-    public function orderInvoice($id){
-        $order = Order::with(['customer','event','organization','ticket'])->find($id);
+    public function orderInvoice($id)
+    {
+        $order = Order::with(['customer', 'event', 'organization', 'ticket'])->findOrFail($id);
+        $this->authorizeOrderAccess($order);
+
         $order->tax_data = OrderTax::with('tax')->where('order_id', $order->id)->get();
-        $order->ticket_data= OrderChild::where('order_id',$order->id)->get();
+        $order->ticket_data = OrderChild::where('order_id', $order->id)->get();
+
         return view('admin.order.invoice', compact('order'));
     }
 
@@ -325,30 +352,55 @@ class OrderController extends Controller
         return response()->json(['msg' => null,'success'=>true], 200);
     }
 
-    public function getQrCode($id){
-        $ticket = OrderChild::find($id);
-        $ticket->order = Order::with(['customer:id,name,last_name','event:id,start_time,end_time,name,type,address','organization:id,image,first_name,last_name'])->find($ticket->order_id);
+    public function getQrCode($id)
+    {
+        $ticket = OrderChild::findOrFail($id);
+        $order = Order::findOrFail($ticket->order_id);
+        $this->authorizeOrderAccess($order);
+
+        $ticket->order = Order::with(['customer:id,name,last_name', 'event:id,start_time,end_time,name,type,address', 'organization:id,image,first_name,last_name'])->find($ticket->order_id);
         $ticket->qrCode = QrCode::size(200)->generate($ticket->ticket_number);
-        return view('admin.order.printTicket',compact('ticket'));
+
+        return view('admin.order.printTicket', compact('ticket'));
     }
-    
+
     public function changeStatus(Request $request)
     {
-        Order::find($request->id)->update(['order_status'=>$request->order_status]);
+        $request->validate([
+            'id' => 'required',
+            'order_status' => 'required',
+        ]);
+
+        $order = Order::findOrFail($request->id);
+        $this->authorizeOrderAccess($order);
+
+        $order->update(['order_status' => $request->order_status]);
+
         return response()->json(['success' => true, 'msg' => 'Status Changed'], 200);
     }
-    
+
     public function changePaymentStatus(Request $request)
     {
-        Order::find($request->id)->update(['payment_status'=>1]);
+        $request->validate([
+            'id' => 'required',
+        ]);
+
+        $order = Order::findOrFail($request->id);
+        $this->authorizeOrderAccess($order);
+
+        $order->update(['payment_status' => 1]);
+
         return response()->json(['success' => true, 'msg' => 'Status Changed'], 200);
     }
 
     public function orderInvoicePrint($order_id)
     {
-        $order = Order::with(['customer','event','organization','ticket'])->find($order_id);
+        $order = Order::with(['customer', 'event', 'organization', 'ticket'])->findOrFail($order_id);
+        $this->authorizeOrderAccess($order);
+
         $order->tax_data = OrderTax::with('tax')->where('order_id', $order->id)->get();
-        $order->ticket_data= OrderChild::where('order_id',$order->id)->get();
-        return view('admin.order.invoicePrint',compact('order'));
+        $order->ticket_data = OrderChild::where('order_id', $order->id)->get();
+
+        return view('admin.order.invoicePrint', compact('order'));
     }
 }

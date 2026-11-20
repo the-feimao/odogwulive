@@ -125,14 +125,15 @@ class CheckoutAndOrderTest extends TestCase
         $this->assertSame($organizer->id, (int) $order->organization_id);
         $this->assertSame($event->id, (int) $order->event_id);
         $this->assertSame(2, (int) $order->quantity);
-        $this->assertSame(2000, (int) $order->payment);
-        $this->assertSame(200, (int) $order->tax);
+        $this->assertSame(1900, (int) $order->payment);
+        $this->assertSame(100, (int) $order->tax);
+        $this->assertSame(200, (int) $order->coupon_discount);
         $this->assertSame(1, (int) $order->org_commission);
         $this->assertSame('Pending', $order->order_status);
         $this->assertSame(0, (int) $order->payment_status);
 
         $this->assertSame(2, OrderChild::where('order_id', $order->id)->count());
-        $this->assertSame(2, OrderTax::where('order_id', $order->id)->count());
+        $this->assertSame(1, OrderTax::where('order_id', $order->id)->count());
         $this->assertSame(1, (int) Coupon::find($coupon->id)->use_count);
     }
 
@@ -176,5 +177,112 @@ class CheckoutAndOrderTest extends TestCase
             ->assertJsonPath('success', true)
             ->assertJsonCount(1, 'data')
             ->assertJsonPath('data.0.name', 'Event Tax');
+    }
+
+    #[Test]
+    public function client_supplied_totals_and_tax_rows_are_ignored()
+    {
+        $organizer = $this->organizer();
+        $event = $this->event($organizer);
+        $ticket = $this->ticket($event, ['price' => 1000]);
+        $tax = $this->tax($organizer, ['price' => 100]);
+        $customer = $this->customer();
+
+        $this->actingAs($customer, 'appuser')->post('/createOrder', [
+            'ticket_id' => $ticket->id,
+            'quantity' => 2,
+            'price' => 1000,
+            'payment' => 1,
+            'tax' => 9999,
+            'payment_type' => 'LOCAL',
+            'coupon_id' => null,
+            'coupon_discount' => 9999,
+            'tax_data' => json_encode([
+                ['id' => $tax->id, 'price' => 9999],
+                ['id' => $tax->id, 'price' => 9999],
+            ]),
+        ])->assertRedirect('my-tickets');
+
+        $order = Order::latest('id')->first();
+        $this->assertSame(2100, (int) $order->payment);
+        $this->assertSame(100, (int) $order->tax);
+        $this->assertSame(0, (int) $order->coupon_discount);
+        $this->assertSame(1, OrderTax::where('order_id', $order->id)->count());
+        $this->assertSame(100, (int) OrderTax::where('order_id', $order->id)->first()->price);
+    }
+
+    #[Test]
+    public function quantity_above_the_ticket_limit_is_rejected()
+    {
+        $organizer = $this->organizer();
+        $event = $this->event($organizer);
+        $ticket = $this->ticket($event, ['price' => 1000, 'ticket_per_order' => 2]);
+
+        $this->actingAs($this->customer(), 'appuser')->post('/createOrder', [
+            'ticket_id' => $ticket->id,
+            'quantity' => 3,
+            'payment' => 3000,
+            'tax' => 0,
+            'payment_type' => 'LOCAL',
+            'coupon_discount' => 0,
+        ])->assertSessionHasErrors('quantity');
+
+        $this->assertSame(0, Order::where('ticket_id', $ticket->id)->count());
+    }
+
+    #[Test]
+    public function the_api_order_uses_server_calculated_totals()
+    {
+        $organizer = $this->organizer();
+        $event = $this->event($organizer);
+        $ticket = $this->ticket($event, ['price' => 1000]);
+        $this->tax($organizer, ['price' => 100]);
+        $customer = $this->customer();
+
+        Passport::actingAs($customer, ['*'], 'userApi');
+
+        $this->postJson('/api/user/create-order', [
+            'event_id' => $event->id,
+            'ticket_id' => $ticket->id,
+            'quantity' => 2,
+            'payment' => 1,
+            'tax' => 9999,
+            'payment_type' => 'LOCAL',
+            'coupon_discount' => 9999,
+        ])->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.payment', 2100)
+            ->assertJsonPath('data.tax', 100)
+            ->assertJsonPath('data.coupon_discount', 0);
+
+        $order = Order::latest('id')->first();
+        $this->assertSame(2100, (int) $order->payment);
+        $this->assertSame(100, (int) $order->tax);
+        $this->assertSame(1, OrderTax::where('order_id', $order->id)->count());
+    }
+
+    #[Test]
+    public function a_coupon_from_another_event_is_rejected_without_incrementing_its_use_count()
+    {
+        $organizer = $this->organizer();
+        $event = $this->event($organizer);
+        $ticket = $this->ticket($event, ['price' => 1000]);
+
+        $otherOrganizer = $this->organizer();
+        $otherEvent = $this->event($otherOrganizer);
+        $coupon = $this->coupon($otherOrganizer, $otherEvent);
+
+        $this->actingAs($this->customer(), 'appuser')->post('/createOrder', [
+            'ticket_id' => $ticket->id,
+            'quantity' => 1,
+            'payment' => 1000,
+            'tax' => 0,
+            'payment_type' => 'LOCAL',
+            'coupon_id' => $coupon->id,
+            'coupon_discount' => 1000,
+        ])->assertSessionHasErrors('coupon_id');
+
+        $this->assertSame(0, (int) $coupon->fresh()->use_count);
+        $this->assertSame(0, Order::where('ticket_id', $ticket->id)->count());
     }
 }

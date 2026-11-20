@@ -24,6 +24,26 @@ use Illuminate\Http\Request;
 
 class UserController extends Controller
 {
+    private function authorizeStaffPaymentOrder($id): Order
+    {
+        $order = Order::findOrFail($id);
+        $user = Auth::user();
+
+        if (!$user) {
+            abort(403);
+        }
+
+        if ($user->hasRole('admin')) {
+            return $order;
+        }
+
+        if ($user->hasRole('organization') && (int) $order->organization_id === (int) $user->id) {
+            return $order;
+        }
+
+        abort(403);
+    }
+
     /**
      * Populate dashboard event aggregates with two grouped queries instead of
      * querying tickets and orders once per event.
@@ -210,7 +230,13 @@ class UserController extends Controller
         }
     }
 
-    public function makePayment($id){
+    public function makePayment($id)
+    {
+        if (!Auth::check()) {
+            abort(403);
+        }
+
+        $this->authorizeStaffPaymentOrder($id);
         $order = Order::with(['customer'])->find($id);
         return view('createPayment', compact('order'));
     }
@@ -218,27 +244,64 @@ class UserController extends Controller
     public function transction_verify(Request $request, $order_id)
     {
         $order = Order::find($order_id);
-        $id = $request->input('transaction_id');
-        if ($request->input('status') == 'successful') {
-            $order->payment_token = $id;
-            $order->payment_status = 1;
-            $order->save();
-            return view('transction_verify');
-        } else {
+        if (!$order) {
             return view('cancel');
         }
+
+        $transactionId = $request->input('transaction_id');
+        $status = strtolower((string) $request->input('status'));
+
+        // Record the gateway reference but do not mark the order as paid based on
+        // unverified client/browser callback parameters.
+        if (!empty($transactionId)) {
+            $order->payment_token = $transactionId;
+            $order->save();
+        }
+
+        if ($status === 'successful') {
+            return view('transction_verify', [
+                'title' => __('Payment Received'),
+                'message' => __('Your payment reference was received and is pending verification.'),
+            ]);
+        }
+
+        return view('cancel');
     }
 
-    public function initialize(Request $request,$id)
+    public function initialize(Request $request, $id)
     {
-      Rave::initialize(route('callback',$id));
+        if (!Auth::check()) {
+            abort(403);
+        }
+
+        $this->authorizeStaffPaymentOrder($id);
+        Rave::initialize(route('callback', $id));
     }
 
-    public function callback(Request $request,$id)
+    public function callback(Request $request, $id)
     {
-        $payment_token = json_decode($request->resp)->tx->paymentId;
-        $order = Order::find($id)->update(['payment_status'=>1,'payment_token'=> $payment_token]);
-        return view('createPayment');
+        $order = Order::find($id);
+        if (!$order) {
+            return view('cancel');
+        }
+
+        $paymentToken = null;
+        $resp = $request->input('resp');
+        if (is_string($resp)) {
+            $decoded = json_decode($resp);
+            $paymentToken = data_get($decoded, 'tx.paymentId') ?? data_get($decoded, 'data.id');
+        }
+
+        if (!empty($paymentToken)) {
+            $order->payment_token = $paymentToken;
+            $order->save();
+        }
+
+        // Do not mark the order as paid without server-side gateway verification.
+        return view('transction_verify', [
+            'title' => __('Payment Received'),
+            'message' => __('Your payment reference was received and is pending verification.'),
+        ]);
     }
 
     public function changeLanguage($lang)

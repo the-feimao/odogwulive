@@ -32,7 +32,7 @@ use App\Http\Controllers\LanguageController;
 */
 
 Auth::routes();
-Route::post('/admin/login', [LicenseController::class, 'adminLogin']);
+Route::post('/admin/login', [LicenseController::class, 'adminLogin'])->middleware('throttle:login');
 Route::post('/saveEnvData', [LicenseController::class, 'saveEnvData']);
 Route::post('/saveAdminData', [LicenseController::class, 'saveAdminData']);
 // Route::get('/home', [App\Http\Controllers\HomeController::class, 'index'])->name('home');
@@ -128,12 +128,12 @@ Route::group(['middleware' => ['auth']], function () {
 Route::get('/notification', [NotificationTemplateController::class, 'notification']);
 Route::get('/delete-notification/{id}', [NotificationTemplateController::class, 'deleteNotification']);
 
-Route::get('/create-payment/{id}', [UserController::class, 'makePayment']);
-Route::any('/payment/{id}', [UserController::class, 'initialize'])->name('pay');
-Route::get('/rave/callback/{id}', [UserController::class, 'callback'])->name('callback');
+Route::get('/create-payment/{id}', [UserController::class, 'makePayment'])->middleware('throttle:60,1');
+Route::any('/payment/{id}', [UserController::class, 'initialize'])->name('pay')->middleware('throttle:60,1');
+Route::get('/rave/callback/{id}', [UserController::class, 'callback'])->name('callback')->middleware('throttle:60,1');
 
 Route::get('FlutterWavepayment/{id}',[UserController::class,'FlutterWavepayment']);
-Route::get('transction_verify/{id}',[UserController::class,'transction_verify']);
+Route::get('transction_verify/{id}',[UserController::class,'transction_verify'])->middleware('throttle:60,1');
 
 
 // paystack

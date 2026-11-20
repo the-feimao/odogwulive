@@ -17,7 +17,7 @@ Route::group(['prefix' => 'user'], function () {
     Route::get('/register', [FrontendController::class, 'register']);
     Route::post('/register', [FrontendController::class, 'userRegister']);
     Route::get('/login', [FrontendController::class, 'login']);
-    Route::post('/login', [FrontendController::class, 'userLogin']);
+    Route::post('/login', [FrontendController::class, 'userLogin'])->middleware('throttle:login');
     Route::get('/resetPassword', [FrontendController::class, 'resetPassword']);
     Route::post('/resetPassword', [FrontendController::class, 'userResetPassword']);
     Route::get('/org-register', [FrontendController::class, 'orgRegister']);
