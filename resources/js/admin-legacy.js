@@ -1,4 +1,8 @@
 // Bundled replacements for the CDN libraries used by the legacy admin scripts.
+// Bootstrap's stylesheet must load with the admin bundle: Stisla's navbar and
+// grid overrides assume the original Bootstrap 4 base rules.
+import 'bootstrap/dist/css/bootstrap.min.css';
+
 import $ from './admin-jquery';
 
 import 'bootstrap/dist/js/bootstrap.bundle.min.js';

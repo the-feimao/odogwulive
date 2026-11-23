@@ -24,6 +24,20 @@ class AdminShellAndSettingsTest extends TestCase
         Setting::find(1)->update(['license_status' => 1]);
     }
 
+    private function adminLegacyCssPath(): string
+    {
+        $manifestPath = public_path('build/manifest.json');
+        $this->assertFileExists($manifestPath);
+
+        $manifest = json_decode((string) file_get_contents($manifestPath), true, 512, JSON_THROW_ON_ERROR);
+        $entry = $manifest['resources/js/admin-legacy.js'] ?? null;
+
+        $this->assertIsArray($entry);
+        $this->assertNotEmpty($entry['css'] ?? []);
+
+        return '/build/'.$entry['css'][0];
+    }
+
     #[Test]
     public function admin_shell_bundles_legacy_assets_and_removes_cdns()
     {
@@ -44,6 +58,48 @@ class AdminShellAndSettingsTest extends TestCase
         foreach (self::LEGACY_CDN_MARKERS as $marker) {
             $response->assertDontSee($marker, false);
         }
+    }
+
+    #[Test]
+    public function admin_shell_loads_bootstrap_css_before_legacy_admin_css()
+    {
+        $this->activateLicense();
+
+        $response = $this->actingAs($this->admin())->get(url('admin-setting'));
+        $response->assertOk();
+
+        $html = $response->getContent();
+        $bundleCssPath = $this->adminLegacyCssPath();
+        $bundleCssPosition = strpos($html, $bundleCssPath);
+        $adminCssPosition = strpos($html, 'admin/css/style.css');
+
+        $this->assertNotFalse($bundleCssPosition, 'The admin bundle CSS is not linked.');
+        $this->assertNotFalse($adminCssPosition, 'The legacy admin stylesheet is not linked.');
+        $this->assertLessThan($adminCssPosition, $bundleCssPosition, 'Bootstrap CSS must load before Stisla overrides.');
+
+        $css = (string) file_get_contents(public_path(ltrim($bundleCssPath, '/')));
+        $this->assertStringContainsString('.navbar', $css);
+        $this->assertStringContainsString('.form-inline', $css);
+        $this->assertStringContainsString('.mr-auto', $css);
+    }
+
+    #[Test]
+    public function admin_shell_does_not_apply_public_theme_preference()
+    {
+        $this->activateLicense();
+
+        $adminResponse = $this->actingAs($this->admin())->get(url('admin-setting'));
+        $adminResponse->assertOk()
+            ->assertSee('ds-admin', false)
+            ->assertDontSee("localStorage.getItem('ds-theme')", false)
+            ->assertDontSee("classList.toggle('tw-dark'", false);
+
+        auth()->logout();
+
+        $this->get(url('login'))
+            ->assertOk()
+            ->assertDontSee("localStorage.getItem('ds-theme')", false)
+            ->assertDontSee("classList.toggle('tw-dark'", false);
     }
 
     #[Test]
