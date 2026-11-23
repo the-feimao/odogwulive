@@ -1,0 +1,38 @@
+{
+  "expo": {
+    "name": "Odogwu Scanner",
+    "slug": "odogwu-scanner",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "backgroundColor": "#151A2E",
+      "resizeMode": "contain"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.odogwu.scanner"
+    },
+    "android": {
+      "package": "com.odogwu.scanner",
+      "permissions": ["CAMERA"]
+    },
+    "web": {
+      "bundler": "metro"
+    },
+    "plugins": [
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow Odogwu Scanner to use the camera to validate attendee tickets.",
+          "recordAudioAndroid": false,
+          "barcodeScannerEnabled": true
+        }
+      ]
+    ],
+    "extra": {
+      "brandName": "Odogwu Fest"
+    }
+  }
+}
