@@ -24,7 +24,7 @@ class AdminShellAndSettingsTest extends TestCase
         Setting::find(1)->update(['license_status' => 1]);
     }
 
-    private function adminLegacyCssPath(): string
+    private function adminLegacyManifestEntry(): array
     {
         $manifestPath = public_path('build/manifest.json');
         $this->assertFileExists($manifestPath);
@@ -33,6 +33,13 @@ class AdminShellAndSettingsTest extends TestCase
         $entry = $manifest['resources/js/admin-legacy.js'] ?? null;
 
         $this->assertIsArray($entry);
+
+        return $entry;
+    }
+
+    private function adminLegacyCssPath(): string
+    {
+        $entry = $this->adminLegacyManifestEntry();
         $this->assertNotEmpty($entry['css'] ?? []);
 
         return '/build/'.$entry['css'][0];
@@ -81,6 +88,34 @@ class AdminShellAndSettingsTest extends TestCase
         $this->assertStringContainsString('.navbar', $css);
         $this->assertStringContainsString('.form-inline', $css);
         $this->assertStringContainsString('.mr-auto', $css);
+    }
+
+    #[Test]
+    public function admin_legacy_bundle_registers_plugins_without_pdfmake_module_error()
+    {
+        $entry = $this->adminLegacyManifestEntry();
+        $this->assertNotEmpty($entry['file'] ?? null);
+
+        $vfsFonts = array_values(array_filter(
+            $entry['assets'] ?? [],
+            static fn (string $asset): bool => str_starts_with($asset, 'assets/vfs_fonts-')
+        ));
+        $this->assertNotEmpty($vfsFonts, 'pdfMake fonts must be emitted as a local classic script.');
+        $this->assertFileExists(public_path('build/'.$vfsFonts[0]));
+
+        $js = (string) file_get_contents(public_path('build/'.$entry['file']));
+        $this->assertStringNotContainsString('(void 0).pdfMake=', $js);
+        $this->assertStringContainsString('/build/'.$vfsFonts[0], $js);
+
+        foreach ([
+            'fn.flatpickr=function',
+            'fn.select2.amd=',
+            'fn.dataTable',
+            'Buttons.jszip=function',
+            'Buttons.pdfMake=function',
+        ] as $registration) {
+            $this->assertStringContainsString($registration, $js, 'Missing bundled plugin registration: '.$registration);
+        }
     }
 
     #[Test]

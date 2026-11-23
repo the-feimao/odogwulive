@@ -7,17 +7,20 @@ import $ from './admin-jquery';
 
 import 'bootstrap/dist/js/bootstrap.bundle.min.js';
 
-import 'datatables.net-bs4';
-import 'datatables.net-buttons-bs4';
-import 'datatables.net-buttons/js/buttons.html5.js';
-import 'datatables.net-buttons/js/buttons.print.js';
-import 'datatables.net-select-bs4';
-
 import jszip from 'jszip';
 import pdfMake from 'pdfmake/build/pdfmake';
-import 'pdfmake/build/vfs_fonts';
+import vfsFontsUrl from 'pdfmake/build/vfs_fonts.js?url';
 
-import 'select2';
+// These packages expose CommonJS factories instead of installing themselves as
+// a side effect. Call them once with the exact jQuery instance used by the
+// legacy public/admin/js scripts.
+import select2 from 'select2';
+import dataTableBs4 from 'datatables.net-bs4';
+import buttonsBs4 from 'datatables.net-buttons-bs4';
+import buttonsHtml5 from 'datatables.net-buttons/js/buttons.html5.js';
+import buttonsPrint from 'datatables.net-buttons/js/buttons.print.js';
+import selectBs4 from 'datatables.net-select-bs4';
+
 import flatpickr from 'flatpickr';
 import 'summernote/dist/summernote-bs4.js';
 import 'jquery.nicescroll';
@@ -43,7 +46,30 @@ window.Chart = Chart;
 window.Swal = Swal;
 window.moment = moment;
 
+// vfs_fonts.js is a classic script that assigns to `this.pdfMake`. Loaded as
+// an ES module its top-level `this` is undefined, so it must be injected as a
+// normal script while pointing at the Vite-emitted local asset.
+const vfsFontsScript = document.createElement('script');
+vfsFontsScript.src = vfsFontsUrl;
+vfsFontsScript.async = false;
+document.head.appendChild(vfsFontsScript);
+
+select2(window, $);
+dataTableBs4(window, $);
+buttonsBs4(window, $);
+buttonsHtml5(window, $, jszip, pdfMake);
+buttonsPrint(window, $);
+selectBs4(window, $);
+
+// The ESM flatpickr entry does not install the jQuery method that myCustom.js
+// calls, so register it explicitly on the shared jQuery instance.
+$.fn.flatpickr = function (config) {
+    return flatpickr(this, config);
+};
+
 if ($.fn.dataTable && $.fn.dataTable.Buttons) {
-    $.fn.dataTable.Buttons.jszip = jszip;
-    $.fn.dataTable.Buttons.pdfMake = pdfMake;
+    // DataTables expects getter/setter functions here, not the libraries
+    // themselves; the HTML5 button module installs those setters.
+    $.fn.dataTable.Buttons.jszip(jszip);
+    $.fn.dataTable.Buttons.pdfMake(pdfMake);
 }

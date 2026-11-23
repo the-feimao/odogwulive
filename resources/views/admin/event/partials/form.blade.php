@@ -57,9 +57,11 @@
 
     <div class="tw-grid tw-gap-5 md:tw-grid-cols-2">
         <x-input name="start_time" id="start_time" class="date" :label="__('Start Time')"
-            :value="$isEdit ? $event->start_time : ''" :placeholder="__('Choose Start time')" />
+            :value="$isEdit && $event->start_time ? $event->start_time->format('Y-m-d h:i A') : ''"
+            :placeholder="__('Choose Start time')" data-flatpickr="datetime" autocomplete="off" />
         <x-input name="end_time" id="end_time" class="date" :label="__('End Time')"
-            :value="$isEdit ? $event->end_time : ''" :placeholder="__('Choose End time')" />
+            :value="$isEdit && $event->end_time ? $event->end_time->format('Y-m-d h:i A') : ''"
+            :placeholder="__('Choose End time')" data-flatpickr="datetime" autocomplete="off" />
     </div>
 
     @if (Auth::user()->hasRole('admin'))

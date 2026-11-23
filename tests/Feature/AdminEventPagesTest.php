@@ -192,6 +192,36 @@ class AdminEventPagesTest extends TestCase
     }
 
     #[Test]
+    public function event_form_date_time_inputs_keep_flatpickr_contract()
+    {
+        $this->activateLicense();
+        $organizer = $this->organizer();
+        $start = now()->addDay()->setTime(9, 5, 0);
+        $end = now()->addDay()->setTime(11, 30, 0);
+        $event = $this->event($organizer, [
+            'name' => 'Picker Event',
+            'start_time' => $start,
+            'end_time' => $end,
+        ]);
+        $event->refresh();
+
+        $createHtml = $this->actingAs($organizer)->get(route('events.create'))
+            ->assertOk()->getContent();
+        $this->assertSame(2, substr_count($createHtml, 'data-flatpickr="datetime"'));
+
+        $editHtml = $this->actingAs($organizer)->get(route('events.edit', $event->id))
+            ->assertOk()->getContent();
+
+        foreach (['start_time', 'end_time'] as $field) {
+            $value = preg_quote($event->{$field}->format('Y-m-d h:i A'), '/');
+            $this->assertMatchesRegularExpression(
+                '/<input[^>]*id="'.$field.'"[^>]*value="'.$value.'"[^>]*data-flatpickr="datetime"[^>]*autocomplete="off"/',
+                $editHtml
+            );
+        }
+    }
+
+    #[Test]
     public function event_detail_and_gallery_keep_ticket_and_dropzone_hooks()
     {
         $this->activateLicense();
