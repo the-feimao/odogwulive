@@ -146,4 +146,87 @@ class AdminShellAndSettingsTest extends TestCase
             ->assertOk()
             ->assertSee('Invalid Username or Password', false);
     }
+
+    #[Test]
+    public function admin_payment_settings_expose_paystack_fields()
+    {
+        $this->activateLicense();
+        PaymentSetting::find(1)->update([
+            'paystack' => 1,
+            'paystackPublicKey' => 'pk_test_visible',
+            'paystackSecretKey' => 'sk_test_stored',
+        ]);
+
+        $response = $this->actingAs($this->admin())->get(url('admin-setting'));
+
+        $response->assertOk()
+            ->assertSee('name="paystack"', false)
+            ->assertSee('name="paystackPublicKey"', false)
+            ->assertSee('name="paystackSecretKey"', false)
+            ->assertSee('value="pk_test_visible"', false)
+            ->assertSee('value="sk_test_stored"', false)
+            ->assertSee('Paystack', false);
+    }
+
+    #[Test]
+    public function admin_can_save_paystack_settings_without_touching_the_real_env_file()
+    {
+        $envDirectory = sys_get_temp_dir().'/odogwu-paystack-env-'.uniqid();
+        mkdir($envDirectory, 0700, true);
+        $envPath = $envDirectory.'/.env';
+        file_put_contents($envPath, "APP_NAME=Odogwu\nRAVE_PUBLIC_KEY=old-rave-public\nRAVE_SECRET_KEY=old-rave-secret\n");
+
+        $this->app->useEnvironmentPath($envDirectory);
+        $this->app->loadEnvironmentFrom('.env');
+
+        try {
+            $this->actingAs($this->admin())
+                ->post(url('save-payment-setting'), [
+                    'cod' => '1',
+                    'paystack' => '1',
+                    'paystackPublicKey' => 'pk_test_123',
+                    'paystackSecretKey' => 'sk_test_456',
+                ])
+                ->assertRedirect(url('admin-setting'));
+
+            $this->assertDatabaseHas('payment_setting', [
+                'id' => 1,
+                'paystack' => 1,
+                'paystackPublicKey' => 'pk_test_123',
+                'paystackSecretKey' => 'sk_test_456',
+            ]);
+
+            $envContents = (string) file_get_contents($envPath);
+            $this->assertStringContainsString('PAYSTACK_PUBLIC_KEY=pk_test_123', $envContents);
+            $this->assertStringContainsString('PAYSTACK_SECRET_KEY=sk_test_456', $envContents);
+
+            $this->actingAs($this->admin())
+                ->post(url('save-payment-setting'), [
+                    'cod' => '1',
+                    'paystackPublicKey' => 'pk_test_123',
+                    'paystackSecretKey' => 'sk_test_456',
+                ])
+                ->assertRedirect(url('admin-setting'));
+
+            $this->assertDatabaseHas('payment_setting', ['id' => 1, 'paystack' => 0]);
+        } finally {
+            if (is_file($envPath)) {
+                unlink($envPath);
+            }
+
+            if (is_dir($envDirectory)) {
+                rmdir($envDirectory);
+            }
+        }
+    }
+
+    #[Test]
+    public function paystack_keys_are_required_when_the_gateway_is_enabled()
+    {
+        $this->actingAs($this->admin())
+            ->from(url('admin-setting'))
+            ->post(url('save-payment-setting'), ['paystack' => '1'])
+            ->assertRedirect(url('admin-setting'))
+            ->assertSessionHasErrors(['paystackPublicKey', 'paystackSecretKey']);
+    }
 }

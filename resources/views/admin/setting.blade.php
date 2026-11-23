@@ -316,6 +316,21 @@
                                                                         </div>
                                                                         <div class="form-group row mb-4">
                                                                             <label
+                                                                                class="col-form-label text-md-right col-12 col-md-3">{{ __('Paystack') }}</label>
+                                                                            <div class="col-sm-12 col-md-9">
+                                                                                <div class="custom-switches-stacked mt-2">
+                                                                                    <label class="custom-switch pl-0">
+                                                                                        <input type="checkbox" name="paystack"
+                                                                                            {{ $payment->paystack == '1' ? 'checked' : '' }} value="1"
+                                                                                            class="custom-switch-input">
+                                                                                        <span class="custom-switch-indicator"></span>
+                                                                                    </label>
+                                                                                </div>
+                                                                                <small class="form-text text-muted">{{ __('Credentials are written to the existing Paystack gateway configuration. Public checkout display is not enabled yet.') }}</small>
+                                                                            </div>
+                                                                        </div>
+                                                                        <div class="form-group row mb-4">
+                                                                            <label
                                                                                 class="col-form-label text-md-right col-12 col-md-3">{{ __('Razorpay') }}</label>
                                                                             <div class="col-sm-12 col-md-9">
                                                                                 <div class="custom-switches-stacked mt-2">
@@ -421,6 +436,30 @@
                                                                                                                 class="form-control @error('raveSecretKey')? is-invalid @enderror">
                                                                                                             @error('raveSecretKey')
                                                                                                                 <div class="invalid-feedback">{{ $message }}</div>
+                                                                                                                @endif
+                                                                                                            </div>
+                                                                                                        </div>
+                                                                                                        <div class="form-group row mb-4">
+                                                                                                            <label
+                                                                                                                class="col-form-label text-md-right col-12 col-md-3 col-lg-3">{{ __('Paystack public key') }}</label>
+                                                                                                            <div class="col-sm-12 col-md-9">
+                                                                                                                <input type="text" name="paystackPublicKey" placeholder="{{ __('Paystack public key') }}"
+                                                                                                                    value="{{ $payment->paystackPublicKey }}"
+                                                                                                                    class="form-control @error('paystackPublicKey')? is-invalid @enderror">
+                                                                                                                @error('paystackPublicKey')
+                                                                                                                    <div class="invalid-feedback">{{ $message }}</div>
+                                                                                                                @endif
+                                                                                                            </div>
+                                                                                                        </div>
+                                                                                                        <div class="form-group row mb-4">
+                                                                                                            <label
+                                                                                                                class="col-form-label text-md-right col-12 col-md-3 col-lg-3">{{ __('Paystack secret key') }}</label>
+                                                                                                            <div class="col-sm-12 col-md-9">
+                                                                                                                <input type="text" name="paystackSecretKey" placeholder="{{ __('Paystack secret key') }}"
+                                                                                                                    value="{{ $payment->paystackSecretKey }}"
+                                                                                                                    class="form-control @error('paystackSecretKey')? is-invalid @enderror">
+                                                                                                                @error('paystackSecretKey')
+                                                                                                                    <div class="invalid-feedback">{{ $message }}</div>
                                                                                                                 @endif
                                                                                                             </div>
                                                                                                         </div>

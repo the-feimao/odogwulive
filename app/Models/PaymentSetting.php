@@ -14,6 +14,7 @@ class PaymentSetting extends Model
         'paypal',
         'razor',
         'flutterwave',
+        'paystack',
         'stripeSecretKey',
         'stripePublicKey', 
         'paypalClientId',
@@ -22,6 +23,8 @@ class PaymentSetting extends Model
         'razorSecretKey',
         'ravePublicKey',
         'raveSecretKey',
+        'paystackPublicKey',
+        'paystackSecretKey',
     ];
 
     protected $table = 'payment_setting';

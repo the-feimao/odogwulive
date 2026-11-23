@@ -224,12 +224,15 @@ class SettingController extends Controller
             'razorSecretKey' => 'bail|required_if:razor,1',   
             'ravePublicKey' => 'bail|required_if:flutterwave,1',   
             'raveSecretKey' => 'bail|required_if:flutterwave,1',   
+            'paystackPublicKey' => 'bail|required_if:paystack,1',
+            'paystackSecretKey' => 'bail|required_if:paystack,1',
         ]);
         $data = $request->all();
         if(!isset($request->stripe)){ $data['stripe'] = 0; }
         if(!isset($request->paypal)){ $data['paypal'] = 0; }
         if(!isset($request->razor)){ $data['razor'] = 0; }
         if(!isset($request->flutterwave)){ $data['flutterwave'] = 0; }
+        if(!isset($request->paystack)){ $data['paystack'] = 0; }
         if(!isset($request->cod)){  $data['cod'] = 0;   } 
         PaymentSetting::find(1)->update($data);
 
@@ -237,6 +240,14 @@ class SettingController extends Controller
             'RAVE_PUBLIC_KEY'=> $request->ravePublicKey,
             'RAVE_SECRET_KEY'=> $request->raveSecretKey,
         ];
+
+        if ($request->filled('paystackPublicKey')) {
+            $envData['PAYSTACK_PUBLIC_KEY'] = $request->paystackPublicKey;
+        }
+
+        if ($request->filled('paystackSecretKey')) {
+            $envData['PAYSTACK_SECRET_KEY'] = $request->paystackSecretKey;
+        }
 
         (new AppHelper)->saveEnv($envData);
         return redirect('admin-setting')->withStatus(__('Setting saved successfully.'));
