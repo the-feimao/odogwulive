@@ -1,4 +1,5 @@
 <?php
+use App\Http\Controllers\AccountPasswordController;
 use App\Http\Controllers\FrontendController;
 use App\Http\Controllers\SitemapController;
 
@@ -6,7 +7,11 @@ use App\Http\Controllers\SitemapController;
 Route::get('/', [FrontendController::class, 'main']);
 Route::get('/index', [FrontendController::class, 'viewIndex'])->name('frontend.index');
 
-Route::get('/event-tickets', [FrontendController::class, 'viewEventTickets'])->name('frontend.tickets');
+// The bare URL has no event ID/name. Keep the route name, but send visitors to
+// the event listing where they can choose a specific event.
+Route::get('/event-tickets', function () {
+    return redirect('/all-events');
+})->name('frontend.tickets');
 
 Route::get('/eventdetail/{id}/{name}', [FrontendController::class, 'viewEventTickets'])->name('event.details');
 
@@ -24,6 +29,10 @@ Route::group(['prefix' => 'user'], function () {
     Route::post('/org-register', [FrontendController::class, 'organizerRegister']);
 });
 
+// One POST endpoint serves both password forms. The controller dispatches on
+// the submitted field names/guard, so neither form action needs to change.
+Route::post('/change-password', [AccountPasswordController::class, 'change']);
+
     Route::get('/all-events', [FrontendController::class, 'allEvents']);
     Route::post('/all-events', [FrontendController::class, 'allEvents']);
     Route::get('/events-category/{id}/{name}', [FrontendController::class, 'categoryEvents']);
@@ -37,6 +46,13 @@ Route::group(['prefix' => 'user'], function () {
     Route::get('/contact', [FrontendController::class, 'contact']);
     Route::get('/sitemap.xml', [SitemapController::class, 'index'])->name('sitemap.xml');
 
+    // Public, capability-token Flutterwave flow for mobile/API payers. These
+    // routes are outside the appuser group and do not grant order access.
+    Route::get('/payment-link/{order}/{token}', [FrontendController::class, 'publicPayment'])
+        ->name('frontend.publicPayment')->middleware('throttle:60,1');
+    Route::get('/payment-link/{order}/{token}/callback', [FrontendController::class, 'publicPaymentCallback'])
+        ->name('frontend.publicPayment.callback')->middleware('throttle:60,1');
+
     Route::group(['middleware' =>'appuser'], function () {
         Route::get('/checkout/{id}', [FrontendController::class, 'checkout']);
         Route::post('/createOrder', [FrontendController::class, 'createOrder']);
@@ -45,9 +61,12 @@ Route::group(['prefix' => 'user'], function () {
         Route::get('/add-followList/{id}', [FrontendController::class, 'addFollow']);
         Route::post('/add-bio', [FrontendController::class, 'addBio']);
         Route::get('/change-password', [FrontendController::class, 'changePassword']);
-        Route::post('/change-password', [FrontendController::class, 'changeUserPassword']);
         Route::post('/upload-profile-image', [FrontendController::class, 'uploadProfileImage']);
+        Route::post('/user/logout', [FrontendController::class, 'userLogout'])->name('frontend.logout');
         Route::get('/my-tickets', [FrontendController::class, 'userTickets']);
+        Route::get('/my-tickets/{id}/invoice-print', [FrontendController::class, 'orderInvoicePrint'])
+            ->name('frontend.invoice.print');
+        Route::post('/check-coupon', [FrontendController::class, 'checkCoupon'])->name('frontend.checkCoupon');
         Route::get('/update_profile', [FrontendController::class, 'update_profile']);
         Route::post('/update_user_profile', [FrontendController::class, 'update_user_profile']);
         Route::get('/getOrder/{id}', [FrontendController::class, 'getOrder']);

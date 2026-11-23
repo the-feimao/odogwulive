@@ -65,7 +65,8 @@ Route::group(['middleware' => ['auth']], function () {
     Route::post('/save-payment-setting', [SettingController::class, 'savePaymentSetting']);    
     Route::get('/profile', [UserController::class, 'viewProfile']);    
     Route::post('/edit-profile', [UserController::class, 'editProfile']);    
-    Route::post('/change-password', [UserController::class, 'changePassword']);        
+    // POST /change-password is defined once in routes/frontend.php and
+    // dispatches to UserController@changePassword for staff users.
     Route::get('/orders', [OrderController::class, 'index']);    
     Route::get('/orders/{id}', [OrderController::class, 'show']);    
     Route::get('/order-invoice/{id}', [OrderController::class, 'orderInvoice']);

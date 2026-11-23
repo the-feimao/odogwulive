@@ -19,10 +19,30 @@ if (checkoutForm) {
     const usesMinorUnits = currencyCode === 'USD' || currencyCode === 'EUR';
 
     const byId = (id) => document.getElementById(id);
+    const couponIdInput = byId('coupon_id');
+    const couponDiscountInput = byId('coupon_discount');
+    const couponCodeInput = byId('coupon_code');
+    const applyCouponButton = byId('apply-coupon');
+    const couponStatus = byId('coupon-status');
+    const discountRow = document.querySelector('[data-checkout-discount-row]');
+    let couponPercent = Number(couponDiscountInput?.value || 0);
+
     const money = (value) => currencySymbol + Number(value).toLocaleString(undefined, {
         minimumFractionDigits: 0,
         maximumFractionDigits: 2,
     });
+
+    const setCouponStatus = (message, ok) => {
+        if (!couponStatus) {
+            return;
+        }
+
+        couponStatus.textContent = message || '';
+        couponStatus.hidden = !message;
+        couponStatus.className = ok
+            ? 'tw-mt-2 tw-text-xs tw-font-semibold tw-text-success-700 dark:tw-text-success-300'
+            : 'tw-mt-2 tw-text-xs tw-font-semibold tw-text-danger-700 dark:tw-text-danger-300';
+    };
 
     const setStatus = (message) => {
         if (!statusRegion) {
@@ -73,13 +93,25 @@ if (checkoutForm) {
             node.textContent = String(quantity);
         });
 
-        const total = ticketPrice * quantity + taxTotal;
+        const subtotal = ticketPrice * quantity;
+        const discountAmount = Math.max(0, Math.min(subtotal, Math.round(subtotal * couponPercent / 100)));
+        const total = Math.max(0, subtotal - discountAmount + taxTotal);
+
+        if (couponDiscountInput) {
+            couponDiscountInput.value = String(discountAmount);
+        }
         document.querySelectorAll('[data-checkout-subtotal]').forEach((node) => {
-            node.textContent = money(ticketPrice * quantity);
+            node.textContent = money(subtotal);
         });
         document.querySelectorAll('[data-checkout-tax]').forEach((node) => {
             node.textContent = money(taxTotal);
         });
+        document.querySelectorAll('[data-checkout-discount]').forEach((node) => {
+            node.textContent = '-'.concat(money(discountAmount));
+        });
+        if (discountRow) {
+            discountRow.hidden = discountAmount <= 0;
+        }
         document.querySelectorAll('[data-checkout-total]').forEach((node) => {
             node.textContent = money(total);
         });
@@ -117,6 +149,56 @@ if (checkoutForm) {
             updateTotals();
         });
     });
+
+    if (applyCouponButton && couponCodeInput) {
+        applyCouponButton.addEventListener('click', async () => {
+            const code = couponCodeInput.value.trim();
+
+            if (!code) {
+                if (couponIdInput) couponIdInput.value = '';
+                couponPercent = 0;
+                updateTotals();
+                setCouponStatus('Coupon removed.', true);
+                return;
+            }
+
+            applyCouponButton.disabled = true;
+            setCouponStatus('Checking coupon…', true);
+
+            try {
+                const response = await fetch(checkoutForm.dataset.couponEndpoint || '/check-coupon', {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': checkoutForm.querySelector('input[name="_token"]')?.value || '',
+                    },
+                    body: JSON.stringify({
+                        coupon_code: code,
+                        ticket_id: byId('ticket_id')?.value,
+                    }),
+                });
+
+                const payload = await response.json();
+
+                if (!response.ok || !payload.success) {
+                    throw new Error(payload.msg || 'This coupon is not valid for this event.');
+                }
+
+                if (couponIdInput) couponIdInput.value = payload.data.id;
+                couponPercent = Math.max(0, Number(payload.data.discount || 0));
+                updateTotals();
+                setCouponStatus('Coupon applied.', true);
+            } catch (error) {
+                if (couponIdInput) couponIdInput.value = '';
+                couponPercent = 0;
+                updateTotals();
+                setCouponStatus(error.message || 'This coupon could not be applied.', false);
+            } finally {
+                applyCouponButton.disabled = false;
+            }
+        });
+    }
 
     const unlockSubmit = () => {
         if (submitButton) {

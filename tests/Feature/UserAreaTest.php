@@ -88,7 +88,7 @@ class UserAreaTest extends TestCase
             ->assertSee('event-data', false)
             ->assertSee('data-order-id="'.$complete->id.'"', false)
             ->assertSee(url('/getOrder'), false)
-            ->assertSee('href="'.url('order-invoice-print/'.$complete->id).'"', false)
+            ->assertSee('href="'.url('my-tickets/'.$complete->id.'/invoice-print').'"', false)
             ->assertSee('data-id="'.$complete->id.'"', false)
             ->assertSee('onclick="viewPayment()"', false)
             ->assertSee('id="payment-data"', false)

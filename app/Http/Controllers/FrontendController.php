@@ -33,6 +33,7 @@ use App\Mail\TicketBook;
 use App\Mail\TicketBookOrg;
 use App\Models\Language;
 use App\Support\CheckoutCalculator;
+use App\Support\PublicPaymentLink;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
@@ -122,6 +123,7 @@ class FrontendController extends Controller
             $ticket->available_qty = $ticket->quantity - (int) ($used->get($ticket->id) ?? 0);
         }
     }
+
     public function main(){
         return view('web.home');
     }
@@ -440,6 +442,11 @@ class FrontendController extends Controller
         ]);
         SEOTools::jsonLd()->addImage($setting->imagePath . $setting->logo);
 
+        $request->validate([
+            'duration' => 'nullable|in:Today,Tomorrow,ThisWeek,date',
+            'date' => 'nullable|date',
+        ]);
+
         $timezone = Setting::find(1)->timezone;       
         $date = Carbon::now($timezone);
         $events  = Event::with(['category:id,name'])
@@ -454,9 +461,28 @@ class FrontendController extends Controller
             $chip['category'] = Category::find($request->category)->name;
             $events = $events->where('category_id',$request->category);
         }
-        if($request->has('duration') && $request->duration!= null){
-            $chip['date'] = $request->duration;           
+
+        $duration = (string) $request->input('duration', '');
+        if ($duration !== '') {
+            $rangeStart = $date->copy()->startOfDay();
+
+            if ($duration === 'Today') {
+                $events = $events->whereBetween('start_time', [$rangeStart, $rangeStart->copy()->endOfDay()]);
+                $chip['date'] = __('Today');
+            } elseif ($duration === 'Tomorrow') {
+                $rangeStart->addDay();
+                $events = $events->whereBetween('start_time', [$rangeStart, $rangeStart->copy()->endOfDay()]);
+                $chip['date'] = __('Tomorrow');
+            } elseif ($duration === 'ThisWeek') {
+                $events = $events->whereBetween('start_time', [$rangeStart, $rangeStart->copy()->addDays(7)->endOfDay()]);
+                $chip['date'] = __('This week');
+            } elseif ($request->filled('date')) {
+                $chosenDate = Carbon::parse($request->input('date'), $timezone);
+                $events = $events->whereDate('start_time', $chosenDate->toDateString());
+                $chip['date'] = $chosenDate->format('M j, Y');
+            }
         }
+
         $events = $events->orderBy('start_time','ASC')->get();
         $this->applyEventTicketTotals($events);
         return view('frontend.events',compact('events','chip'));
@@ -821,7 +847,7 @@ class FrontendController extends Controller
         if($setting->mail_notification == 1)
         {
             try{
-                Mail::to($user->email)->send(new TicketBookOrg($new_ticket->mail_content, $details1, $new_ticket->subject));
+                Mail::to($org->email)->send(new TicketBookOrg($new_ticket->mail_content, $details1, $new_ticket->subject));
             }
             catch (\Throwable $th) {}
         }
@@ -832,6 +858,113 @@ class FrontendController extends Controller
         return redirect('my-tickets');        
     }
     
+    public function checkCoupon(Request $request)
+    {
+        $request->validate([
+            'coupon_code' => 'bail|required|string',
+            'ticket_id' => 'bail|required|integer',
+        ]);
+
+        $ticket = Ticket::findOrFail($request->ticket_id);
+        $event = Event::findOrFail($ticket->event_id);
+        $calculator = new CheckoutCalculator();
+
+        try {
+            $coupon = $calculator->validateCouponCode($request->coupon_code, $event);
+        } catch (\Illuminate\Validation\ValidationException $exception) {
+            return response()->json([
+                'success' => false,
+                'msg' => 'This coupon is not valid for this event.',
+                'data' => null,
+            ], 200);
+        }
+
+        if (!$coupon) {
+            return response()->json([
+                'success' => false,
+                'msg' => 'Enter a coupon code.',
+                'data' => null,
+            ], 200);
+        }
+
+        return response()->json([
+            'success' => true,
+            'msg' => null,
+            'data' => [
+                'id' => $coupon->id,
+                'discount' => (int) $coupon->discount,
+            ],
+        ], 200);
+    }
+
+    public function userLogout(Request $request)
+    {
+        Auth::guard('appuser')->logout();
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+
+        return redirect('/user/login');
+    }
+
+    public function orderInvoicePrint($id)
+    {
+        $order = $this->authorizeCustomerOrder($id);
+        $order->load(['customer', 'event', 'organization', 'ticket']);
+        $order->tax_data = OrderTax::with('tax')->where('order_id', $order->id)->get();
+        $order->ticket_data = OrderChild::where('order_id', $order->id)->get();
+
+        return view('admin.order.invoicePrint', compact('order'));
+    }
+
+    private function authorizePublicPaymentOrder(Order $order, string $token): void
+    {
+        abort_unless(PublicPaymentLink::valid($order, $token), 403);
+        abort_unless($order->payment_type === 'FLUTTERWAVE' && (int) $order->payment_status === 0, 403);
+    }
+
+    public function publicPayment($orderId, $token)
+    {
+        $order = Order::with(['customer', 'event'])->findOrFail($orderId);
+        $this->authorizePublicPaymentOrder($order, $token);
+
+        $setting = PaymentSetting::find(1);
+        $currency = Setting::find(1)->currency;
+
+        return view('frontend.publicPayment', compact('order', 'token', 'setting', 'currency'));
+    }
+
+    public function publicPaymentCallback(Request $request, $orderId, $token)
+    {
+        $order = Order::findOrFail($orderId);
+        $this->authorizePublicPaymentOrder($order, $token);
+
+        $paymentToken = null;
+        $resp = $request->input('resp');
+
+        if (is_string($resp)) {
+            $decoded = json_decode($resp);
+            $paymentToken = data_get($decoded, 'tx.paymentId') ?? data_get($decoded, 'data.id');
+        } elseif (is_array($resp)) {
+            $paymentToken = data_get($resp, 'tx.paymentId') ?? data_get($resp, 'data.id');
+        }
+
+        if (empty($paymentToken)) {
+            $paymentToken = $request->input('transaction_id');
+        }
+
+        if (!empty($paymentToken)) {
+            $order->payment_token = $paymentToken;
+            $order->save();
+        }
+
+        // A browser callback only provides a reference. Payment verification
+        // remains a separate server-side step and is intentionally not faked.
+        return view('frontend.paymentStatus', [
+            'title' => __('Payment reference received'),
+            'message' => __('Your payment reference was received and is pending verification.'),
+        ]);
+    }
+
     public function categoryEvents($id,$name){ 
         $setting = Setting::first(['app_name','logo']);
         $category = Category::find($id);

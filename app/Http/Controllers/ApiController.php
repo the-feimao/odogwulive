@@ -25,6 +25,7 @@ use App\Models\NotificationTemplate;
 use App\Models\Notification;
 use App\Models\EventReport;
 use App\Support\CheckoutCalculator;
+use App\Support\PublicPaymentLink;
 use Carbon\Carbon;
 use OneSignal;
 use Config;
@@ -763,13 +764,13 @@ class ApiController extends Controller
         if($setting->mail_notification == 1)
         {
             try{
-                Mail::to($user->email)->send(new TicketBookOrg($new_ticket->mail_content, $details1, $new_ticket->subject));
+                Mail::to($org->email)->send(new TicketBookOrg($new_ticket->mail_content, $details1, $new_ticket->subject));
             }
             catch (\Throwable $th) {}
         }
 
         if($request->payment_type == "FLUTTERWAVE"){
-            $data['redirect_url'] = url('/').'/create-payment/'.$data->id;
+            $data['redirect_url'] = PublicPaymentLink::url($data);
         }
         return response()->json(['success'=>true,'msg'=>null ,'data' =>$data ], 200);        
     }

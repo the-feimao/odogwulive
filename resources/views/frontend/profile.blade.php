@@ -116,6 +116,13 @@
                             class="tw-flex tw-items-center tw-gap-2.5 tw-rounded-stub tw-px-3 tw-py-2 tw-text-sm tw-font-semibold tw-text-neutral-600 tw-transition-colors hover:tw-bg-neutral-100 hover:tw-text-ink-900 focus:tw-outline-none focus-visible:tw-ring-2 focus-visible:tw-ring-accent-600 dark:tw-text-neutral-300 dark:hover:tw-bg-neutral-800 dark:hover:tw-text-neutral-50">
                             <x-lucide-key-round class="tw-h-4 tw-w-4" />{{ __('Change Password') }}
                         </a>
+                        <form method="POST" action="{{ url('/user/logout') }}">
+                            @csrf
+                            <button type="submit"
+                                class="tw-flex tw-w-full tw-items-center tw-gap-2.5 tw-rounded-stub tw-px-3 tw-py-2 tw-text-left tw-text-sm tw-font-semibold tw-text-neutral-600 tw-transition-colors hover:tw-bg-neutral-100 hover:tw-text-ink-900 focus:tw-outline-none focus-visible:tw-ring-2 focus-visible:tw-ring-accent-600 dark:tw-text-neutral-300 dark:hover:tw-bg-neutral-800 dark:hover:tw-text-neutral-50">
+                                <x-lucide-log-out class="tw-h-4 tw-w-4" />{{ __('Log out') }}
+                            </button>
+                        </form>
                     </nav>
                 </x-card>
             </aside>

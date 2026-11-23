@@ -125,6 +125,17 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Public Payment Link TTL
+    |--------------------------------------------------------------------------
+    |
+    | Number of minutes an API-issued Flutterwave payment link stays valid.
+    |
+    */
+
+    'public_payment_link_ttl_minutes' => env('APP_PUBLIC_PAYMENT_LINK_TTL_MINUTES', 1440),
+
+    /*
+    |--------------------------------------------------------------------------
     | Autoloaded Service Providers
     |--------------------------------------------------------------------------
     |

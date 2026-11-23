@@ -284,7 +284,7 @@
         const currency = root?.dataset.currencySymbol || '';
         const imageBase = root?.dataset.imageBase || '';
         const fallbackImage = root?.dataset.imageFallback || '';
-        const invoiceBase = endpoint('invoiceBase', '/order-invoice-print');
+        const invoiceBase = endpoint('invoiceBase', '/my-tickets');
         const orderEndpoint = endpoint('orderEndpoint', '/getOrder');
 
         const badgeBase = 'tw-inline-flex tw-items-center tw-rounded-pill tw-px-2.5 tw-py-1 tw-text-xs tw-font-bold';
@@ -372,7 +372,7 @@
 
             const invoiceLink = detail.querySelector('[data-detail="invoice-link"]');
             if (invoiceLink) {
-                invoiceLink.href = invoiceBase.concat('/', order.id);
+                invoiceLink.href = invoiceBase.concat('/', order.id, '/invoice-print');
             }
 
             const paymentPanel = document.getElementById('payment-data') || document.querySelector('.payment-data');

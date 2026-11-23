@@ -68,9 +68,28 @@ class CheckoutCalculator
             return null;
         }
 
+        return $this->firstValidCoupon(Coupon::whereKey($couponId), $event);
+    }
+
+    /**
+     * Resolve a coupon from the code entered in the web checkout form.
+     */
+    public function validateCouponCode(string $code, Event $event): ?Coupon
+    {
+        $code = trim($code);
+
+        if ($code === '') {
+            return null;
+        }
+
+        return $this->firstValidCoupon(Coupon::where('coupon_code', $code), $event);
+    }
+
+    private function firstValidCoupon($query, Event $event): ?Coupon
+    {
         $today = Carbon::today()->toDateString();
 
-        $coupon = Coupon::whereKey($couponId)
+        $coupon = $query
             ->where('user_id', $event->user_id)
             ->where('event_id', $event->id)
             ->where('status', 1)

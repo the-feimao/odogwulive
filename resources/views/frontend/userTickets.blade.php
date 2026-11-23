@@ -60,7 +60,7 @@
         data-image-base="{{ url('images/upload') }}"
         data-image-fallback="{{ asset('web/bg/1.jpg') }}"
         data-order-endpoint="{{ url('/getOrder') }}"
-        data-invoice-base="{{ url('/order-invoice-print') }}">
+        data-invoice-base="{{ url('/my-tickets') }}">
         <p id="user-area-status" hidden
             class="tw-mb-5 tw-rounded-stub tw-border tw-border-primary-200 tw-bg-primary-50 tw-px-4 tw-py-3 tw-text-sm tw-font-semibold tw-text-primary-900 dark:tw-border-primary-500/30 dark:tw-bg-primary-500/10 dark:tw-text-primary-200"
             aria-live="polite"></p>
@@ -196,7 +196,7 @@
                                     @if (! $showReview) hidden @endif>
                                     <x-lucide-star class="tw-h-4 tw-w-4" />{{ __('Review') }}
                                 </button>
-                                <a href="{{ url('order-invoice-print/'.$first->id) }}" target="_blank" rel="noopener" id="print-btn" data-detail="invoice-link"
+                                <a href="{{ url('my-tickets/'.$first->id.'/invoice-print') }}" target="_blank" rel="noopener" id="print-btn" data-detail="invoice-link"
                                     class="tw-inline-flex tw-h-9 tw-items-center tw-gap-2 tw-rounded-pill tw-border tw-border-neutral-200 tw-px-3 tw-text-xs tw-font-bold tw-text-ink-800 tw-transition-colors hover:tw-border-primary-400 focus:tw-outline-none focus-visible:tw-ring-2 focus-visible:tw-ring-primary-600 dark:tw-border-neutral-700 dark:tw-text-neutral-100">
                                     <x-lucide-printer class="tw-h-4 tw-w-4" />{{ __('Invoice') }}
                                 </a>
