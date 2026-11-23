@@ -104,45 +104,104 @@
     <x-textarea name="description" class="textarea_editor" :label="__('Description')"
         :value="$isEdit ? $event->description : ''" :placeholder="__('Description')" />
 
-    <fieldset class="ds-field tw-flex tw-flex-col tw-gap-2">
-        <legend class="tw-text-sm tw-font-semibold tw-text-ink-800 dark:tw-text-neutral-100">{{ __('Location Detail') }}</legend>
-        <div class="selectgroup tw-flex tw-flex-wrap tw-gap-3">
-            <label class="selectgroup-item tw-inline-flex tw-items-center tw-gap-2 tw-rounded-pill tw-border tw-border-neutral-200 tw-px-3 tw-py-2 tw-text-sm tw-font-semibold tw-text-ink-800 tw-transition hover:tw-border-accent-400 dark:tw-border-neutral-700 dark:tw-text-neutral-100">
-                <input type="radio" name="type" value="offline" class="selectgroup-input tw-h-4 tw-w-4 tw-accent-primary-500"
+    <fieldset class="ds-field tw-grid tw-gap-3 tw-border-t tw-border-neutral-100 tw-pt-5 dark:tw-border-neutral-800">
+        <legend class="tw-text-sm tw-font-semibold tw-text-ink-800 dark:tw-text-neutral-100">
+            {{ __('Location Detail') }}
+        </legend>
+        <p class="-tw-mt-2 tw-text-xs tw-text-neutral-500 dark:tw-text-neutral-400">
+            {{ __('Choose how attendees will join this event.') }}
+        </p>
+        <div class="selectgroup !tw-grid tw-gap-2 sm:tw-grid-cols-2">
+            <label class="selectgroup-item !tw-ml-0 !tw-w-auto tw-relative tw-cursor-pointer">
+                <input type="radio" name="type" value="offline"
+                    class="selectgroup-input tw-peer tw-sr-only"
                     {{ $type == 'online' ? '' : 'checked' }}>
-                {{ __('Venue') }}
+                <span class="tw-flex tw-h-full tw-items-start tw-gap-3 tw-rounded-stub tw-border tw-border-neutral-200 tw-px-4 tw-py-3 tw-text-ink-800 tw-transition peer-checked:tw-border-accent-500 peer-checked:tw-bg-accent-50 peer-checked:tw-text-accent-800 peer-focus-visible:tw-ring-2 peer-focus-visible:tw-ring-accent-600 peer-focus-visible:tw-ring-offset-2 dark:tw-border-neutral-700 dark:tw-text-neutral-100 dark:peer-checked:tw-border-accent-400 dark:peer-checked:tw-bg-accent-900/30 dark:peer-checked:tw-text-accent-200">
+                    <span class="tw-mt-0.5 tw-flex tw-h-8 tw-w-8 tw-shrink-0 tw-items-center tw-justify-center tw-rounded-stub tw-bg-neutral-100 tw-text-neutral-500 dark:tw-bg-neutral-800 dark:tw-text-neutral-400">
+                        <x-lucide-map-pin class="tw-h-4 tw-w-4" />
+                    </span>
+                    <span class="tw-flex tw-flex-col tw-gap-0.5">
+                        <span class="tw-text-sm tw-font-semibold">{{ __('Venue') }}</span>
+                        <span class="tw-text-xs tw-leading-5 tw-text-neutral-500 dark:tw-text-neutral-400">{{ __('Add a physical address and map coordinates.') }}</span>
+                    </span>
+                </span>
+                <span aria-hidden="true"
+                    class="tw-pointer-events-none tw-absolute tw-right-3 tw-top-3 tw-h-1.5 tw-w-1.5 tw-rounded-pill tw-bg-primary-500 tw-opacity-0 tw-transition peer-checked:tw-opacity-100"></span>
             </label>
-            <label class="selectgroup-item tw-inline-flex tw-items-center tw-gap-2 tw-rounded-pill tw-border tw-border-neutral-200 tw-px-3 tw-py-2 tw-text-sm tw-font-semibold tw-text-ink-800 tw-transition hover:tw-border-accent-400 dark:tw-border-neutral-700 dark:tw-text-neutral-100">
-                <input type="radio" name="type" value="online" class="selectgroup-input tw-h-4 tw-w-4 tw-accent-primary-500"
+            <label class="selectgroup-item !tw-ml-0 !tw-w-auto tw-relative tw-cursor-pointer">
+                <input type="radio" name="type" value="online"
+                    class="selectgroup-input tw-peer tw-sr-only"
                     {{ $type == 'online' ? 'checked' : '' }}>
-                {{ __('Online Event') }}
+                <span class="tw-flex tw-h-full tw-items-start tw-gap-3 tw-rounded-stub tw-border tw-border-neutral-200 tw-px-4 tw-py-3 tw-text-ink-800 tw-transition peer-checked:tw-border-accent-500 peer-checked:tw-bg-accent-50 peer-checked:tw-text-accent-800 peer-focus-visible:tw-ring-2 peer-focus-visible:tw-ring-accent-600 peer-focus-visible:tw-ring-offset-2 dark:tw-border-neutral-700 dark:tw-text-neutral-100 dark:peer-checked:tw-border-accent-400 dark:peer-checked:tw-bg-accent-900/30 dark:peer-checked:tw-text-accent-200">
+                    <span class="tw-mt-0.5 tw-flex tw-h-8 tw-w-8 tw-shrink-0 tw-items-center tw-justify-center tw-rounded-stub tw-bg-neutral-100 tw-text-neutral-500 dark:tw-bg-neutral-800 dark:tw-text-neutral-400">
+                        <x-lucide-globe class="tw-h-4 tw-w-4" />
+                    </span>
+                    <span class="tw-flex tw-flex-col tw-gap-0.5">
+                        <span class="tw-text-sm tw-font-semibold">{{ __('Online Event') }}</span>
+                        <span class="tw-text-xs tw-leading-5 tw-text-neutral-500 dark:tw-text-neutral-400">{{ __('Meet attendees online without a venue address.') }}</span>
+                    </span>
+                </span>
+                <span aria-hidden="true"
+                    class="tw-pointer-events-none tw-absolute tw-right-3 tw-top-3 tw-h-1.5 tw-w-1.5 tw-rounded-pill tw-bg-primary-500 tw-opacity-0 tw-transition peer-checked:tw-opacity-100"></span>
             </label>
         </div>
     </fieldset>
 
-    <div class="location-detail tw-grid tw-gap-5 {{ $type == 'online' ? 'tw-hidden' : '' }}">
-        <x-input name="address" id="address" :label="__('Event Address')"
-            :value="$isEdit ? $event->address : ''" :placeholder="__('Event Address')" />
-        <div class="tw-grid tw-gap-5 md:tw-grid-cols-2">
-            <x-input name="lat" id="lat" :label="__('Latitude')" :value="$isEdit ? $event->lat : ''"
-                :placeholder="__('Latitude')" />
-            <x-input name="lang" id="lang" :label="__('Longitude')" :value="$isEdit ? $event->lang : ''"
-                :placeholder="__('Longitude')" />
+    <div class="location-detail {{ $type == 'online' ? 'tw-hidden' : '' }}">
+        <div class="tw-grid tw-gap-5 tw-rounded-stub tw-border-l-2 tw-border-accent-300 tw-bg-neutral-50 tw-p-4 dark:tw-border-accent-700 dark:tw-bg-ink-950/60">
+            <p class="tw-text-xs tw-font-semibold tw-text-ink-700 dark:tw-text-neutral-300">
+                {{ __('Venue details') }}
+            </p>
+            <x-input name="address" id="address" :label="__('Event Address')"
+                :value="$isEdit ? $event->address : ''" :placeholder="__('Event Address')" />
+            <div class="tw-grid tw-gap-5 md:tw-grid-cols-2">
+                <x-input name="lat" id="lat" :label="__('Latitude')" :value="$isEdit ? $event->lat : ''"
+                    :placeholder="__('Latitude')" />
+                <x-input name="lang" id="lang" :label="__('Longitude')" :value="$isEdit ? $event->lang : ''"
+                    :placeholder="__('Longitude')" />
+            </div>
         </div>
     </div>
 
-    <fieldset class="ds-field tw-flex tw-flex-col tw-gap-2">
-        <legend class="tw-text-sm tw-font-semibold tw-text-ink-800 dark:tw-text-neutral-100">{{ __('Visibility') }}</legend>
-        <div class="tw-flex tw-flex-wrap tw-gap-4">
-            <label class="tw-inline-flex tw-items-center tw-gap-2 tw-text-sm tw-text-ink-800 dark:tw-text-neutral-100">
-                <input type="radio" name="security" value="1" class="custom-switch-input tw-h-4 tw-w-4 tw-accent-primary-500"
+    <fieldset class="ds-field tw-grid tw-gap-3 tw-border-t tw-border-neutral-100 tw-pt-5 dark:tw-border-neutral-800">
+        <legend class="tw-text-sm tw-font-semibold tw-text-ink-800 dark:tw-text-neutral-100">
+            {{ __('Visibility') }}
+        </legend>
+        <p class="-tw-mt-2 tw-text-xs tw-text-neutral-500 dark:tw-text-neutral-400">
+            {{ __('Choose who can find and book this event.') }}
+        </p>
+        <div class="selectgroup !tw-grid tw-gap-2 sm:tw-grid-cols-2">
+            <label class="selectgroup-item !tw-ml-0 !tw-w-auto tw-relative tw-cursor-pointer">
+                <input type="radio" name="security" value="1"
+                    class="custom-switch-input tw-peer tw-sr-only"
                     {{ $security == '1' ? 'checked' : '' }}>
-                {{ __('Public') }}
+                <span class="tw-flex tw-h-full tw-items-start tw-gap-3 tw-rounded-stub tw-border tw-border-neutral-200 tw-px-4 tw-py-3 tw-text-ink-800 tw-transition peer-checked:tw-border-accent-500 peer-checked:tw-bg-accent-50 peer-checked:tw-text-accent-800 peer-focus-visible:tw-ring-2 peer-focus-visible:tw-ring-accent-600 peer-focus-visible:tw-ring-offset-2 dark:tw-border-neutral-700 dark:tw-text-neutral-100 dark:peer-checked:tw-border-accent-400 dark:peer-checked:tw-bg-accent-900/30 dark:peer-checked:tw-text-accent-200">
+                    <span class="tw-mt-0.5 tw-flex tw-h-8 tw-w-8 tw-shrink-0 tw-items-center tw-justify-center tw-rounded-stub tw-bg-neutral-100 tw-text-neutral-500 dark:tw-bg-neutral-800 dark:tw-text-neutral-400">
+                        <x-lucide-eye class="tw-h-4 tw-w-4" />
+                    </span>
+                    <span class="tw-flex tw-flex-col tw-gap-0.5">
+                        <span class="tw-text-sm tw-font-semibold">{{ __('Public') }}</span>
+                        <span class="tw-text-xs tw-leading-5 tw-text-neutral-500 dark:tw-text-neutral-400">{{ __('Listed for everyone to find and book.') }}</span>
+                    </span>
+                </span>
+                <span aria-hidden="true"
+                    class="tw-pointer-events-none tw-absolute tw-right-3 tw-top-3 tw-h-1.5 tw-w-1.5 tw-rounded-pill tw-bg-primary-500 tw-opacity-0 tw-transition peer-checked:tw-opacity-100"></span>
             </label>
-            <label class="tw-inline-flex tw-items-center tw-gap-2 tw-text-sm tw-text-ink-800 dark:tw-text-neutral-100">
-                <input type="radio" name="security" value="0" class="custom-switch-input tw-h-4 tw-w-4 tw-accent-primary-500"
+            <label class="selectgroup-item !tw-ml-0 !tw-w-auto tw-relative tw-cursor-pointer">
+                <input type="radio" name="security" value="0"
+                    class="custom-switch-input tw-peer tw-sr-only"
                     {{ $security == '0' ? 'checked' : '' }}>
-                {{ __('Private') }}
+                <span class="tw-flex tw-h-full tw-items-start tw-gap-3 tw-rounded-stub tw-border tw-border-neutral-200 tw-px-4 tw-py-3 tw-text-ink-800 tw-transition peer-checked:tw-border-accent-500 peer-checked:tw-bg-accent-50 peer-checked:tw-text-accent-800 peer-focus-visible:tw-ring-2 peer-focus-visible:tw-ring-accent-600 peer-focus-visible:tw-ring-offset-2 dark:tw-border-neutral-700 dark:tw-text-neutral-100 dark:peer-checked:tw-border-accent-400 dark:peer-checked:tw-bg-accent-900/30 dark:peer-checked:tw-text-accent-200">
+                    <span class="tw-mt-0.5 tw-flex tw-h-8 tw-w-8 tw-shrink-0 tw-items-center tw-justify-center tw-rounded-stub tw-bg-neutral-100 tw-text-neutral-500 dark:tw-bg-neutral-800 dark:tw-text-neutral-400">
+                        <x-lucide-lock class="tw-h-4 tw-w-4" />
+                    </span>
+                    <span class="tw-flex tw-flex-col tw-gap-0.5">
+                        <span class="tw-text-sm tw-font-semibold">{{ __('Private') }}</span>
+                        <span class="tw-text-xs tw-leading-5 tw-text-neutral-500 dark:tw-text-neutral-400">{{ __('Hidden from public listings and search.') }}</span>
+                    </span>
+                </span>
+                <span aria-hidden="true"
+                    class="tw-pointer-events-none tw-absolute tw-right-3 tw-top-3 tw-h-1.5 tw-w-1.5 tw-rounded-pill tw-bg-primary-500 tw-opacity-0 tw-transition peer-checked:tw-opacity-100"></span>
             </label>
         </div>
     </fieldset>

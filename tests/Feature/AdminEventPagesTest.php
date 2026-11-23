@@ -222,6 +222,31 @@ class AdminEventPagesTest extends TestCase
     }
 
     #[Test]
+    public function event_form_option_tabs_keep_radio_contract_and_add_guidance()
+    {
+        $this->activateLicense();
+        $organizer = $this->organizer();
+
+        $response = $this->actingAs($organizer)->get(route('events.create'))->assertOk()
+            ->assertSee('Choose how attendees will join this event.', false)
+            ->assertSee('Add a physical address and map coordinates.', false)
+            ->assertSee('Meet attendees online without a venue address.', false)
+            ->assertSee('Choose who can find and book this event.', false)
+            ->assertSee('Listed for everyone to find and book.', false)
+            ->assertSee('Hidden from public listings and search.', false)
+            ->assertSee('class="selectgroup', false)
+            ->assertSee('class="location-detail', false);
+
+        $html = $response->getContent();
+        foreach ([['type', 'offline'], ['type', 'online'], ['security', '1'], ['security', '0']] as [$name, $value]) {
+            $this->assertMatchesRegularExpression(
+                '/<input[^>]*type="radio"[^>]*name="'.$name.'"[^>]*value="'.$value.'"[^>]*class="[^"]*tw-peer tw-sr-only/',
+                $html
+            );
+        }
+    }
+
+    #[Test]
     public function event_detail_and_gallery_keep_ticket_and_dropzone_hooks()
     {
         $this->activateLicense();
