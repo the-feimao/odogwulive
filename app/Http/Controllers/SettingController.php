@@ -8,19 +8,29 @@ use App\Models\Timezone;
 use App\Http\Controllers\AppHelper;
 use App\Models\Language;
 use App\Models\PaymentSetting;
+use Auth;
 use Illuminate\Http\Request;
 use App;
 
 class SettingController extends Controller
 {
+    private function authorizeAdmin(): void
+    {
+        if (!Auth::check() || !Auth::user()->hasRole('admin')) {
+            abort(403);
+        }
+    }
+
     public function index()
     {
+        $this->authorizeAdmin();
+
         $setting = Setting::find(1);
         $currencies = Currency::get();
         $timezone = Timezone::get();
         $payment = PaymentSetting::find(1);
         $languages = Language::whereStatus(1)->get();
-        return view('admin.setting', compact('setting','languages','currencies','payment','timezone'));
+        return view('admin.setting', compact('setting', 'languages', 'currencies', 'payment', 'timezone'));
     }
 
     public function create()
@@ -30,22 +40,24 @@ class SettingController extends Controller
 
     public function store(Request $request)
     {
+        $this->authorizeAdmin();
+
         $data = $request->all();
-        
+
         if ($request->hasFile('logo')) {
             $logo = $request->file('logo');
             $name = uniqid() . '.' . $logo->getClientOriginalExtension();
             $destinationPath = public_path('/images/upload');
             $logo->move($destinationPath, $name);
             $data['logo'] = $name;
-        } 
+        }
         if ($request->hasFile('favicon')) {
             $favicon = $request->file('favicon');
             $faviconName = uniqid() . '.' . $favicon->getClientOriginalExtension();
             $faviconPath = public_path('/images/upload');
             $favicon->move($faviconPath, $faviconName);
             $data['favicon'] = $faviconName;
-        }     
+        }
         Setting::find(1)->update($data);
         return redirect('admin-setting')->withStatus(__('Setting saved successfully.'));
     }
@@ -71,6 +83,8 @@ class SettingController extends Controller
     }
 
     public function saveMailSetting(Request $request){
+        $this->authorizeAdmin();
+
         $request->validate([
             'mail_host' => 'bail|required_if:mail_notification,1',
             'mail_port' => 'bail|required_if:mail_notification,1',
@@ -96,6 +110,8 @@ class SettingController extends Controller
     }
 
     public function saveVerificationSetting(Request $request){
+        $this->authorizeAdmin();
+
         $request->validate([
             'verify_by' => 'bail|required_if:user_verify,1',           
         ]);
@@ -108,6 +124,8 @@ class SettingController extends Controller
     }
 
     public function saveOrganizationSetting(Request $request){
+        $this->authorizeAdmin();
+
         $request->validate([
             'terms_use_organizer' => 'bail|required',
             'privacy_policy_organizer' => 'bail|required',            
@@ -117,6 +135,8 @@ class SettingController extends Controller
     }
 
     public function saveOnesignalSetting(Request $request){
+        $this->authorizeAdmin();
+
         $request->validate([
             'onesignal_app_id' => 'bail|required_if:push_notification,1',
             'onesignal_project_number' => 'bail|required_if:push_notification,1',
@@ -148,6 +168,8 @@ class SettingController extends Controller
 
 
     public function saveSmsSetting(Request $request){
+        $this->authorizeAdmin();
+
         $request->validate([
             'twilio_account_id' => 'bail|required_if:sms_notification,1',
             'twilio_auth_token' => 'bail|required_if:sms_notification,1',
@@ -162,6 +184,8 @@ class SettingController extends Controller
     }
 
     public function additionalSetting(Request $request){
+        $this->authorizeAdmin();
+
         Setting::find(1)->update($request->all());
         $this->setLanguage();
         return redirect('admin-setting')->withStatus(__('Setting saved successfully.'));
@@ -182,11 +206,15 @@ class SettingController extends Controller
     }
 
     public function supportSetting(Request $request){
+        $this->authorizeAdmin();
+
         Setting::find(1)->update($request->all());
         return redirect('admin-setting')->withStatus(__('Setting saved successfully.'));
     }
 
     public function savePaymentSetting(Request $request){
+        $this->authorizeAdmin();
+
         $request->validate([
             'stripeSecretKey' => 'bail|required_if:stripe,1',
             'stripePublicKey' => 'bail|required_if:stripe,1', 

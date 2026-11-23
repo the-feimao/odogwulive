@@ -20,15 +20,17 @@ class BlogController extends Controller
 
     public function create()
     {
-        abort_if(Gate::denies('banner_create'), Response::HTTP_FORBIDDEN, '403 Forbidden');
-        $category = Category::where('status',1)->orderBy('id','DESC')->get();
+        abort_if(Gate::denies('blog_create'), Response::HTTP_FORBIDDEN, '403 Forbidden');
+        $category = Category::where('status', 1)->orderBy('id', 'DESC')->get();
         return view('admin.blog.create', compact('category'));
     }
 
     public function store(Request $request)
     {
+        abort_if(Gate::denies('blog_create'), Response::HTTP_FORBIDDEN, '403 Forbidden');
+
         $request->validate([
-            'title' => 'bai l|required',
+            'title' => 'bail|required',
             'description' => 'bail|required',
             'category_id' => 'bail|required',
             'image' => 'bail|required',
@@ -37,45 +39,48 @@ class BlogController extends Controller
         if ($request->hasFile('image')) {
             $data['image'] = (new AppHelper)->saveImage($request);
         }
-        $blog = Blog::create($data);
+        Blog::create($data);
         return redirect()->route('blog.index')->withStatus(__('Blog is added successfully.'));
     }
 
     public function show(Blog $blog)
     {
-
     }
 
     public function edit(Blog $blog)
     {
-        abort_if(Gate::denies('banner_edit'), Response::HTTP_FORBIDDEN, '403 Forbidden');
-        $category = Category::where('status',1)->orderBy('id','DESC')->get();
-        return view('admin.blog.edit',compact('blog','category'));
+        abort_if(Gate::denies('blog_edit'), Response::HTTP_FORBIDDEN, '403 Forbidden');
+        $category = Category::where('status', 1)->orderBy('id', 'DESC')->get();
+        return view('admin.blog.edit', compact('blog', 'category'));
     }
 
     public function update(Request $request, Blog $blog)
     {
+        abort_if(Gate::denies('blog_edit'), Response::HTTP_FORBIDDEN, '403 Forbidden');
+
         $request->validate([
-            'title' => 'bai l|required',
+            'title' => 'bail|required',
             'description' => 'bail|required',
             'category_id' => 'bail|required',
         ]);
         $data = $request->all();
-        if ($request->hasFile('image')){
+        if ($request->hasFile('image')) {
             (new AppHelper)->deleteFile($blog->image);
             $data['image'] = (new AppHelper)->saveImage($request);
         }
-        $blog = Blog::find($blog->id)->update($data);
+        $blog->update($data);
         return redirect()->route('blog.index')->withStatus(__('Blog is updated successfully.'));
     }
 
     public function destroy(Blog $blog)
     {
-        try{
+        abort_if(Gate::denies('blog_delete'), Response::HTTP_FORBIDDEN, '403 Forbidden');
+
+        try {
             (new AppHelper)->deleteFile($blog->image);
             $blog->delete();
             return true;
-        }catch(Throwable $th){
+        } catch (\Throwable $th) {
             return response('Data is Connected with other Data', 400);
         }
     }

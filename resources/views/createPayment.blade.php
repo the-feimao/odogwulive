@@ -154,7 +154,7 @@ hr {
         <input type="hidden" name="customer[email]" value="{{ $order->customer->email }}" />
         <input type="hidden" name="customer[phone_number]" value="{{ $order->customer->phone }}" />
         <input type="hidden" name="customer[name]" value="{{ $order->customer->name }}" />
-        <input type="hidden" name="tx_ref" value="bitethtx-019203" />
+        <input type="hidden" name="tx_ref" value="order-{{ $order->id }}-{{ time() }}" />
         <input type="hidden" name="amount" value="{{ $order->payment }}" />
         <input type="hidden" name="currency" value="{{ App\Models\Setting::find(1)->currency }}" />
         <input type="hidden" name="redirect_url" value="{{ url('transction_verify/'.$order->id) }}" />

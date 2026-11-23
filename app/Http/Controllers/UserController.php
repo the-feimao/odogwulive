@@ -76,6 +76,7 @@ class UserController extends Controller
             $event->avaliable = $event->tickets - $event->sold_ticket;
         }
     }
+
     public function index()
     {                    
         abort_if(Gate::denies('user_access'), Response::HTTP_FORBIDDEN, '403 Forbidden');
@@ -112,24 +113,29 @@ class UserController extends Controller
 
     public function show(User $user)
     {
+        abort_if(Gate::denies('user_access'), Response::HTTP_FORBIDDEN, '403 Forbidden');
         return view('admin.user.show', compact('user'));
     }
 
     public function edit(User $user)
     {
         abort_if(Gate::denies('user_edit'), Response::HTTP_FORBIDDEN, '403 Forbidden');
-        $roles = Role::all();
         $roles = Role::whereNotIn('name', ['admin'])->get();
-        if($user->hasRole('admin')){
+        if ($user->hasRole('admin')) {
             return redirect()->route('users.index')->withStatus(__('You can not edit admin.'));
         }
-        $orgs = User::role('organization')->orderBy('id','DESC')->get();  
+        $orgs = User::role('organization')->orderBy('id', 'DESC')->get();
 
-        return view('admin.user.edit', compact('roles', 'user','orgs'));
+        return view('admin.user.edit', compact('roles', 'user', 'orgs'));
     }
-   
+
     public function update(Request $request, User $user)
     {
+        abort_if(Gate::denies('user_edit'), Response::HTTP_FORBIDDEN, '403 Forbidden');
+        if ($user->hasRole('admin')) {
+            return redirect()->route('users.index')->withStatus(__('You can not edit admin.'));
+        }
+
         $request->validate([
             'first_name' => 'bail|required',
             'last_name' => 'bail|required',
@@ -138,7 +144,12 @@ class UserController extends Controller
         ]);
         $data = $request->all();
         $data['org_id'] = $request->organization;
-        $user->update($data);        
+        if (empty($request->password)) {
+            unset($data['password']);
+        } else {
+            $data['password'] = Hash::make($request->password);
+        }
+        $user->update($data);
         $user->syncRoles($request->input('roles', []));
 
         return redirect()->route('users.index')->withStatus(__('User is updated successfully.'));
@@ -149,52 +160,60 @@ class UserController extends Controller
 
     }
 
-    public function adminDashboard(){  
-        
+    public function adminDashboard()
+    {
+        if (!Auth::user()->hasRole('admin')) {
+            abort(403);
+        }
+
         $master['organizations'] = User::role('organization')->count();
         $master['users'] = AppUser::count();
         $master['total_order'] = Order::count();
-        $master['pending_order'] = Order::where('order_status','Pending')->count();
-        $master['complete_order'] = Order::where('order_status','Complete')->count();
-        $master['cancel_order'] = Order::where('order_status','Cancel')->count();
+        $master['pending_order'] = Order::where('order_status', 'Pending')->count();
+        $master['complete_order'] = Order::where('order_status', 'Complete')->count();
+        $master['cancel_order'] = Order::where('order_status', 'Cancel')->count();
         $master['eventDate'] = array();
-        $events = Event::where([['status',1],['is_deleted',0]])->orderBy('id','DESC')->get();              
-        $day = Carbon::parse(Carbon::now()->year.'-'.Carbon::now()->month.'-01')->daysInMonth;                       
-        $monthEvent = Event::whereBetween('start_time', [ date('Y')."-".date('m')."-01 00:00:00",  date('Y')."-".date('m')."-".$day." 23:59:59"])
-        ->where([['status',1],['is_deleted',0]])
-        ->orderBy('id','DESC')->get();
-      
+        $events = Event::where([['status', 1], ['is_deleted', 0]])->orderBy('id', 'DESC')->get();
+        $day = Carbon::parse(Carbon::now()->year . '-' . Carbon::now()->month . '-01')->daysInMonth;
+        $monthEvent = Event::whereBetween('start_time', [date('Y') . "-" . date('m') . "-01 00:00:00",  date('Y') . "-" . date('m') . "-" . $day . " 23:59:59"])
+            ->where([['status', 1], ['is_deleted', 0]])
+            ->orderBy('id', 'DESC')->get();
+
         $this->applyEventAggregates([$monthEvent, $events]);
         foreach ($events as $value) {
-            array_push( $master['eventDate'],$value->start_time->format('Y-m-d'));
+            array_push($master['eventDate'], $value->start_time->format('Y-m-d'));
         }
-    
-        return view('admin.dashboard', compact('events','monthEvent','master'));
+
+        return view('admin.dashboard', compact('events', 'monthEvent', 'master'));
     }
 
+    public function organizationDashboard()
+    {
+        if (!Auth::user()->hasRole('organization')) {
+            abort(403);
+        }
 
-    public function organizationDashboard(){        
-        $master['total_tickets'] = Ticket::where('user_id',Auth::user()->id)->sum('quantity');
-        $master['used_tickets'] = Order::where('organization_id',Auth::user()->id)->sum('quantity');
-        $master['events'] = Event::where([['user_id',Auth::user()->id],['is_deleted',0]])->count();
-        $master['total_order'] = Order::where('organization_id',Auth::user()->id)->count();
-        $master['pending_order'] = Order::where([['order_status','Pending'],['organization_id',Auth::user()->id]])->count();
-        $master['complete_order'] = Order::where([['order_status','Complete'],['organization_id',Auth::user()->id]])->count();
-        $master['cancel_order'] = Order::where([['order_status','Cancel'],['organization_id',Auth::user()->id]])->count();
-        $day = Carbon::parse(Carbon::now()->year.'-'.Carbon::now()->month.'-01')->daysInMonth; 
-        $monthEvent = Event::whereBetween('start_time', [ date('Y')."-".date('m')."-01 00:00:00",  date('Y')."-".date('m')."-".$day." 23:59:59"])
-        ->where([['status',1],['user_id',Auth::user()->id],['is_deleted',0]])
-        ->orderBy('id','DESC')->get();      
+        $master['total_tickets'] = Ticket::where('user_id', Auth::user()->id)->sum('quantity');
+        $master['used_tickets'] = Order::where('organization_id', Auth::user()->id)->sum('quantity');
+        $master['events'] = Event::where([['user_id', Auth::user()->id], ['is_deleted', 0]])->count();
+        $master['total_order'] = Order::where('organization_id', Auth::user()->id)->count();
+        $master['pending_order'] = Order::where([['order_status', 'Pending'], ['organization_id', Auth::user()->id]])->count();
+        $master['complete_order'] = Order::where([['order_status', 'Complete'], ['organization_id', Auth::user()->id]])->count();
+        $master['cancel_order'] = Order::where([['order_status', 'Cancel'], ['organization_id', Auth::user()->id]])->count();
+        $day = Carbon::parse(Carbon::now()->year . '-' . Carbon::now()->month . '-01')->daysInMonth;
+        $monthEvent = Event::whereBetween('start_time', [date('Y') . "-" . date('m') . "-01 00:00:00",  date('Y') . "-" . date('m') . "-" . $day . " 23:59:59"])
+            ->where([['status', 1], ['user_id', Auth::user()->id], ['is_deleted', 0]])
+            ->orderBy('id', 'DESC')->get();
 
-        $events = Event::where([['status',1],['user_id',Auth::user()->id],['is_deleted',0]])->orderBy('id','DESC')->get(); 
+        $events = Event::where([['status', 1], ['user_id', Auth::user()->id], ['is_deleted', 0]])->orderBy('id', 'DESC')->get();
         $this->applyEventAggregates([$monthEvent, $events]);
 
         $master['eventDate'] = array();
         foreach ($events as $value) {
-            array_push( $master['eventDate'],$value->start_time->format('Y-m-d'));
+            array_push($master['eventDate'], $value->start_time->format('Y-m-d'));
         }
-    
-        return view('admin.org_dashboard', compact('events','monthEvent','master'));
+
+        return view('admin.org_dashboard', compact('events', 'monthEvent', 'master'));
     }
 
     public function viewProfile(){
@@ -203,13 +222,28 @@ class UserController extends Controller
         return view('admin.profile', compact('languages', 'followerIds'));
     }
 
-    public function editProfile(Request $request){
-        User::find(Auth::user()->id)->update($request->all());
-        if(session()->get('locale') != $request->language) {
-            App::setLocale($request->language);
-            session()->put('locale', $request->language);
-            $direction = Language::where('name',$request->language)->first()->direction;
-            session()->put('direction', $direction);
+    public function editProfile(Request $request)
+    {
+        $user = Auth::user();
+        $data = $request->only(['name', 'first_name', 'last_name', 'phone', 'bio', 'country', 'language']);
+
+        if ($request->hasFile('image')) {
+            $image = $request->file('image');
+            $name = time() . '.' . $image->getClientOriginalExtension();
+            $destinationPath = public_path('/images/upload');
+            $image->move($destinationPath, $name);
+            $data['image'] = $name;
+        }
+
+        $user->update($data);
+
+        if ($request->filled('language') && session()->get('locale') != $request->language) {
+            $language = Language::where('name', $request->language)->first();
+            if ($language) {
+                App::setLocale($request->language);
+                session()->put('locale', $request->language);
+                session()->put('direction', $language->direction);
+            }
         }
         return redirect('profile')->withStatus(__('Profile is updated successfully.'));
     }
@@ -313,26 +347,37 @@ class UserController extends Controller
         return redirect()->back();
     }
 
-    public function scanner(){
-        if(Auth::user()->hasRole('admin'))
-        {
-            $scanners = User::role('scanner')->orderBy('id','DESC')->get();
+    public function scanner()
+    {
+        $user = Auth::user();
+        if ($user->hasRole('admin')) {
+            $scanners = User::role('scanner')->orderBy('id', 'DESC')->get();
+        } elseif ($user->hasRole('organization')) {
+            $scanners = User::role('scanner')->where('org_id', $user->id)->orderBy('id', 'DESC')->get();
+        } else {
+            abort(403);
         }
-        else{
-            $scanners = User::role('scanner')->where('org_id',Auth::user()->id)->orderBy('id','DESC')->get();
-        }   
         foreach ($scanners as $value) {
-            $value->total_event = Event::where('scanner_id',$value->id)->count();
-        }             
-        return view('admin.scanner.index',compact('scanners'));
+            $value->total_event = Event::where('scanner_id', $value->id)->count();
+        }
+        return view('admin.scanner.index', compact('scanners'));
     }
-    
-    public function scannerCreate(){
+
+    public function scannerCreate()
+    {
+        if (!Auth::user()->hasRole('organization') && !Auth::user()->hasRole('admin')) {
+            abort(403);
+        }
         return view('admin.scanner.create');
     }
 
-    public function addScanner(Request $request){
-      
+    public function addScanner(Request $request)
+    {
+        $user = Auth::user();
+        if (!$user->hasRole('organization') && !$user->hasRole('admin')) {
+            abort(403);
+        }
+
         $request->validate([
             'first_name' => 'bail|required',
             'last_name' => 'bail|required',
@@ -341,24 +386,40 @@ class UserController extends Controller
             'password' => 'bail|required|min:6',
         ]);
         $data = $request->all();
-        $data['org_id'] = Auth::user()->id;
-        $data['password'] =  Hash::make($request->password); 
-       
+        $data['org_id'] = $user->hasRole('organization') ? $user->id : $request->org_id;
+        $data['password'] = Hash::make($request->password);
+
         $data['language'] = Setting::first()->language;
-        $user = User::create($data);           
-        $user->assignRole('scanner');
+        $scanner = User::create($data);
+        $scanner->assignRole('scanner');
         return redirect('scanner')->withStatus(__('Scanner is added successfully.'));
     }
 
-    public function blockScanner($id){
-        $user = User::find($id);  
+    public function blockScanner($id)
+    {
+        $authUser = Auth::user();
+        $user = User::role('scanner')->findOrFail($id);
+
+        if (!$authUser->hasRole('admin') && !($authUser->hasRole('organization') && (int) $user->org_id === (int) $authUser->id)) {
+            abort(403);
+        }
+
         $user->status = $user->status == "1" ? "0" : "1";
-        $user->save();        
+        $user->save();
         return redirect('scanner')->withStatus(__('User status changed successfully.'));
     }
 
-    public function getScanner($id){
-        $data = User::where('org_id',$id)->orderBy('id','DESC')->get();
-        return response()->json(['data' => $data,'success'=>true], 200); 
+    public function getScanner($id)
+    {
+        $authUser = Auth::user();
+        if ($authUser->hasRole('organization') && (int) $id !== (int) $authUser->id) {
+            abort(403);
+        }
+        if (!$authUser->hasRole('admin') && !$authUser->hasRole('organization')) {
+            abort(403);
+        }
+
+        $data = User::where('org_id', $id)->role('scanner')->orderBy('id', 'DESC')->get();
+        return response()->json(['data' => $data, 'success' => true], 200);
     }
 }

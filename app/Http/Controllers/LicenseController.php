@@ -16,23 +16,32 @@ use Illuminate\Http\Request;
 class LicenseController extends Controller
 {
 
-    public function saveEnvData(Request $request){
-        $data['DB_HOST']=$request->db_host;
-        $data['DB_DATABASE']=$request->db_name;
-        $data['DB_USERNAME']=$request->db_user;
-        $data['DB_PASSWORD']=$request->db_pass;
+    public function saveEnvData(Request $request)
+    {
+        $setting = Setting::find(1);
+        if ($setting && (int) $setting->license_status === 1) {
+            return response()->json(['data' => null, 'success' => false, 'message' => 'Application is already configured.'], 403);
+        }
+
+        $data['DB_HOST'] = $request->db_host;
+        $data['DB_DATABASE'] = $request->db_name;
+        $data['DB_USERNAME'] = $request->db_user;
+        $data['DB_PASSWORD'] = $request->db_pass;
 
         $envFile = app()->environmentFilePath();
-        if($envFile){
+        if ($envFile) {
             $str = file_get_contents($envFile);
             if (count($data) > 0) {
                 foreach ($data as $envKey => $envValue) {
+                    $envValue = $envValue === null ? '' : str_replace(["\r", "\n"], '', (string) $envValue);
                     $str .= "\n"; // In case the searched variable is in the last line without \n
                     $keyPosition = strpos($str, "{$envKey}=");
                     $endOfLinePosition = strpos($str, "\n", $keyPosition);
-                    $oldLine = substr($str, $keyPosition, $endOfLinePosition - $keyPosition);
+                    $oldLine = ($keyPosition !== false && $endOfLinePosition !== false)
+                        ? substr($str, $keyPosition, $endOfLinePosition - $keyPosition)
+                        : null;
                     // If key does not exist, add it
-                    if (!$keyPosition || !$endOfLinePosition || !$oldLine) {
+                    if ($keyPosition === false || $endOfLinePosition === false || !$oldLine) {
                         $str .= "{$envKey}={$envValue}\n";
                     } else {
                         $str = str_replace($oldLine, "{$envKey}={$envValue}", $str);
@@ -40,20 +49,43 @@ class LicenseController extends Controller
                 }
             }
             $str = substr($str, 0, -1);
-            if (!file_put_contents($envFile, $str)){
-                return response()->json(['data' => null,'success'=>false], 200);
+            if (!file_put_contents($envFile, $str)) {
+                return response()->json(['data' => null, 'success' => false], 200);
             }
             Artisan::call('config:clear');
             Artisan::call('cache:clear');
-            return response()->json([ 'data' => null,'success'=>true], 200);
+            return response()->json(['data' => null, 'success' => true], 200);
         }
+
+        return response()->json(['data' => null, 'success' => false], 200);
     }
 
-    public function saveAdminData(Request $request){
+    public function saveAdminData(Request $request)
+    {
+        $setting = Setting::find(1);
+        if ($setting && (int) $setting->license_status === 1) {
+            return response()->json(['data' => null, 'success' => false, 'message' => 'Application is already configured.'], 403);
+        }
 
-        User::role('admin')->update(['email'=>$request->email,'password'=> Hash::make($request->password)]);
-        Setting::find(1)->update(['license_status'=>1,'license_key'=>$request->license_code,'license_name'=>$request->client_name]);
-        return response()->json([ 'data' => url('login'),'success'=>true], 200);
+        $request->validate([
+            'email' => 'bail|required|email',
+            'password' => 'bail|required|min:6',
+        ]);
+
+        User::role('admin')->update([
+            'email' => $request->email,
+            'password' => Hash::make($request->password),
+        ]);
+
+        if ($setting) {
+            $setting->update([
+                'license_status' => 1,
+                'license_key' => $request->license_code,
+                'license_name' => $request->client_name,
+            ]);
+        }
+
+        return response()->json(['data' => url('login'), 'success' => true], 200);
     }
 
     public function adminLogin(Request $request)

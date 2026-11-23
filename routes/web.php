@@ -4,7 +4,6 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\CategoryController;
-use App\Http\Controllers\LocationController;
 use App\Http\Controllers\EventController;
 use App\Http\Controllers\TicketController;
 use App\Http\Controllers\AppUserController;
@@ -36,10 +35,10 @@ Route::post('/admin/login', [LicenseController::class, 'adminLogin'])->middlewar
 Route::post('/saveEnvData', [LicenseController::class, 'saveEnvData']);
 Route::post('/saveAdminData', [LicenseController::class, 'saveAdminData']);
 // Route::get('/home', [App\Http\Controllers\HomeController::class, 'index'])->name('home');
-Route::get('/order-invoice-print/{id}', [OrderController::class, 'orderInvoicePrint']);   
 Route::get('/change-language/{lang}', [UserController::class, 'changeLanguage']);
 
 Route::group(['middleware' => ['auth']], function () {
+    Route::get('/order-invoice-print/{id}', [OrderController::class, 'orderInvoicePrint']);
     Route::get('/admin/home', [UserController::class, 'adminDashboard']);
     Route::get('/organization/home', [UserController::class, 'organizationDashboard']);    
     Route::get('/{id}/{name}/tickets', [TicketController::class, 'index']);
@@ -118,26 +117,24 @@ Route::group(['middleware' => ['auth']], function () {
         'blog' =>  BlogController::class, 
         'feedback' =>  FeedbackController::class, 
         'coupon' =>  CouponController::class,   
-        'category' =>  CategoryController::class, 
-        'location' =>  LocationController::class, 
+        'category' =>  CategoryController::class,
         'events' =>  EventController::class,    
         'notification-template' =>  NotificationTemplateController::class,
         'language' => LanguageController::class,
     ]);   
+    Route::get('/notification', [NotificationTemplateController::class, 'notification']);
+    Route::get('/delete-notification/{id}', [NotificationTemplateController::class, 'deleteNotification']);
 });
-
-Route::get('/notification', [NotificationTemplateController::class, 'notification']);
-Route::get('/delete-notification/{id}', [NotificationTemplateController::class, 'deleteNotification']);
 
 Route::get('/create-payment/{id}', [UserController::class, 'makePayment'])->middleware('throttle:60,1');
 Route::any('/payment/{id}', [UserController::class, 'initialize'])->name('pay')->middleware('throttle:60,1');
 Route::get('/rave/callback/{id}', [UserController::class, 'callback'])->name('callback')->middleware('throttle:60,1');
 
-Route::get('FlutterWavepayment/{id}',[UserController::class,'FlutterWavepayment']);
-Route::get('transction_verify/{id}',[UserController::class,'transction_verify'])->middleware('throttle:60,1');
+// Legacy/broken endpoint removed: FlutterWavepayment action was not implemented.
+Route::get('transction_verify/{id}', [UserController::class, 'transction_verify'])->middleware('throttle:60,1');
 
 
 // paystack
 
 // Laravel 8 & 9
-Route::post('/pay', [App\Http\Controllers\PaymentController::class, 'redirectToGateway'])->name('pay');
+Route::post('/pay', [App\Http\Controllers\PaymentController::class, 'redirectToGateway'])->name('paystack.pay');

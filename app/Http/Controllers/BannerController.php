@@ -25,6 +25,8 @@ class BannerController extends Controller
 
     public function store(Request $request)
     {
+        abort_if(Gate::denies('banner_create'), Response::HTTP_FORBIDDEN, '403 Forbidden');
+
         $request->validate([
             'title' => 'bail|required',
             'description' => 'bail|required',
@@ -34,44 +36,46 @@ class BannerController extends Controller
         if ($request->hasFile('image')) {
             $data['image'] = (new AppHelper)->saveImage($request);
         }
-        $banner = Banner::create($data);
+        Banner::create($data);
         return redirect()->route('banner.index')->withStatus(__('Banner is added successfully.'));
     }
 
     public function show(Banner $banner)
     {
-
     }
 
     public function edit(Banner $banner)
     {
         abort_if(Gate::denies('banner_edit'), Response::HTTP_FORBIDDEN, '403 Forbidden');
-        return view('admin.banner.edit',compact('banner'));
+        return view('admin.banner.edit', compact('banner'));
     }
 
     public function update(Request $request, Banner $banner)
     {
+        abort_if(Gate::denies('banner_edit'), Response::HTTP_FORBIDDEN, '403 Forbidden');
+
         $request->validate([
             'title' => 'bail|required',
             'description' => 'bail|required',
         ]);
         $data = $request->all();
-        if ($request->hasFile('image'))
-        {
+        if ($request->hasFile('image')) {
             (new AppHelper)->deleteFile($banner->image);
             $data['image'] = (new AppHelper)->saveImage($request);
         }
-        $banner = Banner::find($banner->id)->update($data);
+        $banner->update($data);
         return redirect()->route('banner.index')->withStatus(__('Banner is updated successfully.'));
     }
 
     public function destroy(Banner $banner)
     {
-        try{
+        abort_if(Gate::denies('banner_delete'), Response::HTTP_FORBIDDEN, '403 Forbidden');
+
+        try {
             (new AppHelper)->deleteFile($banner->image);
             $banner->delete();
             return true;
-        }catch(Throwable $th){
+        } catch (\Throwable $th) {
             return response('Data is Connected with other Data', 400);
         }
     }

@@ -11,33 +11,72 @@ use Illuminate\Http\Request;
 
 class CouponController extends Controller
 {
+    private function authorizeCouponAccess(Coupon $coupon): void
+    {
+        $user = Auth::user();
+
+        if (!$user) {
+            abort(403);
+        }
+
+        if ($user->hasRole('admin')) {
+            return;
+        }
+
+        if ($user->hasRole('organization') && (int) $coupon->user_id === (int) $user->id) {
+            return;
+        }
+
+        abort(403);
+    }
+
+    private function resolveAccessibleEvent($eventId): Event
+    {
+        $event = Event::findOrFail($eventId);
+        $user = Auth::user();
+
+        if ($user->hasRole('admin')) {
+            return $event;
+        }
+
+        if ($user->hasRole('organization') && (int) $event->user_id === (int) $user->id) {
+            return $event;
+        }
+
+        abort(403);
+    }
+
     public function index()
     {
         abort_if(Gate::denies('coupon_access'), Response::HTTP_FORBIDDEN, '403 Forbidden');
-        if(Auth::user()->hasRole('admin')){
-            $coupon = Coupon::with(['event'])->OrderBy('id','DESC')->get();
+        if (Auth::user()->hasRole('admin')) {
+            $coupon = Coupon::with(['event'])->OrderBy('id', 'DESC')->get();
+        } elseif (Auth::user()->hasRole('organization')) {
+            $coupon = Coupon::with(['event'])->where('user_id', Auth::user()->id)->OrderBy('id', 'DESC')->get();
+        } else {
+            abort(403);
         }
-        elseif(Auth::user()->hasRole('organization')){
-            $coupon = Coupon::with(['event'])->where('user_id',Auth::user()->id)->OrderBy('id','DESC')->get();            
-        }
-      
-        return view('admin.coupon.index', compact('coupon')); 
+
+        return view('admin.coupon.index', compact('coupon'));
     }
 
     public function create()
     {
         abort_if(Gate::denies('coupon_create'), Response::HTTP_FORBIDDEN, '403 Forbidden');
-        if(Auth::user()->hasrole('admin')){
-            $event = Event::where('status',1)->orderBy('id','DESC')->get();
+        if (Auth::user()->hasrole('admin')) {
+            $event = Event::where('status', 1)->orderBy('id', 'DESC')->get();
+        } elseif (Auth::user()->hasrole('organization')) {
+            $event = Event::where([['status', 1], ['user_id', Auth::user()->id]])->orderBy('id', 'DESC')->get();
+        } else {
+            abort(403);
         }
-        elseif(Auth::user()->hasrole('organization')){
-            $event = Event::where([['status',1],['user_id',Auth::user()->id]])->orderBy('id','DESC')->get();
-        }
-        return view('admin.coupon.create', compact('event')); 
+        return view('admin.coupon.create', compact('event'));
     }
 
     public function store(Request $request)
     {
+        abort_if(Gate::denies('coupon_create'), Response::HTTP_FORBIDDEN, '403 Forbidden');
+
         $request->validate([
             'name' => 'bail|required',
             'event_id' => 'bail|required',
@@ -45,35 +84,42 @@ class CouponController extends Controller
             'start_date' => 'bail|required',
             'end_date' => 'bail|required',
             'max_use' => 'bail|required',
-            'description' => 'bail|required',            
-        ]);       
+            'description' => 'bail|required',
+        ]);
+        $event = $this->resolveAccessibleEvent($request->event_id);
+
         $data = $request->all();
-        $data['coupon_code'] =  chr(rand(65,90)).chr(rand(65,90)).'-'.rand(9999,100000);
-        $data['user_id']= Event::find($request->event_id)->user_id;   
-           
-        Coupon::create( $data);
+        $data['coupon_code'] = chr(rand(65, 90)) . chr(rand(65, 90)) . '-' . rand(9999, 100000);
+        $data['user_id'] = $event->user_id;
+
+        Coupon::create($data);
         return redirect()->route('coupon.index')->withStatus(__('Coupon is added successfully.'));
     }
 
     public function show(Coupon $coupon)
     {
-
     }
 
     public function edit(Coupon $coupon)
     {
         abort_if(Gate::denies('coupon_edit'), Response::HTTP_FORBIDDEN, '403 Forbidden');
-        if(Auth::user()->hasrole('admin')){
-            $event = Event::where('status',1)->orderBy('id','DESC')->get();
+        $this->authorizeCouponAccess($coupon);
+
+        if (Auth::user()->hasrole('admin')) {
+            $event = Event::where('status', 1)->orderBy('id', 'DESC')->get();
+        } elseif (Auth::user()->hasrole('organization')) {
+            $event = Event::where([['status', 1], ['user_id', Auth::user()->id]])->orderBy('id', 'DESC')->get();
+        } else {
+            abort(403);
         }
-        elseif(Auth::user()->hasrole('organization')){
-            $event = Event::where([['status',1],['user_id',Auth::user()->id]])->orderBy('id','DESC')->get();
-        }
-        return view('admin.coupon.edit', compact( 'coupon','event'));
+        return view('admin.coupon.edit', compact('coupon', 'event'));
     }
 
     public function update(Request $request, Coupon $coupon)
     {
+        abort_if(Gate::denies('coupon_edit'), Response::HTTP_FORBIDDEN, '403 Forbidden');
+        $this->authorizeCouponAccess($coupon);
+
         $request->validate([
             'name' => 'bail|required',
             'event_id' => 'bail|required',
@@ -81,21 +127,25 @@ class CouponController extends Controller
             'start_date' => 'bail|required',
             'end_date' => 'bail|required',
             'max_use' => 'bail|required',
-            'description' => 'bail|required',            
-        ]);       
-        $data = $request->all();      
-        $data['user_id']= Event::find($request->event_id)->user_id;   
-           
-        Coupon::find($coupon->id)->update($data);
+            'description' => 'bail|required',
+        ]);
+        $event = $this->resolveAccessibleEvent($request->event_id);
+
+        $data = $request->all();
+        $data['user_id'] = $event->user_id;
+
+        $coupon->update($data);
         return redirect()->route('coupon.index')->withStatus(__('Coupon is update successfully.'));
     }
 
     public function destroy(Coupon $coupon)
     {
-        try{
+        $this->authorizeCouponAccess($coupon);
+
+        try {
             $coupon->delete();
             return true;
-        }catch(Throwable $th){
+        } catch (\Throwable $th) {
             return response('Data is Connected with other Data', 400);
         }
     }

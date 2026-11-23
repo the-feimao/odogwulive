@@ -5,7 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Language;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
-use Gate;
+use Illuminate\Support\Facades\Gate;
 
 class LanguageController extends Controller
 {
@@ -24,6 +24,8 @@ class LanguageController extends Controller
 
     public function store(Request $request)
     {
+        abort_if(Gate::denies('language_add'), Response::HTTP_FORBIDDEN, '403 Forbidden');
+
         $data = $request->all();
         $request->validate([
             'name' => 'required',
@@ -31,21 +33,19 @@ class LanguageController extends Controller
             'direction' => 'required',
             'json_file' => 'required'
         ]);
-        if ($file = $request->hasfile('image'))
-        {
+        if ($file = $request->hasfile('image')) {
             $file = $request->file('image');
             $fileName = $request->name;
             $path = public_path('/images/upload/');
-            $file->move($path, $fileName.".png");
-            $data['image'] = $fileName.".png";
+            $file->move($path, $fileName . ".png");
+            $data['image'] = $fileName . ".png";
         }
-        if ($file = $request->hasfile('json_file'))
-        {
+        if ($file = $request->hasfile('json_file')) {
             $file = $request->file('json_file');
             $fileName = $request->name;
             $path = resource_path('/lang');
-            $file->move($path, $fileName.'.json');
-            $data['json_file'] = $fileName.".json";;
+            $file->move($path, $fileName . '.json');
+            $data['json_file'] = $fileName . ".json";
         }
         Language::create($data);
         return redirect('/language');
@@ -65,27 +65,27 @@ class LanguageController extends Controller
 
     public function update(Request $request, $id)
     {
+        abort_if(Gate::denies('language_edit'), Response::HTTP_FORBIDDEN, '403 Forbidden');
+
         $data = $request->all();
-        $language = Language::find($id);
+        $language = Language::findOrFail($id);
         $request->validate([
             'name' => 'required',
             'direction' => 'required',
         ]);
-        if ($file = $request->hasfile('image'))
-        {
+        if ($file = $request->hasfile('image')) {
             $file = $request->file('image');
             $fileName = $request->name;
             $path = public_path('/images/upload/');
-            $file->move($path, $fileName.".png");
-            $data['image'] = $fileName.".png";
+            $file->move($path, $fileName . ".png");
+            $data['image'] = $fileName . ".png";
         }
-        if ($file = $request->hasfile('json_file'))
-        {
+        if ($file = $request->hasfile('json_file')) {
             $file = $request->file('json_file');
             $fileName = $request->name;
             $path = resource_path('/lang');
-            $file->move($path, $fileName.'.json');
-            $data['json_file'] = $fileName.".json";;
+            $file->move($path, $fileName . '.json');
+            $data['json_file'] = $fileName . ".json";
         }
         $language->update($data);
         return redirect('/language');

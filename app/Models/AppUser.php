@@ -42,6 +42,11 @@ class AppUser extends Authenticatable
     protected $table = 'app_user';
     protected $appends = ['imagePath'];
 
+    public function orders()
+    {
+        return $this->hasMany(Order::class, 'customer_id');
+    }
+
     public function getImagePathAttribute()
     {
         return url('images/upload') . '/';

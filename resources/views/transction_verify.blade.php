@@ -53,7 +53,7 @@
 
         }
         .progress rect {
-            fill:#8BC34A;
+            fill:#F5A623;
         }
 
         #close-modal {
@@ -74,7 +74,7 @@
         left: 50%;
         margin-left: -55px;
         top: -15%;
-        background-color: #8BC34A;
+        background-color: #F5A623;
         border-radius: 50%;
         box-sizing: border-box;
         border: solid 5px white;
@@ -83,7 +83,7 @@
 
         }
         .btn-primary{
-        background: #8bc34a;
+        background: #F5A623;
             color: #fff;
             border: none;
             border-radius: 5px;
@@ -110,11 +110,11 @@
             <div id="success-icon">
                 <div></div>
             </div>
-            <h1><strong>{{__('Success!')}}</strong></h1>
+            <h1><strong>{{ $title ?? __('Payment Received') }}</strong></h1>
             <svg class="progress" xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="0 0 100 4.5">
                 <rect height="4.5" width="100" rx="2" ry="2" />
             </svg>
-            <p class="points">{{__('Payment Confirm')}}</p>
+            <p class="points">{{ $message ?? __('Your payment has been received and is pending verification.') }}</p>
 
             <a href="javascript:void(0);"><button class="btn btn-primary" >{{__('go back to app')}}</button></a>
         </div>

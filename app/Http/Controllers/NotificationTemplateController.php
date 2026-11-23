@@ -70,9 +70,18 @@ class NotificationTemplateController extends Controller
         return view('admin.notification', compact('notification'));
     }
 
-    public function deleteNotification($id){
-        $data = Notification::find($id);        
-        $data->delete();
+    public function deleteNotification($id)
+    {
+        $user = Auth::user();
+        $notification = Notification::where('id', $id)
+            ->where(function ($query) use ($user) {
+                $query->where('organizer_id', $user->id)
+                      ->orWhere('user_id', $user->id);
+            })
+            ->firstOrFail();
+
+        $notification->delete();
+
         return redirect()->back();
     }
 }

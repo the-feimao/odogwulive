@@ -142,7 +142,7 @@ hr {
                         <input type="submit" class="btn btn-primary" value="Make Payment"  />
                     </form>
                 @else 
-                    <p class="points">{{__('Payment Successfully done')}}!</p>
+                    <p class="points">{{__('Payment reference received. Your payment is pending verification.')}}</p>
                     <button class="btn btn-primary"><a href="{{url('/')}}">{{__('Back to Home')}}</a></button>
                 @endif
             

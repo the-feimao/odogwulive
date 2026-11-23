@@ -89,11 +89,12 @@
     </div>
 
     <!-- General JS Scripts -->
-    <?php $sendbox = \App\Models\PaymentSetting::find(1)->paypalClientId;
-    $cur = \App\Models\Setting::find(1)->currency;
+    <?php
+    $paypalClientId = \App\Models\PaymentSetting::find(1)->paypalClientId ?? null;
+    $cur = \App\Models\Setting::find(1)->currency ?? 'USD';
     ?>
-    @if ($sendbox != null)
-        <script src="https://www.paypal.com/sdk/js?client-id=AWoo6mXhv6wlXhlzdWcbP2uJbWGYYKunfoqtue6mC8c1l8GmxJrfeOqi1gwMpu9x1jmi7_81JkqT4bgb&currency={{ $cur }}"
+    @if (!empty($paypalClientId))
+        <script src="https://www.paypal.com/sdk/js?client-id={{ $paypalClientId }}&currency={{ $cur }}"
                 data-namespace="paypal_sdk"></script>
     @endif
     <script defer src="{{ url('admin/js/jquery-jvectormap.min.js') }}"></script>

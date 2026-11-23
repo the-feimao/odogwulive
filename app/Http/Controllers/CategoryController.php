@@ -30,6 +30,8 @@ class CategoryController extends Controller
 
     public function store(Request $request)
     {
+        abort_if(Gate::denies('category_create'), Response::HTTP_FORBIDDEN, '403 Forbidden');
+
         $request->validate([
             'name' => 'bail|required',
             'image' => 'bail|required',
@@ -39,23 +41,24 @@ class CategoryController extends Controller
         if ($request->hasFile('image')) {
             $data['image'] = (new AppHelper)->saveImage($request);
         }
-        Category::create( $data);
+        Category::create($data);
         return redirect()->route('category.index')->withStatus(__('Category is added successfully.'));
     }
 
     public function show(Category $category)
     {
-
     }
 
     public function edit(Category $category)
     {
         abort_if(Gate::denies('category_edit'), Response::HTTP_FORBIDDEN, '403 Forbidden');
-        return view('admin.category.edit', compact( 'category'));
+        return view('admin.category.edit', compact('category'));
     }
 
     public function update(Request $request, Category $category)
     {
+        abort_if(Gate::denies('category_edit'), Response::HTTP_FORBIDDEN, '403 Forbidden');
+
         $request->validate([
             'name' => 'bail|required',
         ]);
@@ -64,7 +67,7 @@ class CategoryController extends Controller
             (new AppHelper)->deleteFile($category->image);
             $data['image'] = (new AppHelper)->saveImage($request);
         }
-        Category::find($category->id)->update( $data);
+        $category->update($data);
         return redirect()->route('category.index')->withStatus(__('Category is update successfully.'));
     }
 

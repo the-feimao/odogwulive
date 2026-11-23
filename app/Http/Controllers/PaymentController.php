@@ -31,11 +31,15 @@ class PaymentController extends Controller
      */
     public function handleGatewayCallback()
     {
-        $paymentDetails = Paystack::getPaymentData();
+        try {
+            $paymentDetails = Paystack::getPaymentData();
 
-        dd($paymentDetails);
-        // Now you have the payment details,
-        // you can store the authorization_code in your db to allow for recurrent subscriptions
-        // you can then redirect or do whatever you want
+            // TODO: Persist/verify payment details and update the related order before redirecting.
+            // Intentionally avoid dumping payment payloads to the browser.
+
+            return redirect('/')->with('status', __('Payment callback received.'));
+        } catch (\Exception $e) {
+            return redirect('/')->with('error', __('Unable to verify payment at this time.'));
+        }
     }
 }

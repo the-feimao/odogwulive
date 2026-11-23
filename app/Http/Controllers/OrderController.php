@@ -72,6 +72,7 @@ class OrderController extends Controller
             $settlement->user = $users->get($settlement->user_id);
         }
     }
+
     private function authorizeOrderAccess(Order $order): void
     {
         $user = Auth::user();
@@ -123,29 +124,52 @@ class OrderController extends Controller
         return view('admin.order.invoice', compact('order'));
     }
 
-    public function userReview(){
-        $data = Review::orderBy('id','DESC')->get();
+    public function userReview()
+    {
+        if (!Auth::user()->hasRole('admin')) {
+            abort(403);
+        }
+
+        $data = Review::orderBy('id', 'DESC')->get();
         $this->prepareReviewRows($data);
         return view('admin.review', compact('data'));
     }
 
-    public function changeReviewStatus($id){
-        Review::find($id)->update(['status'=>1]);
+    public function changeReviewStatus($id)
+    {
+        if (!Auth::user()->hasRole('admin')) {
+            abort(403);
+        }
+
+        Review::findOrFail($id)->update(['status' => 1]);
         return redirect()->back()->withStatus(__('Review is published successfully.'));
     }
 
-    public function deleteReview($id){
-        $data = Review::find($id);
+    public function deleteReview($id)
+    {
+        if (!Auth::user()->hasRole('admin')) {
+            abort(403);
+        }
+
+        $data = Review::findOrFail($id);
         $data->delete();
         return redirect()->back()->withStatus(__('Review is deleted successfully.'));
     }
 
-    public function customerReport(Request $request){
-        $data = AppUser::orderBy('id','DESC');
-        if(isset($request->duration) && $request->duration != null){
-            $start_date = explode(' to ',$request->duration)[0];
-            $end_date = count(explode(' to ',$request->duration))==1?explode(' to ',$request->duration)[0]:explode(' to ',$request->duration)[1];
-            $data->whereBetween('created_at', [ $start_date." 00:00:00", $end_date." 23:59:59"]);
+    public function customerReport(Request $request)
+    {
+        if (!Auth::user()->hasRole('organization')) {
+            abort(403);
+        }
+
+        $data = AppUser::whereHas('orders', function ($query) {
+            $query->where('organization_id', Auth::user()->id);
+        })->orderBy('id', 'DESC');
+
+        if (isset($request->duration) && $request->duration != null) {
+            $start_date = explode(' to ', $request->duration)[0];
+            $end_date = count(explode(' to ', $request->duration)) == 1 ? explode(' to ', $request->duration)[0] : explode(' to ', $request->duration)[1];
+            $data->whereBetween('created_at', [$start_date . " 00:00:00", $end_date . " 23:59:59"]);
         }
         $data = $data->get();
 
@@ -157,50 +181,64 @@ class OrderController extends Controller
         foreach ($data as $value) {
             $value->buy_tickets = (int) ($buyTickets->get($value->id) ?? 0);
         }
-        return view('admin.report.org_customer_report', compact('data','request'));
+        return view('admin.report.org_customer_report', compact('data', 'request'));
     }
 
-    public function ordersReport(Request $request){
-        $data = Order::where([['organization_id',Auth::user()->id],['payment_status',1]]);
-        if(isset($request->customer) && $request->customer >= 1){
-            $data->where('customer_id',$request->customer);
+    public function ordersReport(Request $request)
+    {
+        if (!Auth::user()->hasRole('organization')) {
+            abort(403);
         }
-        if(isset($request->duration) && $request->duration != null){
-            $start_date = explode(' to ',$request->duration)[0];
-            $end_date = count(explode(' to ',$request->duration))==1?explode(' to ',$request->duration)[0]:explode(' to ',$request->duration)[1];
-            $data->whereBetween('created_at', [ $start_date." 00:00:00", $end_date." 23:59:59"]);
+
+        $data = Order::where([['organization_id', Auth::user()->id], ['payment_status', 1]]);
+        if (isset($request->customer) && $request->customer >= 1) {
+            $data->where('customer_id', $request->customer);
+        }
+        if (isset($request->duration) && $request->duration != null) {
+            $start_date = explode(' to ', $request->duration)[0];
+            $end_date = count(explode(' to ', $request->duration)) == 1 ? explode(' to ', $request->duration)[0] : explode(' to ', $request->duration)[1];
+            $data->whereBetween('created_at', [$start_date . " 00:00:00", $end_date . " 23:59:59"]);
         }
 
         $data = $data->with([
             'customer:id,name,last_name,email',
             'event:id,name,start_time',
-        ])->orderBy('id','DESC')->get();
-        $customers = AppUser::orderBy('id','DESC')->get();
+        ])->orderBy('id', 'DESC')->get();
+        $customers = AppUser::orderBy('id', 'DESC')->get();
 
-        return view('admin.report.org_orders_report', compact('data','request','customers'));
+        return view('admin.report.org_orders_report', compact('data', 'request', 'customers'));
     }
 
-    public function orgRevenueReport(Request $request){
-        $data = Settlement::where('user_id',Auth::user()->id)->orderBy('id','DESC');
-        if(isset($request->duration) && $request->duration != null){
-            $start_date = explode(' to ',$request->duration)[0];
-            $end_date = count(explode(' to ',$request->duration))==1?explode(' to ',$request->duration)[0]:explode(' to ',$request->duration)[1];
-            $data->whereBetween('created_at', [ $start_date." 00:00:00", $end_date." 23:59:59"]);
+    public function orgRevenueReport(Request $request)
+    {
+        if (!Auth::user()->hasRole('organization')) {
+            abort(403);
+        }
+
+        $data = Settlement::where('user_id', Auth::user()->id)->orderBy('id', 'DESC');
+        if (isset($request->duration) && $request->duration != null) {
+            $start_date = explode(' to ', $request->duration)[0];
+            $end_date = count(explode(' to ', $request->duration)) == 1 ? explode(' to ', $request->duration)[0] : explode(' to ', $request->duration)[1];
+            $data->whereBetween('created_at', [$start_date . " 00:00:00", $end_date . " 23:59:59"]);
         }
         $data = $data->get();
-
         $this->attachSettlementUsers($data);
 
-        return view('admin.report.org_revenue', compact('data','request'));
+        return view('admin.report.org_revenue', compact('data', 'request'));
     }
 
-    public function adminCustomerReport(Request $request){
-        $data = AppUser::orderBy('id','DESC');
+    public function adminCustomerReport(Request $request)
+    {
+        if (!Auth::user()->hasRole('admin')) {
+            abort(403);
+        }
 
-        if(isset($request->duration) && $request->duration != null){
-            $start_date = explode(' to ',$request->duration)[0];
-            $end_date = count(explode(' to ',$request->duration))==1?explode(' to ',$request->duration)[0]:explode(' to ',$request->duration)[1];
-            $data->whereBetween('created_at', [ $start_date." 00:00:00", $end_date." 23:59:59"]);
+        $data = AppUser::orderBy('id', 'DESC');
+
+        if (isset($request->duration) && $request->duration != null) {
+            $start_date = explode(' to ', $request->duration)[0];
+            $end_date = count(explode(' to ', $request->duration)) == 1 ? explode(' to ', $request->duration)[0] : explode(' to ', $request->duration)[1];
+            $data->whereBetween('created_at', [$start_date . " 00:00:00", $end_date . " 23:59:59"]);
         }
         $data = $data->get();
         $buyTickets = $this->groupedAggregate(
@@ -211,15 +249,20 @@ class OrderController extends Controller
         foreach ($data as $value) {
             $value->buy_tickets = (int) ($buyTickets->get($value->id) ?? 0);
         }
-        return view('admin.report.admin_customer_report', compact('data','request'));
+        return view('admin.report.admin_customer_report', compact('data', 'request'));
     }
 
-    public function adminOrgReport(Request $request){
-        $data = User::role('organization')->orderBy('id','DESC');
-        if(isset($request->duration) && $request->duration != null){
-            $start_date = explode(' to ',$request->duration)[0];
-            $end_date = count(explode(' to ',$request->duration))==1?explode(' to ',$request->duration)[0]:explode(' to ',$request->duration)[1];
-            $data->whereBetween('created_at', [ $start_date." 00:00:00", $end_date." 23:59:59"]);
+    public function adminOrgReport(Request $request)
+    {
+        if (!Auth::user()->hasRole('admin')) {
+            abort(403);
+        }
+
+        $data = User::role('organization')->orderBy('id', 'DESC');
+        if (isset($request->duration) && $request->duration != null) {
+            $start_date = explode(' to ', $request->duration)[0];
+            $end_date = count(explode(' to ', $request->duration)) == 1 ? explode(' to ', $request->duration)[0] : explode(' to ', $request->duration)[1];
+            $data->whereBetween('created_at', [$start_date . " 00:00:00", $end_date . " 23:59:59"]);
         }
         $data = $data->get();
         $organizationIds = $data->pluck('id');
@@ -243,28 +286,33 @@ class OrderController extends Controller
             $value->total_tickets = (int) ($ticketTotals->get($value->id) ?? 0);
             $value->sold_tickets = (int) ($soldTotals->get($value->id) ?? 0);
         }
-        return view('admin.report.admin_org_report', compact('data','request'));
+        return view('admin.report.admin_org_report', compact('data', 'request'));
     }
 
-    public function adminRevenueReport(Request $request){
-        $data = Order::with(['customer:id,name,last_name,email','event:id,name'])->where('payment_status',1);
-        if(isset($request->organizer) && $request->organizer >= 1){
-            $data->where('organization_id',$request->organizer);
-        }
-        if(isset($request->customer) && $request->customer >= 1){
-              $data->where('customer_id',$request->customer);
-        }
-        if(isset($request->duration) && $request->duration != null){
-            $start_date = explode(' to ',$request->duration)[0];
-            $end_date = count(explode(' to ',$request->duration))==1?explode(' to ',$request->duration)[0]:explode(' to ',$request->duration)[1];
-            $data->whereBetween('created_at', [ $start_date." 00:00:00", $end_date." 23:59:59"]);
+    public function adminRevenueReport(Request $request)
+    {
+        if (!Auth::user()->hasRole('admin')) {
+            abort(403);
         }
 
-        $data = $data->orderBy('id','DESC')->get();
-        $organizers = User::role('organization')->orderBy('id','DESC')->get();
-        $customers = AppUser::orderBy('id','DESC')->get();
+        $data = Order::with(['customer:id,name,last_name,email', 'event:id,name'])->where('payment_status', 1);
+        if (isset($request->organizer) && $request->organizer >= 1) {
+            $data->where('organization_id', $request->organizer);
+        }
+        if (isset($request->customer) && $request->customer >= 1) {
+            $data->where('customer_id', $request->customer);
+        }
+        if (isset($request->duration) && $request->duration != null) {
+            $start_date = explode(' to ', $request->duration)[0];
+            $end_date = count(explode(' to ', $request->duration)) == 1 ? explode(' to ', $request->duration)[0] : explode(' to ', $request->duration)[1];
+            $data->whereBetween('created_at', [$start_date . " 00:00:00", $end_date . " 23:59:59"]);
+        }
 
-        return view('admin.report.admin_revenue_report', compact('data','request','organizers','customers'));
+        $data = $data->orderBy('id', 'DESC')->get();
+        $organizers = User::role('organization')->orderBy('id', 'DESC')->get();
+        $customers = AppUser::orderBy('id', 'DESC')->get();
+
+        return view('admin.report.admin_revenue_report', compact('data', 'request', 'organizers', 'customers'));
     }
 
     public function getStatistics($month){
@@ -285,8 +333,13 @@ class OrderController extends Controller
         return response()->json(['success'=>true ,'data' =>$master ], 200);
     }
 
-    public function settlementReport(){
-        $data = User::role('organization')->orderBy('id','DESC')->get();
+    public function settlementReport()
+    {
+        if (!Auth::user()->hasRole('admin')) {
+            abort(403);
+        }
+
+        $data = User::role('organization')->orderBy('id', 'DESC')->get();
         $organizationIds = $data->pluck('id');
         $orderCounts = $this->groupedAggregate(
             Order::whereIn('organization_id', $organizationIds),
@@ -320,20 +373,31 @@ class OrderController extends Controller
         return view('admin.report.admin_settlement_report', compact('data'));
     }
 
-    public function viewSettlement($id){
-        $data = Settlement::where('user_id',$id)->orderBy('id','DESC')->get();
+    public function viewSettlement($id)
+    {
+        $user = Auth::user();
+        if (!$user->hasRole('admin') && !($user->hasRole('organization') && (int) $user->id === (int) $id)) {
+            abort(403);
+        }
+
+        $data = Settlement::where('user_id', $id)->orderBy('id', 'DESC')->get();
         $this->attachSettlementUsers($data);
 
         return view('admin.report.view_settlement', compact('data'));
     }
 
-    public function payToUser(Request $request){
+    public function payToUser(Request $request)
+    {
+        if (!Auth::user()->hasRole('admin')) {
+            abort(403);
+        }
+
         $data = $request->all();
-        if($request->payment_type == "STRIPE"){
+        if ($request->payment_type == "STRIPE") {
             $currency = Setting::find(1)->currency;
             $stripe_secret = PaymentSetting::find(1)->stripeSecretKey;
             Stripe\Stripe::setApiKey($stripe_secret);
-            $stripeDetail =  Stripe\Charge::create ([
+            $stripeDetail = Stripe\Charge::create([
                 "amount" => intval($request->payment) * 100,
                 "currency" => $currency,
                 "source" => $request->stripeToken,
@@ -342,14 +406,19 @@ class OrderController extends Controller
             $data['payment_status'] = 1;
         }
         Settlement::create($data);
-        Order::where([['organization_id',$request->user_id],['payment_status',1],['org_pay_status',0]])->update(['org_pay_status'=>1]);
+        Order::where([['organization_id', $request->user_id], ['payment_status', 1], ['org_pay_status', 0]])->update(['org_pay_status' => 1]);
         return redirect()->back()->withStatus(__('Your Payment done successfully.'));
     }
 
-    public function payToOrganization(Request $request){
+    public function payToOrganization(Request $request)
+    {
+        if (!Auth::user()->hasRole('admin')) {
+            abort(403);
+        }
+
         Settlement::create($request->all());
-        Order::where([['organization_id',$request->user_id],['payment_status',1],['org_pay_status',0]])->update(['org_pay_status'=>1]);
-        return response()->json(['msg' => null,'success'=>true], 200);
+        Order::where([['organization_id', $request->user_id], ['payment_status', 1], ['org_pay_status', 0]])->update(['org_pay_status' => 1]);
+        return response()->json(['msg' => null, 'success' => true], 200);
     }
 
     public function getQrCode($id)
