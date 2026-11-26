@@ -1109,3 +1109,38 @@ The checkout test expectation was updated intentionally: a 2-ticket order at 100
 3. Verify a real Stripe checkout and each public gateway callback with sandbox credentials. Tests use `payment_type=LOCAL` and do not contact payment providers.
 4. The staged PayPal client-id fix, `.env.example`, license/installer changes, payment-view changes and unrelated admin/controller formatting remain deliberately excluded from this commit. They are still present in the working tree.
 5. No real `.env` value, payment key, Passport key, production data, license check or installer logic was modified. `AGENTS.md`, `overview.md` and the untracked `vendor.partial.20261119091812/` directory were left untouched.
+
+## 37. Final usability and scanner-network fixes (2026-11-26)
+
+### What changed
+
+- Fixed the raw Alpine expression rendered by `/all-events`: this Laravel version's `@js` output used single quotes, which terminated the single-quoted `x-data` attribute. The listing component now registers with `Alpine.data('eventListing')` and renders as `x-data="eventListing"`.
+- Added a third admin event-wizard step, **Tickets & pricing**. It explains that ticket prices are set on individual tickets, links to the ticket manager for saved events, and offers `Create & set ticket prices` / `Update & manage tickets` actions that redirect to the existing ticket-manager URL.
+- Added reversible `database/migrations/2026_11_23_000100_add_event_link_to_events_table.php`, made `event_link` fillable but hidden from model serialization, validated online join links in admin web create/update (required for online events, `http`/`https` only, cleared when offline), and displayed safe join links on public event detail and ticket-selection pages. Organization API validation was deliberately left unchanged.
+- Updated the free Expo Go scanner app with an editable, persisted **API server** field, robust Expo host extraction, and a network error that names the attempted URL. Settings now shows the active API server. The documented local command is `php artisan serve --host 0.0.0.0 --port=8000`; `localhost`/`127.0.0.1` cannot work from a phone.
+- Added regression coverage for listing markup, online join links, wizard hooks and pricing redirects in `EventPagesTest` and `AdminEventPagesTest`.
+
+### Verification
+
+```powershell
+php artisan test tests/Feature/EventPagesTest.php tests/Feature/AdminEventPagesTest.php tests/Feature/ScannerApiTest.php # targeted suite passed
+C:\xampp\php\php.exe artisan test --compact          # OK (136 tests, 1500 assertions)
+C:\xampp\php\php.exe artisan --version               # Laravel Framework 12.73.0
+composer show laravel/framework --locked            # v12.73.0, requires PHP ^8.2
+npm run build                                        # OK; existing Sass deprecation and admin-legacy chunk warnings only
+npm run lint                                         # passed in mobile/
+npx expo export --platform android                   # passed
+git diff --cached --check                            # clean
+```
+
+### Risks and manual checks
+
+1. Apply `2026_11_23_000100_add_event_link_to_events_table.php` to any additional environment databases; it has already been applied to the local dev database and `odogwu_test`.
+2. Manually verify `/all-events` filtering, admin wizard step switching, the online/offline toggle, and the new ticket-pricing redirect in a browser.
+3. On a phone using Expo Go, enter the computer's LAN address (for example `http://192.168.1.10:8000`) in the scanner API server field. Phone and computer must share Wi-Fi, and port 8000 must be allowed through the firewall.
+4. The Expo API server value is persisted on the device after sign-in. Sign out before handing the phone to another staff member.
+5. No API route, request/response shape, Passport auth, payment logic, Spatie permission or license/installer logic changed. Pre-existing untracked docs, uploads and `vendor.partial.*` paths remain untouched.
+
+### Decisions requested
+
+None for this fix set.

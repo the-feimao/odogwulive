@@ -56,6 +56,21 @@ The repository also contains installer assets under `installer/`. Installer and 
 
 `docker-compose.yml` provides app, MySQL, Redis, and mail services. The `mailhog` service name is retained for compatibility, but the image is Mailpit; existing `MAIL_HOST=mailhog` values keep working.
 
+## Scanner apps
+
+Two free options use the existing `/api/scanner/...` contract:
+
+- `/scanner-app` is an installable browser PWA using `html5-qrcode` and OpenStreetMap-free static assets. Camera access requires HTTPS or `localhost`; manual ticket-code entry works on plain LAN HTTP.
+- [`mobile/`](mobile/README.md) is an Expo Go app using `expo-camera`, with no EAS account or paid build required. Its sign-in screen has an **API server** field; enter your computer's LAN address, for example `http://192.168.1.10:8000`, and save it after sign-in. Use a scanner account created under Admin/Organization → Scanner.
+
+For Expo Go on a phone, start Laravel with `php artisan serve --host 0.0.0.0 --port=8000`. `localhost` and `127.0.0.1` refer to the phone itself and will not reach your computer. Keep both devices on the same Wi-Fi and allow port 8000 through the firewall. No API route, payload or Passport behaviour was changed for either scanner.
+
+## Event pricing and online links
+
+Event prices are set on **tickets**, not on the event record. The admin event wizard includes a **Tickets & pricing** step; saving with `Create & set ticket prices` or `Update & manage tickets` opens the existing ticket manager, where each paid ticket has its own `price` field.
+
+Online events require an `http://` or `https://` joining link in the admin event form. The link is shown on public event detail and ticket-selection pages and is hidden from API model serialization.
+
 ## Production email with Brevo free tier
 
 Brevo's free tier can be used through Laravel's built-in SMTP transport; no package or code change is required. Create a Brevo account, verify the sender address/domain, generate an SMTP key, then set these values in the production `.env` (never commit them):
