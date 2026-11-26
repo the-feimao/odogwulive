@@ -1144,3 +1144,38 @@ git diff --cached --check                            # clean
 ### Decisions requested
 
 None for this fix set.
+
+## 38. Lighthouse close-out (2026-11-26)
+
+### What changed
+
+- Added `resources/js/public.js` as an Alpine-only Vite entry and switched `layouts/public.blade.php` to `resources/css/app.css` + `public.js`, removing Bootstrap Sass and the jQuery/Bootstrap runtime from public pages. `vite.config.js` registers the new entry.
+- Mapped the application's stored locale display names (`English`, `Arabic`) to BCP 47 codes in `config/app.php`; public/design/app layouts now emit `<html lang="en">` or `<html lang="ar">` instead of an invalid display name.
+- Replaced `/robots.txt` with a dynamic route in `routes/pwa.php` that emits an absolute sitemap URL from `BRAND_CANONICAL_URL` (falling back to `APP_URL`). The static file was renamed to `public/robots.txt.dist` as a reference copy.
+- Restored sensible link colours after preflight is disabled: `resources/css/app.css` now gives `a` elements `color: inherit`, so dark cards/footer do not fall back to the UA blue. Explicit Tailwind colour utilities still override it.
+- Added a visually hidden `Event results` `h2` before the `/all-events` cards so the heading outline is `h1 → h2 → h3`.
+- Updated `EventPagesTest` and `SeoAndSitemapTest` with regression coverage for valid `lang`, lightweight public assets, and the absolute robots sitemap URL.
+
+### Verification
+
+```powershell
+C:\xampp\php\php.exe artisan test --compact                         # OK (137 tests, 1509 assertions)
+npm run build                                                       # OK; existing Sass deprecation and admin-legacy chunk warnings only
+npx --yes lighthouse --version                                      # 13.6.0
+npx --yes lighthouse 'http://127.0.0.1:8000/' ...                   # performance 71, accessibility 100, best practices 100, SEO 100
+npx --yes lighthouse 'http://127.0.0.1:8000/all-events' ...         # performance 81, accessibility 100, best practices 100, SEO 100
+GET /robots.txt                                                     # 200 text/plain, absolute Sitemap URL from BRAND_CANONICAL_URL
+```
+
+Scores before this remediation were performance 64 / accessibility 91 / best practices 100 / SEO 92 on `/`. The concrete regressions (contrast, language, relative sitemap, unused Bootstrap CSS/JS) are resolved.
+
+### Risks and manual checks
+
+1. Performance remains below the 90 target under `php artisan serve` on Windows: LCP is dominated by the local hero image/document latency, and static assets have no production cache headers. Verify against the deployed HTTP server/CDN before treating this as an application regression.
+2. The remaining Lighthouse performance hints are the bundled Alpine runtime (needed for instant filtering), uncompressed local image delivery, and the existing large admin bundle; none affect checkout, Passport APIs, licensing, or installer logic.
+3. Check dark/light link colours visually on event cards and the footer, and confirm `/robots.txt` shows the production canonical host after setting `BRAND_CANONICAL_URL`.
+4. No API route, request/response shape, Passport auth, payment logic, Spatie permission or license/installer logic changed in this close-out.
+
+### Decisions requested
+
+None for this close-out.

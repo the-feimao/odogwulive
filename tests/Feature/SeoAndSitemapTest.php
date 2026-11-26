@@ -58,9 +58,11 @@ class SeoAndSitemapTest extends TestCase
     #[Test]
     public function robots_points_to_the_sitemap(): void
     {
-        $this->assertStringContainsString(
-            'Sitemap: /sitemap.xml',
-            (string) file_get_contents(public_path('robots.txt'))
-        );
+        config()->set('brand.canonical_url', 'https://events.example.test');
+
+        $this->get('/robots.txt')
+            ->assertOk()
+            ->assertHeader('Content-Type', 'text/plain; charset=UTF-8')
+            ->assertSee('Sitemap: https://events.example.test/sitemap.xml', false);
     }
 }

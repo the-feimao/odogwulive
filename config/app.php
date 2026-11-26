@@ -83,6 +83,16 @@ return [
     'locale' => 'en',
 
     /*
+     * The application stores locale display names ("English", "Arabic") in
+     * sessions and settings. Browsers need BCP 47 codes in the html lang
+     * attribute, so map those names once instead of emitting invalid values.
+     */
+    'locale_codes' => [
+        'English' => 'en',
+        'Arabic' => 'ar',
+    ],
+
+    /*
     |--------------------------------------------------------------------------
     | Application Fallback Locale
     |--------------------------------------------------------------------------

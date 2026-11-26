@@ -1,0 +1,6 @@
+User-agent: *
+Disallow:
+
+# Reference copy only. Laravel serves /robots.txt dynamically from routes/pwa.php,
+# using BRAND_CANONICAL_URL to emit an absolute sitemap URL.
+Sitemap: /sitemap.xml

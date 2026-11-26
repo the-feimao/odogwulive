@@ -10,6 +10,14 @@
 @tailwind utilities;
 
 @layer base {
+    /* Preflight is disabled to protect the remaining Bootstrap pages. Without
+       it, UA default link blue leaks into the dark public design. Utility
+       colour classes still win because they have higher specificity. */
+    a {
+        color: inherit;
+        text-decoration: inherit;
+    }
+
     [x-cloak] {
         display: none !important;
     }

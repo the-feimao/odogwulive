@@ -22,7 +22,20 @@ class EventPagesTest extends TestCase
 
         $this->get('/all-events')
             ->assertOk()
-            ->assertSee('Upcoming Test Carnival', false);
+            ->assertSee('Upcoming Test Carnival', false)
+            ->assertSee('Event results', false);
+    }
+
+    #[Test]
+    public function the_public_layout_uses_valid_language_code_and_lightweight_assets()
+    {
+        $html = $this->get('/')->assertOk()->getContent();
+        $manifest = json_decode((string) file_get_contents(public_path('build/manifest.json')), true);
+
+        $this->assertStringContainsString('<html lang="en"', $html);
+        $this->assertStringContainsString($manifest['resources/js/public.js']['file'], $html);
+        $this->assertStringNotContainsString($manifest['resources/sass/app.scss']['file'], $html);
+        $this->assertStringNotContainsString($manifest['resources/js/app.js']['file'], $html);
     }
 
     #[Test]

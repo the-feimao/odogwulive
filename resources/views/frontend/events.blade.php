@@ -157,6 +157,7 @@
                         <x-slot:icon><x-lucide-calendar-days class="tw-h-6 tw-w-6" /></x-slot:icon>
                     </x-empty-state>
                 @else
+                    <h2 class="tw-sr-only">{{ __('Event results') }}</h2>
                     <div class="tw-grid tw-gap-6 sm:tw-grid-cols-2 lg:tw-grid-cols-3">
                         @foreach ($events as $item)
                             <div data-event-card

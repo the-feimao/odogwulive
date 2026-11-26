@@ -37,7 +37,7 @@
             </div>
 
             <div>
-                <h2 class="tw-text-xs tw-font-bold tw-uppercase tw-tracking-widest tw-text-neutral-500">{{ __('Explore') }}</h2>
+                <h2 class="tw-text-xs tw-font-bold tw-uppercase tw-tracking-widest tw-text-neutral-400">{{ __('Explore') }}</h2>
                 <ul class="tw-mt-4 tw-space-y-3 tw-text-sm">
                     <li><a href="{{ route('frontend.index') }}" class="hover:tw-text-primary-400">{{ __('All events') }}</a></li>
                     <li><a href="{{ url('/all-category') }}" class="hover:tw-text-primary-400">{{ __('Categories') }}</a></li>
@@ -47,7 +47,7 @@
             </div>
 
             <div>
-                <h2 class="tw-text-xs tw-font-bold tw-uppercase tw-tracking-widest tw-text-neutral-500">{{ __('Support') }}</h2>
+                <h2 class="tw-text-xs tw-font-bold tw-uppercase tw-tracking-widest tw-text-neutral-400">{{ __('Support') }}</h2>
                 <ul class="tw-mt-4 tw-space-y-3 tw-text-sm">
                     <li><a href="{{ url('/contact') }}" class="hover:tw-text-primary-400">{{ __('Contact us') }}</a></li>
                     @if ($setting?->help_center)
@@ -63,7 +63,7 @@
             </div>
 
             <div>
-                <h2 class="tw-text-xs tw-font-bold tw-uppercase tw-tracking-widest tw-text-neutral-500">{{ __('Say hello') }}</h2>
+                <h2 class="tw-text-xs tw-font-bold tw-uppercase tw-tracking-widest tw-text-neutral-400">{{ __('Say hello') }}</h2>
                 @if ($email)
                     <a href="mailto:{{ $email }}" class="tw-mt-4 tw-inline-flex tw-items-center tw-gap-2 tw-text-sm hover:tw-text-primary-400">
                         <x-lucide-mail class="tw-h-4 tw-w-4 tw-shrink-0" />
@@ -77,7 +77,7 @@
             </div>
         </div>
 
-        <div class="tw-mt-12 tw-flex tw-flex-col tw-gap-2 tw-border-t tw-border-neutral-800 tw-pt-6 tw-text-xs tw-text-neutral-500 sm:tw-flex-row sm:tw-items-center sm:tw-justify-between">
+        <div class="tw-mt-12 tw-flex tw-flex-col tw-gap-2 tw-border-t tw-border-neutral-800 tw-pt-6 tw-text-xs tw-text-neutral-400 sm:tw-flex-row sm:tw-items-center sm:tw-justify-between">
             <p>{{ $copyright ?: '© '.date('Y').' '.$brandName.'. '.__('All rights reserved.') }}</p>
             <p>{{ __('Built for memorable events.') }}</p>
         </div>
