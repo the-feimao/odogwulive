@@ -14,6 +14,7 @@ import {
   ApiError,
   fetchEvents,
   login,
+  normalizeBaseUrl,
   resolveApiBaseUrl,
   scanTicket,
 } from './src/api';
@@ -105,7 +106,7 @@ function makeStyles(colors) {
 export default function App() {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
-  const baseUrl = useMemo(() => resolveApiBaseUrl(), []);
+  const [baseUrl, setBaseUrl] = useState(() => resolveApiBaseUrl());
 
   const [booting, setBooting] = useState(true);
   const [token, setToken] = useState(null);
@@ -175,15 +176,30 @@ export default function App() {
 
     (async () => {
       try {
-        const savedToken = await storage.getToken();
+        const [savedApiBaseUrl, savedToken] = await Promise.all([
+          storage.getApiBaseUrl(),
+          storage.getToken(),
+        ]);
 
         if (!active) {
           return;
         }
 
+        let activeBaseUrl = resolveApiBaseUrl();
+
+        if (savedApiBaseUrl) {
+          try {
+            activeBaseUrl = normalizeBaseUrl(savedApiBaseUrl);
+          } catch (error) {
+            setNotice({ tone: 'error', message: error.message });
+          }
+        }
+
+        setBaseUrl(activeBaseUrl);
+
         if (savedToken) {
           setToken(savedToken);
-          await loadEvents(savedToken, baseUrl);
+          await loadEvents(savedToken, activeBaseUrl);
         }
       } catch (_error) {
         if (active) {
@@ -199,15 +215,19 @@ export default function App() {
     return () => {
       active = false;
     };
-  }, [loadEvents, baseUrl]);
+  }, [loadEvents]);
 
   const handleLogin = useCallback(
-    async ({ email, password }) => {
+    async ({ email, password, baseUrl: requestedBaseUrl }) => {
       setNotice(null);
       setAuthBusy(true);
 
       try {
-        const payload = await login({ email, password, baseUrl });
+        const activeBaseUrl = normalizeBaseUrl(requestedBaseUrl || baseUrl);
+        await storage.setApiBaseUrl(activeBaseUrl);
+        setBaseUrl(activeBaseUrl);
+
+        const payload = await login({ email, password, baseUrl: activeBaseUrl });
 
         if (!payload.success || !payload.data?.token) {
           throw new Error(payload.msg || 'Scanner sign in failed.');
@@ -218,7 +238,7 @@ export default function App() {
         setAccount(payload.data);
         setActiveTab('events');
         setNotice({ tone: 'success', message: 'Signed in successfully.' });
-        await loadEvents(payload.data.token, baseUrl);
+        await loadEvents(payload.data.token, activeBaseUrl);
       } catch (error) {
         setNotice({ tone: 'error', message: error?.message || 'Scanner sign in failed.' });
       } finally {
@@ -329,7 +349,12 @@ export default function App() {
       ) : null}
 
       {!token ? (
-        <LoginScreen onLogin={handleLogin} busy={authBusy} />
+        <LoginScreen
+          onLogin={handleLogin}
+          busy={authBusy}
+          baseUrl={baseUrl}
+          onBaseUrlChange={setBaseUrl}
+        />
       ) : (
         <>
           <View style={styles.header}>
@@ -375,7 +400,7 @@ export default function App() {
             ) : null}
 
             {activeTab === 'settings' ? (
-              <SettingsScreen account={account} onSignOut={handleSignOut} />
+              <SettingsScreen account={account} baseUrl={baseUrl} onSignOut={handleSignOut} />
             ) : null}
           </View>
 

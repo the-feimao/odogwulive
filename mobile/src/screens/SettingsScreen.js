@@ -39,7 +39,7 @@ function makeStyles(colors) {
   });
 }
 
-export default function SettingsScreen({ account, onSignOut }) {
+export default function SettingsScreen({ account, baseUrl, onSignOut }) {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
 
@@ -69,6 +69,13 @@ export default function SettingsScreen({ account, onSignOut }) {
             Your session is stored securely on this device. Sign out before handing the phone to
             another staff member.
           </Text>
+        </View>
+      </AppCard>
+
+      <AppCard style={styles.card}>
+        <View style={styles.infoRow}>
+          <MaterialCommunityIcons name="server-outline" size={19} color={colors.accent} />
+          <Text style={styles.infoText}>API server: {baseUrl}</Text>
         </View>
       </AppCard>
 

@@ -8,6 +8,9 @@
             ? url('images/upload/'.$data->image)
             : asset('web/bg/1.jpg');
         $isOnline = $data->type === 'online';
+        $joinUrl = $isOnline && $data->event_link && preg_match('#^https?://#i', $data->event_link)
+            ? $data->event_link
+            : null;
         $locationLabel = $isOnline ? __('Online event') : ($data->address ?: __('Venue to be announced'));
         $eventUrl = url('/event/'.$data->id.'/'.\Illuminate\Support\Str::slug($data->name));
     @endphp
@@ -89,6 +92,13 @@
                             <div>
                                 <dt class="tw-sr-only">{{ __('Location') }}</dt>
                                 <dd class="tw-font-semibold tw-text-ink-950 dark:tw-text-neutral-50">{{ $locationLabel }}</dd>
+                                @if ($joinUrl)
+                                    <a href="{{ $joinUrl }}" target="_blank" rel="noopener noreferrer"
+                                        class="tw-mt-2 tw-inline-flex tw-items-center tw-gap-1 tw-text-xs tw-font-bold tw-text-accent-700 hover:tw-text-accent-800 focus:tw-outline-none focus-visible:tw-ring-2 focus-visible:tw-ring-accent-600 dark:tw-text-accent-300">
+                                        {{ __('Join online') }}
+                                        <x-lucide-external-link class="tw-h-3.5 tw-w-3.5" />
+                                    </a>
+                                @endif
                             </div>
                         </div>
                         @if ($data->category)

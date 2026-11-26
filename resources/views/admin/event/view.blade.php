@@ -57,6 +57,13 @@
                                 <span class="tw-mt-1 tw-block tw-text-sm tw-font-bold tw-text-ink-900 dark:tw-text-neutral-50">
                                     {{ $event->type == 'offline' ? $event->address : __('Online Event') }}
                                 </span>
+                                @if ($event->type === 'online' && $event->event_link)
+                                    <a href="{{ $event->event_link }}" target="_blank" rel="noopener noreferrer"
+                                        class="tw-mt-2 tw-inline-flex tw-items-center tw-gap-1 tw-text-xs tw-font-bold tw-text-accent-700 hover:tw-text-accent-800 focus:tw-outline-none focus-visible:tw-ring-2 focus-visible:tw-ring-accent-600 dark:tw-text-accent-300">
+                                        {{ __('View event link') }}
+                                        <x-lucide-external-link class="tw-h-3.5 tw-w-3.5" />
+                                    </a>
+                                @endif
                             </span>
                         </div>
                     </div>

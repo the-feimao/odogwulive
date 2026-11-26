@@ -15,6 +15,9 @@
 
     $heroImage = $galleryImages[0];
     $isOnline = $data->type === 'online';
+    $joinUrl = $isOnline && $data->event_link && preg_match('#^https?://#i', $data->event_link)
+        ? $data->event_link
+        : null;
     $locationLabel = $isOnline
         ? __('Online event')
         : ($data->address ?: __('Venue to be announced'));
@@ -101,7 +104,14 @@
                     </div>
                 </div>
 
-                <div class="tw-flex tw-items-center tw-gap-3">
+                <div class="tw-flex tw-flex-wrap tw-items-center tw-gap-3">
+                    @if ($joinUrl)
+                        <a href="{{ $joinUrl }}" target="_blank" rel="noopener noreferrer"
+                            class="tw-inline-flex tw-h-10 tw-items-center tw-gap-2 tw-rounded-pill tw-bg-primary-500 tw-px-4 tw-text-sm tw-font-bold tw-text-ink-950 tw-transition-colors hover:tw-bg-primary-400 focus:tw-outline-none focus-visible:tw-ring-2 focus-visible:tw-ring-primary-500">
+                            {{ __('Join online') }}
+                            <x-lucide-external-link class="tw-h-4 tw-w-4" />
+                        </a>
+                    @endif
                     <x-favorite-button :id="$data->id" />
                     <div x-data="{ copied: false, copyLink() { navigator.clipboard.writeText(window.location.href).then(() => { this.copied = true; setTimeout(() => this.copied = false, 1800); }); }, share() { if (navigator.share) { navigator.share({ title: document.title, url: window.location.href }).catch(() => {}); } } }">
                         <button type="button" @click="copyLink()"
@@ -245,6 +255,29 @@
                         </div>
                     </x-card>
                 @endunless
+
+                @if ($isOnline)
+                    <x-card :title="__('Online event')">
+                        <div class="tw-flex tw-flex-wrap tw-items-start tw-gap-4">
+                            <div class="tw-flex tw-h-11 tw-w-11 tw-shrink-0 tw-items-center tw-justify-center tw-rounded-pill tw-bg-accent-100 tw-text-accent-800 dark:tw-bg-accent-500/20 dark:tw-text-accent-200">
+                                <x-lucide-globe class="tw-h-5 tw-w-5" />
+                            </div>
+                            <div class="tw-min-w-0 tw-flex-1">
+                                @if ($joinUrl)
+                                    <p class="tw-text-sm tw-font-bold tw-text-ink-950 dark:tw-text-neutral-50">{{ __('Join from anywhere') }}</p>
+                                    <a href="{{ $joinUrl }}" target="_blank" rel="noopener noreferrer"
+                                        class="tw-mt-3 tw-inline-flex tw-items-center tw-gap-1.5 tw-rounded-pill tw-bg-primary-500 tw-px-4 tw-py-2 tw-text-sm tw-font-bold tw-text-ink-950 tw-transition-colors hover:tw-bg-primary-400 focus:tw-outline-none focus-visible:tw-ring-2 focus-visible:tw-ring-primary-600">
+                                        {{ __('Open event link') }}
+                                        <x-lucide-external-link class="tw-h-4 tw-w-4" />
+                                    </a>
+                                    <p class="tw-mt-3 tw-break-all tw-font-mono tw-text-xs tw-text-neutral-500 dark:tw-text-neutral-400">{{ $joinUrl }}</p>
+                                @else
+                                    <p class="tw-text-sm tw-font-bold tw-text-ink-950 dark:tw-text-neutral-50">{{ __('Joining details will be shared by the organizer.') }}</p>
+                                @endif
+                            </div>
+                        </div>
+                    </x-card>
+                @endif
 
                 <x-card :title="__('Good to know')">
                     <div class="tw-divide-y tw-divide-neutral-100 dark:tw-divide-neutral-800">

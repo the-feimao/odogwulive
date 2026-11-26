@@ -28,11 +28,11 @@ npm install
 npx expo install --check
 ```
 
-### 3. API address (automatic)
+### 3. API address
 
-There is no server-address field in the app. It reads the Expo dev server host from `expo-constants` and calls Laravel on port `8000` automatically.
+The sign-in screen has an **API server** field. It starts with the Expo dev server host on port `8000`, but you can change it to your computer's Wi-Fi address, for example `http://192.168.1.10:8000`. The value is saved on the device after sign-in.
 
-Keep the phone and computer on the same Wi-Fi network and allow port 8000 through the firewall. For a non-standard setup, copy `.env.example` to `.env` and set `EXPO_PUBLIC_API_BASE_URL` to an explicit API URL.
+Keep the phone and computer on the same Wi-Fi network and allow port 8000 through the firewall. Laravel must be started with `--host 0.0.0.0`, otherwise a phone cannot reach it. For a non-standard setup you can still copy `.env.example` to `.env` and set `EXPO_PUBLIC_API_BASE_URL` as the default.
 
 ### 4. Start Expo Go
 

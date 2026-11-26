@@ -161,6 +161,7 @@ class AdminEventPagesTest extends TestCase
                 'end_time' => now()->addDays(2)->format('Y-m-d h:i A'),
                 'category_id' => $category->id,
                 'type' => 'online',
+                'event_link' => 'https://meet.example.com/updated-event',
                 'status' => 0,
                 'description' => 'An updated test event.',
                 'scanner_id' => $scanner->id,
@@ -172,6 +173,7 @@ class AdminEventPagesTest extends TestCase
                 'id' => $created->id,
                 'name' => 'Updated Stored Event',
                 'type' => 'online',
+                'event_link' => 'https://meet.example.com/updated-event',
                 'people' => 150,
                 'status' => 0,
             ]);
@@ -243,6 +245,153 @@ class AdminEventPagesTest extends TestCase
                 '/<input[^>]*type="radio"[^>]*name="'.$name.'"[^>]*value="'.$value.'"[^>]*class="[^"]*tw-peer tw-sr-only/',
                 $html
             );
+        }
+    }
+
+    #[Test]
+    public function create_event_form_uses_a_step_wizard_without_dropping_legacy_hooks()
+    {
+        $this->activateLicense();
+        $admin = $this->admin();
+
+        $response = $this->actingAs($admin)->get(route('events.create'))->assertOk();
+        $html = $response->getContent();
+
+        foreach ([
+            'x-data="{ step: 1',
+            'x-show="step === 1"',
+            'x-show="step === 2"',
+            'x-show="step === 3"',
+            'Tickets &amp; pricing',
+            'x-model="type"',
+            '@change="type = $event.target.value"',
+            "@click=\"type = 'online'\"",
+            "x-show=\"type !== 'online'\"",
+            'name="event_link"',
+            'id="event_link"',
+            'event-form',
+            'image-preview',
+            'image-upload',
+            'image-label',
+            'start_time',
+            'end_time',
+            'org-for-event',
+            'scanner_id select2',
+            'location-detail',
+            'inputtags',
+            'textarea_editor',
+        ] as $hook) {
+            $this->assertStringContainsString($hook, $html, $hook.' hook is missing');
+        }
+
+        $response->assertSeeText('Event details')
+            ->assertSeeText('Location & access')
+            ->assertSeeText('Tickets & pricing')
+            ->assertSeeText('Ticket prices are set on tickets, not on the event')
+            ->assertSeeText('Online joining link');
+
+        $this->assertStringNotContainsString('x-if=', $html);
+    }
+
+    #[Test]
+    public function create_event_can_continue_to_ticket_pricing()
+    {
+        $this->activateLicense();
+        $organizer = $this->organizer();
+        $scanner = $this->scannerUser($organizer);
+        $category = $this->category();
+
+        try {
+            $response = $this->actingAs($organizer)->post('/events', [
+                'name' => 'Priced Event',
+                'image' => UploadedFile::fake()->create('priced-event.jpg', 1, 'image/jpeg'),
+                'start_time' => now()->addDay()->format('Y-m-d h:i A'),
+                'end_time' => now()->addDays(2)->format('Y-m-d h:i A'),
+                'category_id' => $category->id,
+                'type' => 'offline',
+                'address' => '12 Test Street, Lagos',
+                'lat' => '6.5244',
+                'lang' => '3.3792',
+                'status' => 1,
+                'description' => 'A priced test event.',
+                'scanner_id' => $scanner->id,
+                'people' => 120,
+                'security' => 1,
+                'after_save' => 'tickets',
+            ]);
+
+            $event = Event::where('name', 'Priced Event')->firstOrFail();
+            $response->assertRedirect(url($event->id.'/'.preg_replace('/\s+/', '-', $event->name).'/tickets'));
+        } finally {
+            $image = Event::where('name', 'Priced Event')->value('image');
+            if ($image) {
+                @unlink(public_path('images/upload/'.$image));
+            }
+        }
+    }
+
+    #[Test]
+    public function online_events_require_a_safe_http_link()
+    {
+        $this->activateLicense();
+        $organizer = $this->organizer();
+        $scanner = $this->scannerUser($organizer);
+        $category = $this->category();
+
+        $payload = [
+            'name' => 'Online Link Event',
+            'image' => UploadedFile::fake()->create('online-cover.jpg', 1, 'image/jpeg'),
+            'start_time' => now()->addDay()->format('Y-m-d h:i A'),
+            'end_time' => now()->addDays(2)->format('Y-m-d h:i A'),
+            'category_id' => $category->id,
+            'type' => 'online',
+            'status' => 1,
+            'description' => 'A stored online test event.',
+            'scanner_id' => $scanner->id,
+            'people' => 120,
+            'security' => 1,
+        ];
+
+        $this->actingAs($organizer)->post('/events', $payload)
+            ->assertSessionHasErrors(['event_link']);
+
+        $this->actingAs($organizer)->post('/events', array_merge($payload, [
+            'event_link' => 'not-a-link',
+        ]))->assertSessionHasErrors(['event_link']);
+
+        $this->actingAs($organizer)->post('/events', array_merge($payload, [
+            'event_link' => 'javascript:alert(1)',
+        ]))->assertSessionHasErrors(['event_link']);
+
+        $createdImage = null;
+
+        try {
+            $this->actingAs($organizer)->post('/events', array_merge($payload, [
+                'event_link' => 'https://meet.example.com/online-event',
+            ]))->assertRedirect(route('events.index'));
+
+            $event = Event::where('name', 'Online Link Event')->firstOrFail();
+            $createdImage = $event->image;
+
+            $this->assertSame('https://meet.example.com/online-event', $event->event_link);
+            $this->assertArrayNotHasKey('event_link', $event->toArray());
+
+            $updatePayload = $payload;
+            unset($updatePayload['image']);
+
+            $this->actingAs($organizer)->put(route('events.update', $event->id), array_merge($updatePayload, [
+                'type' => 'offline',
+                'address' => '12 Test Street, Lagos',
+                'lat' => '6.5244',
+                'lang' => '3.3792',
+                'event_link' => 'https://meet.example.com/leftover-link',
+            ]))->assertRedirect(route('events.index'));
+
+            $this->assertNull($event->fresh()->event_link);
+        } finally {
+            if ($createdImage) {
+                @unlink(public_path('images/upload/'.$createdImage));
+            }
         }
     }
 

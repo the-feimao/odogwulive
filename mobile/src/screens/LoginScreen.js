@@ -43,7 +43,7 @@ function makeStyles(colors) {
   });
 }
 
-export default function LoginScreen({ onLogin, busy }) {
+export default function LoginScreen({ onLogin, busy, baseUrl, onBaseUrlChange }) {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
 
@@ -54,12 +54,12 @@ export default function LoginScreen({ onLogin, busy }) {
   const handleSubmit = () => {
     setLocalError('');
 
-    if (!email.trim() || !password) {
-      setLocalError('Enter your scanner email and password.');
+    if (!email.trim() || !password || !baseUrl.trim()) {
+      setLocalError('Enter the API address, scanner email and password.');
       return;
     }
 
-    onLogin({ email, password });
+    onLogin({ email, password, baseUrl });
   };
 
   return (
@@ -91,6 +91,14 @@ export default function LoginScreen({ onLogin, busy }) {
 
         <AppCard>
           <View style={styles.formGap}>
+            <FormField
+              label="API server"
+              value={baseUrl}
+              onChangeText={onBaseUrlChange}
+              placeholder="http://192.168.1.10:8000"
+              keyboardType="url"
+              hint="Use your computer's Wi-Fi IP address. Start Laravel with --host 0.0.0.0."
+            />
             <FormField
               label="Email"
               value={email}

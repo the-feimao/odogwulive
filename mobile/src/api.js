@@ -45,7 +45,14 @@ function devServerHost() {
     return null;
   }
 
-  return String(hostUri).split(':')[0] || null;
+  const value = String(hostUri).trim();
+  const withScheme = /^https?:\/\//i.test(value) ? value : `http://${value}`;
+
+  try {
+    return new URL(withScheme).hostname || null;
+  } catch {
+    return value.split(':')[0] || null;
+  }
 }
 
 export function resolveApiBaseUrl() {
@@ -100,13 +107,14 @@ async function apiFetch(path, options = {}) {
     timeoutMs = 15000,
   } = options;
 
+  const serverUrl = normalizeBaseUrl(baseUrl);
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
   let response;
 
   try {
-    response = await fetch(`${normalizeBaseUrl(baseUrl)}${path}`, {
+    response = await fetch(`${serverUrl}${path}`, {
       method,
       headers: {
         Accept: 'application/json',
@@ -125,7 +133,7 @@ async function apiFetch(path, options = {}) {
     }
 
     throw new ApiError(
-      'Cannot reach Laravel. Check your connection and that the server is running on port 8000.',
+      `Cannot reach Laravel at ${serverUrl}. Check that your phone and computer share Wi-Fi and that Laravel is running on 0.0.0.0:8000.`,
       { code: 'NETWORK' },
     );
   } finally {

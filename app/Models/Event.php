@@ -13,6 +13,7 @@ class Event extends Model
         'name',
         'user_id',
         'type',
+        'event_link',
         'address',
         'category_id',
         'start_time',
@@ -32,6 +33,11 @@ class Event extends Model
     ];
 
     protected $table = 'events';
+
+    // Keep the mobile API response shape unchanged; admin/public views read
+    // this field directly instead of serialising it.
+    protected $hidden = ['event_link'];
+
     protected $casts = [
         'start_time' => 'datetime',
         'end_time' => 'datetime',

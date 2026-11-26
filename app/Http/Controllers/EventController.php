@@ -36,6 +36,11 @@ class EventController extends Controller
         abort(403);
     }
 
+    private function ticketManagerUrl(Event $event): string
+    {
+        return url($event->id.'/'.preg_replace('/\s+/', '-', $event->name).'/tickets');
+    }
+
     public function index()
     {
         abort_if(Gate::denies('event_access'), Response::HTTP_FORBIDDEN, '403 Forbidden');
@@ -78,6 +83,7 @@ class EventController extends Controller
             'end_time' => 'bail|required',
             'category_id' => 'bail|required',
             'type' => 'bail|required',
+            'event_link' => 'bail|exclude_unless:type,online|required|url|max:2048|regex:/^https?:\/\//i',
             'address' => 'bail|required_if:type,offline',
             'lat' => 'bail|required_if:type,offline',
             'lang' => 'bail|required_if:type,offline',
@@ -87,13 +93,23 @@ class EventController extends Controller
             'people' => 'bail|required',
         ]);
         $data = $request->all();
+        unset($data['after_save']);
+        if ($request->input('type') !== 'online') {
+            $data['event_link'] = null;
+        }
         if ($request->hasFile('image')) {
             $data['image'] = (new AppHelper)->saveImage($request);
         }
         if (!Auth::user()->hasRole('admin')) {
             $data['user_id'] = Auth::user()->id;
         }
-        Event::create($data);
+        $event = Event::create($data);
+
+        if ($request->input('after_save') === 'tickets') {
+            return redirect($this->ticketManagerUrl($event))
+                ->withStatus(__('Event created. Add a ticket and set its price to start selling.'));
+        }
+
         return redirect()->route('events.index')->withStatus(__('Event is added successfully.'));
     }
 
@@ -137,6 +153,7 @@ class EventController extends Controller
             'end_time' => 'bail|required',
             'category_id' => 'bail|required',
             'type' => 'bail|required',
+            'event_link' => 'bail|exclude_unless:type,online|required|url|max:2048|regex:/^https?:\/\//i',
             'address' => 'bail|required_if:type,offline',
             'lat' => 'bail|required_if:type,offline',
             'lang' => 'bail|required_if:type,offline',
@@ -146,6 +163,10 @@ class EventController extends Controller
             'people' => 'bail|required',
         ]);
         $data = $request->all();
+        unset($data['after_save']);
+        if ($request->input('type') !== 'online') {
+            $data['event_link'] = null;
+        }
         if (!Auth::user()->hasRole('admin')) {
             $data['user_id'] = Auth::user()->id;
         }
@@ -154,6 +175,12 @@ class EventController extends Controller
             $data['image'] = (new AppHelper)->saveImage($request);
         }
         $event->update($data);
+
+        if ($request->input('after_save') === 'tickets') {
+            return redirect($this->ticketManagerUrl($event))
+                ->withStatus(__('Event updated. Review your ticket prices.'));
+        }
+
         return redirect()->route('events.index')->withStatus(__('Event is updated successfully.'));
     }
 

@@ -26,6 +26,17 @@ class EventPagesTest extends TestCase
     }
 
     #[Test]
+    public function the_all_events_page_keeps_the_alpine_expression_out_of_visible_markup()
+    {
+        $html = $this->get('/all-events')->assertOk()->getContent();
+
+        $this->assertStringContainsString('<div x-data="eventListing"', $html);
+        $this->assertStringContainsString("Alpine.data('eventListing'", $html);
+        $this->assertStringNotContainsString("x-data='{", $html);
+        $this->assertSame(0, preg_match('/<div[^>]*x-data=\'[^\']*this\.(?:apply|watch)/s', $html));
+    }
+
+    #[Test]
     public function the_event_guide_page_lists_published_events()
     {
         $organizer = $this->organizer();
@@ -138,6 +149,33 @@ class EventPagesTest extends TestCase
             ->assertSee('EARLY-BIRD-TEST', false)
             ->assertSee('FREE-PASS-TEST', false)
             ->assertSee('user/login', false);
+    }
+
+    #[Test]
+    public function online_events_expose_only_safe_join_links()
+    {
+        $organizer = $this->organizer();
+        $safe = $this->event($organizer, [
+            'name' => 'Online Link Summit',
+            'type' => 'online',
+            'event_link' => 'https://meet.example.com/live-session',
+        ]);
+        $unsafe = $this->event($organizer, [
+            'name' => 'Unsafe Link Summit',
+            'type' => 'online',
+            'event_link' => 'javascript:alert(1)',
+        ]);
+
+        $this->get('/event/'.$safe->id.'/online-link-summit')
+            ->assertOk()
+            ->assertSee('Join online')
+            ->assertSee('Open event link')
+            ->assertSee('https://meet.example.com/live-session', false);
+
+        $this->get('/event/'.$unsafe->id.'/unsafe-link-summit')
+            ->assertOk()
+            ->assertDontSee('javascript:alert(1)', false)
+            ->assertSee('Joining details will be shared by the organizer.');
     }
 
     #[Test]

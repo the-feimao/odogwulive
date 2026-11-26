@@ -56,87 +56,7 @@
         </div>
     </section>
 
-    <div x-data='{
-        search: "",
-        category: @js(request("category", "")),
-        type: @js(request("type", isset($type) ? $type : "")),
-        duration: @js(request("duration", "")),
-        date: @js(request("date", "")),
-        sort: "date",
-        loading: false,
-        visibleCount: {{ count($events) }},
-        timer: null,
-        init() {
-            this.apply(false);
-            this.$watch("search", () => this.apply());
-            this.$watch("category", () => this.apply());
-            this.$watch("type", () => this.apply());
-            this.$watch("duration", () => this.apply());
-            this.$watch("date", () => this.apply());
-            this.$watch("sort", () => this.apply(false));
-        },
-        apply(withLoading = true) {
-            if (withLoading) {
-                this.loading = true;
-            }
-            clearTimeout(this.timer);
-            this.timer = setTimeout(() => {
-                const cards = Array.from(this.$root.querySelectorAll("[data-event-card]"));
-                let shown = 0;
-                cards.forEach((card) => {
-                    const visible = this.matches(card);
-                    card.style.display = visible ? "" : "none";
-                    if (visible) shown++;
-                });
-                this.visibleCount = shown;
-                this.loading = false;
-            }, withLoading ? 160 : 0);
-        },
-        matches(card) {
-            const needle = this.search.trim().toLowerCase();
-            const name = (card.dataset.name || "").toLowerCase();
-            const category = (card.dataset.category || "").toLowerCase();
-
-            if (needle && !name.includes(needle) && !category.includes(needle)) {
-                return false;
-            }
-            if (this.category && card.dataset.categoryId !== this.category) {
-                return false;
-            }
-            if (this.type && card.dataset.type !== this.type) {
-                return false;
-            }
-            if (this.duration === "date" && this.date && card.dataset.date !== this.date) {
-                return false;
-            }
-            if (this.duration && this.duration !== "date") {
-                const rawDate = card.dataset.date;
-                if (rawDate) {
-                    const eventDate = new Date(rawDate + "T00:00:00");
-                    const today = new Date();
-                    today.setHours(0, 0, 0, 0);
-                    const days = Math.round((eventDate - today) / 86400000);
-                    if (this.duration === "Today" && days !== 0) return false;
-                    if (this.duration === "Tomorrow" && days !== 1) return false;
-                    if (this.duration === "ThisWeek" && (days < 0 || days > 7)) return false;
-                }
-            }
-            return true;
-        },
-        rank(card) {
-            const cards = Array.from(this.$root.querySelectorAll("[data-event-card]"));
-            if (this.sort === "name-asc") {
-                return cards.slice().sort((a, b) => (a.dataset.name || "").localeCompare(b.dataset.name || "")).indexOf(card);
-            }
-            if (this.sort === "name-desc") {
-                return cards.slice().sort((a, b) => (b.dataset.name || "").localeCompare(a.dataset.name || "")).indexOf(card);
-            }
-            if (this.sort === "date-desc") {
-                return cards.slice().sort((a, b) => (b.dataset.date || "").localeCompare(a.dataset.date || "")).indexOf(card);
-            }
-            return cards.indexOf(card);
-        }
-    }'>
+    <div x-data="eventListing">
         <div class="tw-mx-auto tw-max-w-content tw-px-4 tw-py-10 md:tw-px-6 md:tw-py-14">
             <form method="GET" action="{{ url('/all-events') }}" @submit="loading = true"
                 class="tw-grid tw-gap-3 tw-rounded-card tw-border tw-border-neutral-200 tw-bg-neutral-0 tw-p-4 tw-shadow-card dark:tw-border-neutral-800 dark:tw-bg-ink-900 md:tw-grid-cols-[1.4fr_1fr_1fr_1fr_auto]">
@@ -260,3 +180,97 @@
         </div>
     </div>
 @endsection
+
+@push('scripts')
+<script>
+    function registerEventListing() {
+        window.Alpine.data('eventListing', () => ({
+            search: '',
+            category: @js(request('category', '')),
+            type: @js(request('type', isset($type) ? $type : '')),
+            duration: @js(request('duration', '')),
+            date: @js(request('date', '')),
+            sort: 'date',
+            loading: false,
+            visibleCount: {{ count($events) }},
+            timer: null,
+            init() {
+                this.apply(false);
+                this.$watch('search', () => this.apply());
+                this.$watch('category', () => this.apply());
+                this.$watch('type', () => this.apply());
+                this.$watch('duration', () => this.apply());
+                this.$watch('date', () => this.apply());
+                this.$watch('sort', () => this.apply(false));
+            },
+            apply(withLoading = true) {
+                if (withLoading) {
+                    this.loading = true;
+                }
+                clearTimeout(this.timer);
+                this.timer = setTimeout(() => {
+                    const cards = Array.from(this.$root.querySelectorAll('[data-event-card]'));
+                    let shown = 0;
+                    cards.forEach((card) => {
+                        const visible = this.matches(card);
+                        card.style.display = visible ? '' : 'none';
+                        if (visible) shown++;
+                    });
+                    this.visibleCount = shown;
+                    this.loading = false;
+                }, withLoading ? 160 : 0);
+            },
+            matches(card) {
+                const needle = this.search.trim().toLowerCase();
+                const name = (card.dataset.name || '').toLowerCase();
+                const category = (card.dataset.category || '').toLowerCase();
+
+                if (needle && !name.includes(needle) && !category.includes(needle)) {
+                    return false;
+                }
+                if (this.category && card.dataset.categoryId !== this.category) {
+                    return false;
+                }
+                if (this.type && card.dataset.type !== this.type) {
+                    return false;
+                }
+                if (this.duration === 'date' && this.date && card.dataset.date !== this.date) {
+                    return false;
+                }
+                if (this.duration && this.duration !== 'date') {
+                    const rawDate = card.dataset.date;
+                    if (rawDate) {
+                        const eventDate = new Date(rawDate + 'T00:00:00');
+                        const today = new Date();
+                        today.setHours(0, 0, 0, 0);
+                        const days = Math.round((eventDate - today) / 86400000);
+                        if (this.duration === 'Today' && days !== 0) return false;
+                        if (this.duration === 'Tomorrow' && days !== 1) return false;
+                        if (this.duration === 'ThisWeek' && (days < 0 || days > 7)) return false;
+                    }
+                }
+                return true;
+            },
+            rank(card) {
+                const cards = Array.from(this.$root.querySelectorAll('[data-event-card]'));
+                if (this.sort === 'name-asc') {
+                    return cards.slice().sort((a, b) => (a.dataset.name || '').localeCompare(b.dataset.name || '')).indexOf(card);
+                }
+                if (this.sort === 'name-desc') {
+                    return cards.slice().sort((a, b) => (b.dataset.name || '').localeCompare(a.dataset.name || '')).indexOf(card);
+                }
+                if (this.sort === 'date-desc') {
+                    return cards.slice().sort((a, b) => (b.dataset.date || '').localeCompare(a.dataset.date || '')).indexOf(card);
+                }
+                return cards.indexOf(card);
+            }
+        }));
+    }
+
+    if (window.Alpine) {
+        registerEventListing();
+    } else {
+        document.addEventListener('alpine:init', registerEventListing, { once: true });
+    }
+</script>
+@endpush
