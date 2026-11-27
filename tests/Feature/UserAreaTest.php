@@ -79,7 +79,7 @@ class UserAreaTest extends TestCase
             'payment_token' => 'tok_test',
         ]);
 
-        $this->actingAs($customer, 'appuser')
+        $response = $this->actingAs($customer, 'appuser')
             ->get('/my-tickets')
             ->assertOk()
             ->assertSee('Ticketed Test Event', false)
@@ -102,6 +102,13 @@ class UserAreaTest extends TestCase
             ->assertSee('id="rate-1"', false)
             ->assertDontSee('stackpath.bootstrapcdn.com', false)
             ->assertDontSee('frontend/js/custom.js', false);
+
+        // The review dialog must start hidden: a tw-flex class here would
+        // override [hidden] and leave the popup stuck open.
+        $this->assertMatchesRegularExpression(
+            '/id="reviewModel"[^>]*class="[^"]*\btw-hidden\b/',
+            $response->getContent()
+        );
     }
 
     #[Test]

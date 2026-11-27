@@ -10,6 +10,8 @@ export default defineConfig({
                 'resources/js/app.js',
                 'resources/js/public.js',
                 'resources/js/admin-legacy.js',
+                'resources/js/admin-export.js',
+                'resources/js/admin-editor.js',
                 'resources/js/pwa-register.js',
                 'resources/js/checkout.js',
                 'resources/js/user-area.js',

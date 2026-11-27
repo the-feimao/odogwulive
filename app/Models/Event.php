@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Support\RequestData;
 use Carbon\Carbon;
 
 class Event extends Model
@@ -53,6 +54,24 @@ class Event extends Model
     {
         return $this->hasOne('App\Models\User', 'id', 'user_id');
     }
+
+    public function scanners()
+    {
+        return $this->belongsToMany('App\Models\User', 'event_scanner', 'event_id', 'scanner_id');
+    }
+
+    public function syncScanners(array $scannerIds): void
+    {
+        $ids = collect($scannerIds)
+            ->filter(fn ($id) => $id !== null && $id !== '')
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values()
+            ->all();
+
+        $this->scanners()->sync($ids);
+    }
+
     public function ticket()
     {
         return $this->hasMany('App\Models\Ticket', 'event_id', 'id');
@@ -65,8 +84,9 @@ class Event extends Model
 
     public function getTotalTicketsAttribute()
     {
-        $timezone = Setting::find(1)->timezone;       
-        $date = Carbon::now($timezone); 
+        $setting = app(RequestData::class)->setting();
+        $timezone = $setting->timezone ?? config('app.timezone');
+        $date = Carbon::now($timezone);
         return Ticket::where([['event_id',$this->attributes['id']],['is_deleted',0],['status',1],['end_time', '>=',$date->format('Y-m-d H:i:s')],['start_time', '<=',$date->format('Y-m-d H:i:s')]])->sum('quantity');
     }
 
@@ -77,16 +97,13 @@ class Event extends Model
 
     public function getRateAttribute()
     {
-        $review =  Review::where('event_id', $this->attributes['id'])->get(['rate']);
-        if(count($review)>0){
-            $totalRate = 0;
-            foreach ($review as $r) {
-                $totalRate=$totalRate+$r->rate;
-            }
-            return  round($totalRate / count($review)) ;
-        }else{
-            return 0;
-        }  
+        $aggregate = Review::where('event_id', $this->attributes['id'])
+            ->selectRaw('SUM(rate) as total_rate, COUNT(*) as review_count')
+            ->first();
+
+        $count = (int) ($aggregate->review_count ?? 0);
+
+        return $count > 0 ? round((float) ($aggregate->total_rate ?? 0) / $count) : 0;
     }
 
     public function scopeDurationData($query,$start , $end){

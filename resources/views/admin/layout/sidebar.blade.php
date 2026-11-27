@@ -64,11 +64,13 @@
                     </a>
                 </li>
             @endcan
-            <li class="{{ request()->is('app-user*') ? 'active' : '' }}">
-                <a class="nav-link" href="{{ url('app-user') }}">
-                    <i class="fas fa-users"></i> <span>{{ __('Attendees') }}</span>
-                </a>
-            </li>
+            @if (Auth::user()->hasRole('admin') || Auth::user()->hasRole('organization'))
+                <li class="{{ request()->is('app-user*') ? 'active' : '' }}">
+                    <a class="nav-link" href="{{ url('app-user') }}">
+                        <i class="fas fa-users"></i> <span>{{ __('Attendees') }}</span>
+                    </a>
+                </li>
+            @endif
             @if (Auth::user()->hasRole('organization'))
                 <li class="{{ request()->is('scanner*') ? 'active' : '' }}">
                     <a class="nav-link" href="{{ url('scanner') }}">

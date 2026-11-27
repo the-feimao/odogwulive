@@ -69,6 +69,8 @@ class AdminBlogAppUserUserPagesTest extends TestCase
             ->assertSee('name="tags"', false)
             ->assertSee('inputtags')
             ->assertSee('name="description"', false)
+            ->assertSee('<trix-editor', false)
+            ->assertSee('class="ds-rich-text trix-content"', false)
             ->assertSee('select2');
 
         $this->get(route('blog.edit', $blog))->assertOk()
@@ -77,7 +79,8 @@ class AdminBlogAppUserUserPagesTest extends TestCase
             ->assertSee('value="PUT"', false)
             ->assertSee('background-image: url(')
             ->assertSee('Launch Announcement')
-            ->assertSee('launch,news');
+            ->assertSee('launch,news')
+            ->assertSee('<trix-editor', false);
 
         $before = glob(public_path('images/upload/*')) ?: [];
 
@@ -187,6 +190,54 @@ class AdminBlogAppUserUserPagesTest extends TestCase
     }
 
     #[Test]
+    public function organizers_get_a_read_only_attendee_list_scoped_to_their_orders()
+    {
+        $this->activateLicense();
+        $organizer = $this->organizer();
+        $otherOrganizer = $this->organizer();
+        $admin = $this->admin();
+        $scanner = $this->scannerUser($organizer);
+
+        $customer = $this->customer(['name' => 'Organizer Customer']);
+        $event = $this->event($organizer);
+        $ticket = $this->ticket($event);
+        $this->order($event, $ticket, $customer, $organizer);
+
+        $outsider = $this->customer(['name' => 'Other Organizer Customer']);
+        $otherEvent = $this->event($otherOrganizer);
+        $otherTicket = $this->ticket($otherEvent);
+        $this->order($otherEvent, $otherTicket, $outsider, $otherOrganizer);
+
+        $this->actingAs($organizer)->get('/app-user')->assertOk()
+            ->assertSee('Review attendees who have placed orders for your events.')
+            ->assertSee('Organizer Customer')
+            ->assertDontSee('Other Organizer Customer')
+            ->assertDontSee('href="'.url('app-user/create').'"', false)
+            ->assertDontSee('href="'.url('block-user/'.$customer->id).'"', false)
+            ->assertSee('href="'.url('view-user/'.$customer->id).'"', false)
+            ->assertViewHas('users', function ($users) use ($customer, $outsider) {
+                return $users->contains('id', $customer->id) && !$users->contains('id', $outsider->id);
+            });
+
+        $this->get('/app-user/create')->assertForbidden();
+        $this->post('/app-user', [
+            'name' => 'Should Not Exist',
+            'email' => 'should-not-exist-'.uniqid().'@example.test',
+            'password' => 'secret123',
+            'status' => 1,
+        ])->assertForbidden();
+        $this->get('block-user/'.$customer->id)->assertForbidden();
+        $this->get('view-user/'.$outsider->id)->assertForbidden();
+
+        $this->actingAs($scanner)->get('/app-user')->assertForbidden();
+
+        $this->actingAs($admin)->get('/app-user')->assertOk()
+            ->assertSee('Organizer Customer')
+            ->assertSee('Other Organizer Customer')
+            ->assertSee('href="'.url('block-user/'.$customer->id).'"', false);
+    }
+
+    #[Test]
     public function user_pages_keep_role_hooks_and_admin_protection()
     {
         $this->activateLicense();
@@ -250,22 +301,24 @@ class AdminBlogAppUserUserPagesTest extends TestCase
             'email' => $newEmail,
             'phone' => '08098765432',
             'password' => 'secret123',
-            'roles' => [$organizer->roles()->first()->id],
+            'roles' => [(string) $organizer->roles()->first()->id],
             'organization' => $organizer->id,
         ])->assertRedirect(route('users.index'));
 
+        $createdUser = User::where('email', $newEmail)->firstOrFail();
         $this->assertDatabaseHas('users', [
             'email' => $newEmail,
             'first_name' => 'New',
             'org_id' => $organizer->id,
         ]);
+        $this->assertTrue($createdUser->hasRole('organization'));
 
         $this->put(route('users.update', $scanner), [
             'first_name' => 'Updated',
             'last_name' => 'Scanner',
             'email' => $scanner->email,
             'phone' => '08011111111',
-            'roles' => [Role::findByName('scanner', 'web')->id],
+            'roles' => [(string) Role::findByName('scanner', 'web')->id],
         ])->assertRedirect(route('users.index'));
 
         $this->assertDatabaseHas('users', [
@@ -273,6 +326,7 @@ class AdminBlogAppUserUserPagesTest extends TestCase
             'first_name' => 'Updated',
             'phone' => '08011111111',
         ]);
+        $this->assertTrue($scanner->fresh()->hasRole('scanner'));
 
         $this->get(route('users.edit', $admin))
             ->assertRedirect(route('users.index'))

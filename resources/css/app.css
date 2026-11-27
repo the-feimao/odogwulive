@@ -27,6 +27,10 @@
         font-family: theme('fontFamily.sans');
         color: theme('colors.ink.900');
         background-color: theme('colors.neutral.0');
+        /* Class-based theme toggling does not change the OS/browser preference,
+           so native controls (select popups, date pickers, scrollbars) need to
+           be told which scheme to render with. */
+        color-scheme: light;
         -webkit-font-smoothing: antialiased;
         text-rendering: optimizeLegibility;
     }
@@ -35,6 +39,19 @@
         --ds-stub-bg: #151a2e;
         color: theme('colors.neutral.100');
         background-color: theme('colors.ink.950');
+        color-scheme: dark;
+    }
+
+    /* Preflight is off, so unstyled buttons keep the UA grey "buttonface"
+       background and border. That looks especially wrong in dark mode (e.g.
+       the header log out button). :where() keeps specificity at zero so any
+       Tailwind utility or Bootstrap .btn class still wins. */
+    :where(.ds) button {
+        background-color: transparent;
+        border: 0;
+        color: inherit;
+        font: inherit;
+        cursor: pointer;
     }
 
     .ds :focus-visible {
@@ -81,6 +98,148 @@
     .tw-dark .ds-ticket-divider::before,
     .tw-dark .ds-ticket-divider::after {
         border-color: theme('colors.neutral.700');
+    }
+
+    /* Customer QR passes. The yellow spine is the one deliberate flourish;
+       the QR is intentionally oversized so it reads as the ticket, not a badge. */
+    .ds-qr-pass {
+        --ds-pass-edge: theme('colors.neutral.200');
+        display: grid;
+        grid-template-columns: minmax(260px, 300px) minmax(0, 1fr);
+        border: 1px solid var(--ds-pass-edge);
+        border-radius: theme('borderRadius.card');
+        background-color: var(--ds-stub-bg);
+        box-shadow: theme('boxShadow.card');
+    }
+
+    .tw-dark .ds-qr-pass {
+        --ds-pass-edge: theme('colors.neutral.700');
+    }
+
+    .ds-qr-pass__stub {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: space-between;
+        gap: 20px;
+        padding: 24px 20px;
+        border-right: 1px dashed theme('colors.primary.600');
+        border-radius: 15px 0 0 15px;
+        background: linear-gradient(155deg, theme('colors.primary.200'), theme('colors.primary.50') 72%);
+    }
+
+    .tw-dark .ds-qr-pass__stub {
+        border-right-color: theme('colors.primary.400');
+        background: linear-gradient(155deg, theme('colors.primary.400'), theme('colors.primary.200') 72%);
+    }
+
+    .ds-qr-pass__stub::before,
+    .ds-qr-pass__stub::after {
+        content: '';
+        position: absolute;
+        right: -11px;
+        width: 22px;
+        height: 22px;
+        border: 1px solid var(--ds-pass-edge);
+        border-radius: theme('borderRadius.pill');
+        background-color: var(--ds-stub-bg);
+    }
+
+    .ds-qr-pass__stub::before {
+        top: -11px;
+    }
+
+    .ds-qr-pass__stub::after {
+        bottom: -11px;
+    }
+
+    .ds-qr-pass__code {
+        display: block;
+        width: 100%;
+        max-width: 240px;
+        padding: 10px;
+        border-radius: theme('borderRadius.stub');
+        background-color: #ffffff;
+        box-shadow: 0 8px 20px -12px rgba(21, 26, 46, 0.7);
+    }
+
+    .ds-qr-pass__code svg {
+        display: block;
+        width: 100%;
+        height: auto;
+    }
+
+    .ds-qr-pass__detail {
+        border-radius: 0 15px 15px 0;
+    }
+
+    @media (max-width: 767px) {
+        .ds-qr-pass {
+            grid-template-columns: minmax(0, 1fr);
+        }
+
+        .ds-qr-pass__stub {
+            border-right: 0;
+            border-bottom: 1px dashed theme('colors.primary.600');
+            border-radius: 15px 15px 0 0;
+        }
+
+        .tw-dark .ds-qr-pass__stub {
+            border-bottom-color: theme('colors.primary.400');
+        }
+
+        .ds-qr-pass__stub::before,
+        .ds-qr-pass__stub::after {
+            top: auto;
+            bottom: -11px;
+        }
+
+        .ds-qr-pass__stub::before {
+            left: -11px;
+            right: auto;
+        }
+
+        .ds-qr-pass__stub::after {
+            right: -11px;
+            left: auto;
+        }
+
+        .ds-qr-pass__detail {
+            border-radius: 0 0 15px 15px;
+        }
+    }
+
+    /* Sanitised rich text from Trix/Summernote. Keep formatting legible
+       without inheriting inline styles from pasted Word content. */
+    .ds-rich-text > :first-child {
+        @apply tw-mt-0;
+    }
+
+    .ds-rich-text > * + * {
+        @apply tw-mt-3;
+    }
+
+    .ds-rich-text a {
+        @apply tw-font-semibold tw-text-accent-700 hover:tw-underline dark:tw-text-accent-300;
+    }
+
+    .ds-rich-text ul {
+        @apply tw-list-disc tw-pl-5;
+    }
+
+    .ds-rich-text ol {
+        @apply tw-list-decimal tw-pl-5;
+    }
+
+    .ds-rich-text blockquote {
+        @apply tw-border-l-2 tw-border-primary-500 tw-pl-3 tw-italic;
+    }
+
+    .ds-rich-text h1,
+    .ds-rich-text h2,
+    .ds-rich-text h3 {
+        @apply tw-font-bold tw-text-ink-950 dark:tw-text-neutral-50;
     }
 
     /* Scoped bridge for the large legacy settings form. Field names, actions

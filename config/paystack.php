@@ -27,7 +27,22 @@ return [
      * Paystack Payment URL
      *
      */
-    'paymentUrl' => getenv('PAYSTACK_PAYMENT_URL'),
+    'paymentUrl' => getenv('PAYSTACK_PAYMENT_URL') ?: 'https://api.paystack.co',
+
+    /**
+     * Optional CA bundle for local development machines where PHP cannot find
+     * a system trust store. The bundled file is project-local, not global.
+     */
+    'caBundle' => getenv('PAYSTACK_CA_BUNDLE') ?: base_path('certs/cacert.pem'),
+
+    /**
+     * Webhook signing secrets (comma-separated for rotation windows).
+     * Paystack signs webhooks with a whsec_... secret when one is active.
+     */
+    'webhookSecrets' => array_values(array_filter(array_map(
+        'trim',
+        explode(',', (string) getenv('PAYSTACK_WEBHOOK_SECRET'))
+    ))),
 
     /**
      * Optional email address of the merchant

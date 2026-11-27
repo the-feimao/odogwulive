@@ -19,12 +19,30 @@ use Illuminate\Http\Request;
 
 class ScannerApiController extends Controller
 {
+    /**
+     * Legacy events only have events.scanner_id; newer events can also assign
+     * scanners through the event_scanner pivot. Accept either without changing
+     * any API request or response shape.
+     */
+    private function assignedToCurrentScanner($query): void
+    {
+        $scannerId = Auth::user()->id;
+
+        $query->where(function ($query) use ($scannerId) {
+            $query->where('events.scanner_id', $scannerId)
+                ->orWhereHas('scanners', function ($query) use ($scannerId) {
+                    $query->where('users.id', $scannerId);
+                });
+        });
+    }
+
     private function assignedEvent($id): Event
     {
-        $event = Event::where('id', $id)
-            ->where('scanner_id', Auth::user()->id)
-            ->where('status', 1)
-            ->where('is_deleted', 0)
+        $query = Event::where('events.id', $id);
+        $this->assignedToCurrentScanner($query);
+
+        $event = $query->where('events.status', 1)
+            ->where('events.is_deleted', 0)
             ->first();
 
         abort_if(!$event, 403);
@@ -85,8 +103,12 @@ class ScannerApiController extends Controller
     }
 
     public function events(){
-        $data = Event::where([['status',1],['is_deleted',0],['scanner_id',Auth::user()->id]])
-        ->orderBy('id','DESC')->get()->makeHidden(['created_at','updated_at','tags','security','lang','lat','people','gallery','description']);                
+        $query = Event::where('events.status', 1)->where('events.is_deleted', 0);
+        $this->assignedToCurrentScanner($query);
+
+        $data = $query->orderBy('events.id','DESC')
+            ->get()
+            ->makeHidden(['created_at','updated_at','tags','security','lang','lat','people','gallery','description']);
         foreach ($data as $item) {
             $order = Order::where('event_id',$item->id)->get();
             if(count($order)==0){

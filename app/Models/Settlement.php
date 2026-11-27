@@ -13,8 +13,21 @@ class Settlement extends Model
         'payment',
         'payment_token',
         'payment_type',
-        'payment_status',        
+        'payment_status',
+        'currency',
+        'gateway_reference',
+        'failure_reason',
+        'paid_at',
     ];
 
     protected $table = 'settlement';
+
+    protected $casts = [
+        'paid_at' => 'datetime',
+    ];
+
+    public function isPaystackPayout(): bool
+    {
+        return strtoupper((string) $this->payment_type) === 'PAYSTACK';
+    }
 }

@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Support\NotificationPresenter;
+use App\Support\PaystackWithLocalCa;
 use App\Support\RequestData;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\Schema;
@@ -27,7 +28,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot()
     {
-        //
+        // Keep the Paystack facade/API unchanged, but give its Guzzle client a
+        // project-local CA bundle so local checkout does not hit cURL error 60.
+        $this->app->bind('laravel-paystack', fn () => new PaystackWithLocalCa());
+
         Schema::defaultStringLength(191);      
         view()->composer('*', function ($view) {
             if(env('DB_DATABASE')!=null){

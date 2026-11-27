@@ -27,9 +27,17 @@ class PublicViewServiceProvider extends ServiceProvider
 
         View::composer('admin.layout.header', function ($view) {
             $user = Auth::user();
-            if ($user && $user->hasRole('organization')) {
-                $view->with('headerNotifications', app(NotificationPresenter::class)->forOrganizer($user->id));
+
+            if (! $user || (! $user->hasRole('organization') && ! $user->hasRole('admin'))) {
+                return;
             }
+
+            $presenter = app(NotificationPresenter::class);
+            $notifications = $user->hasRole('admin')
+                ? $presenter->forUser($user->id)
+                : $presenter->forOrganizer($user->id);
+
+            $view->with('headerNotifications', $notifications);
         });
     }
 }

@@ -63,7 +63,9 @@ Route::group(['middleware' => ['auth']], function () {
     Route::post('/support-setting', [SettingController::class, 'supportSetting']);    
     Route::post('/save-payment-setting', [SettingController::class, 'savePaymentSetting']);    
     Route::get('/profile', [UserController::class, 'viewProfile']);    
-    Route::post('/edit-profile', [UserController::class, 'editProfile']);    
+    Route::post('/edit-profile', [UserController::class, 'editProfile']);
+    Route::get('/organization/paystack-banks', [UserController::class, 'paystackBanks']);
+    Route::post('/organization/paystack-account', [UserController::class, 'savePayoutAccount']);
     // POST /change-password is defined once in routes/frontend.php and
     // dispatches to UserController@changePassword for staff users.
     Route::get('/orders', [OrderController::class, 'index']);    
@@ -102,6 +104,7 @@ Route::group(['middleware' => ['auth']], function () {
     Route::get('/view-user/{id}', [AppUserController::class, 'userDetail']);
     Route::post('/pay-to-org', [OrderController::class, 'payToUser']);
     Route::post('/pay-to-organization', [OrderController::class, 'payToOrganization']);
+    Route::post('/pay-to-organization-paystack', [OrderController::class, 'payToOrganizationWithPaystack']);
     Route::get('/view-settlement/{id}', [OrderController::class, 'viewSettlement']);
    
     Route::get('get-code/{code}', [OrderController::class, 'getQrCode']);
@@ -137,4 +140,6 @@ Route::get('transction_verify/{id}', [UserController::class, 'transction_verify'
 // paystack
 
 // Laravel 8 & 9
-Route::post('/pay', [App\Http\Controllers\PaymentController::class, 'redirectToGateway'])->name('paystack.pay');
+Route::match(['get', 'post'], '/pay', [App\Http\Controllers\PaymentController::class, 'redirectToGateway'])->name('paystack.pay');
+Route::get('/paystack/callback', [App\Http\Controllers\PaymentController::class, 'handleGatewayCallback'])->name('paystack.callback');
+Route::post('/paystack/webhook', [App\Http\Controllers\PaymentController::class, 'handleWebhook'])->name('paystack.webhook')->middleware('throttle:60,1');

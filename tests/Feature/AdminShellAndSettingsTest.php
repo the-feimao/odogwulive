@@ -37,6 +37,33 @@ class AdminShellAndSettingsTest extends TestCase
         return $entry;
     }
 
+    private function adminExportManifestEntry(): array
+    {
+        $manifestPath = public_path('build/manifest.json');
+        $this->assertFileExists($manifestPath);
+
+        $manifest = json_decode((string) file_get_contents($manifestPath), true, 512, JSON_THROW_ON_ERROR);
+        $entry = $manifest['resources/js/admin-export.js'] ?? null;
+
+        $this->assertIsArray($entry);
+
+        return $entry;
+    }
+
+    private function appCss(): string
+    {
+        $manifestPath = public_path('build/manifest.json');
+        $this->assertFileExists($manifestPath);
+
+        $manifest = json_decode((string) file_get_contents($manifestPath), true, 512, JSON_THROW_ON_ERROR);
+        $entry = $manifest['resources/css/app.css'] ?? null;
+
+        $this->assertIsArray($entry);
+        $this->assertNotEmpty($entry['file'] ?? null);
+
+        return (string) file_get_contents(public_path('build/'.$entry['file']));
+    }
+
     private function adminLegacyCssPath(): string
     {
         $entry = $this->adminLegacyManifestEntry();
@@ -91,35 +118,45 @@ class AdminShellAndSettingsTest extends TestCase
     }
 
     #[Test]
-    public function admin_legacy_bundle_registers_plugins_without_pdfmake_module_error()
+    public function admin_bundles_register_plugins_without_pdfmake_module_error()
     {
-        $entry = $this->adminLegacyManifestEntry();
-        $this->assertNotEmpty($entry['file'] ?? null);
+        $legacyEntry = $this->adminLegacyManifestEntry();
+        $exportEntry = $this->adminExportManifestEntry();
+        $this->assertNotEmpty($legacyEntry['file'] ?? null);
+        $this->assertNotEmpty($exportEntry['file'] ?? null);
 
         $vfsFonts = array_values(array_filter(
-            $entry['assets'] ?? [],
+            $exportEntry['assets'] ?? [],
             static fn (string $asset): bool => str_starts_with($asset, 'assets/vfs_fonts-')
         ));
         $this->assertNotEmpty($vfsFonts, 'pdfMake fonts must be emitted as a local classic script.');
         $this->assertFileExists(public_path('build/'.$vfsFonts[0]));
 
-        $js = (string) file_get_contents(public_path('build/'.$entry['file']));
-        $this->assertStringNotContainsString('(void 0).pdfMake=', $js);
-        $this->assertStringContainsString('/build/'.$vfsFonts[0], $js);
-
+        $legacyJs = (string) file_get_contents(public_path('build/'.$legacyEntry['file']));
         foreach ([
             'fn.flatpickr=function',
             'fn.select2.amd=',
             'fn.dataTable',
-            'Buttons.jszip=function',
-            'Buttons.pdfMake=function',
         ] as $registration) {
-            $this->assertStringContainsString($registration, $js, 'Missing bundled plugin registration: '.$registration);
+            $this->assertStringContainsString($registration, $legacyJs, 'Missing legacy plugin registration: '.$registration);
+        }
+
+        $exportJs = (string) file_get_contents(public_path('build/'.$exportEntry['file']));
+        $this->assertStringNotContainsString('(void 0).pdfMake=', $exportJs);
+        $this->assertStringContainsString('/build/'.$vfsFonts[0], $exportJs);
+
+        foreach ([
+            'window.JSZip=',
+            'window.pdfMake=',
+            '.Buttons.jszip(',
+            '.Buttons.pdfMake(',
+        ] as $registration) {
+            $this->assertStringContainsString($registration, $exportJs, 'Missing export plugin registration: '.$registration);
         }
     }
 
     #[Test]
-    public function admin_shell_does_not_apply_public_theme_preference()
+    public function admin_shell_uses_its_own_theme_preference()
     {
         $this->activateLicense();
 
@@ -127,14 +164,76 @@ class AdminShellAndSettingsTest extends TestCase
         $adminResponse->assertOk()
             ->assertSee('ds-admin', false)
             ->assertDontSee("localStorage.getItem('ds-theme')", false)
-            ->assertDontSee("classList.toggle('tw-dark'", false);
+            ->assertSee("localStorage.getItem('ds-admin-theme')", false)
+            ->assertSee('id="admin-theme-toggle"', false);
 
         auth()->logout();
 
         $this->get(url('login'))
             ->assertOk()
             ->assertDontSee("localStorage.getItem('ds-theme')", false)
-            ->assertDontSee("classList.toggle('tw-dark'", false);
+            ->assertSee("localStorage.getItem('ds-admin-theme')", false);
+    }
+
+    #[Test]
+    public function admin_dark_theme_covers_the_legacy_shell_and_keeps_printing_light()
+    {
+        $css = (string) file_get_contents(public_path('admin/css/custom.css'));
+
+        foreach ([
+            '.tw-dark {',
+            'color-scheme: dark;',
+            '.tw-dark body {',
+            '.tw-dark .main-sidebar {',
+            '.tw-dark .card {',
+            '.tw-dark .form-control,',
+            '.tw-dark .table,',
+            '.tw-dark .dropdown-menu,',
+            '.tw-dark .modal-content {',
+            '@media print {',
+        ] as $fragment) {
+            $this->assertStringContainsString($fragment, $css, 'Missing admin dark rule: '.$fragment);
+        }
+    }
+
+    #[Test]
+    public function admin_dark_theme_covers_notification_dropdown_and_legacy_widgets()
+    {
+        $css = (string) file_get_contents(public_path('admin/css/custom.css'));
+
+        foreach ([
+            '.tw-dark .dropdown-header,',
+            '.tw-dark .dropdown-list .dropdown-item .dropdown-item-desc,',
+            '.tw-dark .dropdown-list .dropdown-item .dropdown-item-desc .time {',
+            '.tw-dark .dropdown-list .dropdown-footer a,',
+            '.tw-dark .dropdown-list .dropdown-list-content:not(.is-end):after {',
+            '.tw-dark .flatpickr-calendar {',
+            '.tw-dark .flatpickr-day.selected,',
+            '.tw-dark .event-right p.name {',
+            '.tw-dark .empty-data h6 {',
+            '.tw-dark .text-muted,',
+            '.tw-dark .note-editor .note-editable,',
+        ] as $fragment) {
+            $this->assertStringContainsString($fragment, $css, 'Missing admin dark rule: '.$fragment);
+        }
+    }
+
+    #[Test]
+    public function alert_tone_shades_compile_into_the_dark_stylesheet()
+    {
+        $css = $this->appCss();
+
+        foreach ([
+            '.dark\\:tw-border-warning-800',
+            '.dark\\:tw-bg-warning-900\\/30',
+            '.dark\\:tw-text-warning-100',
+            '.dark\\:tw-border-danger-800',
+            '.dark\\:tw-bg-danger-900\\/30',
+            '.dark\\:tw-border-success-800',
+            '.dark\\:tw-bg-success-900\\/30',
+        ] as $selector) {
+            $this->assertStringContainsString($selector, $css, 'Missing compiled dark utility: '.$selector);
+        }
     }
 
     #[Test]
@@ -263,5 +362,24 @@ class AdminShellAndSettingsTest extends TestCase
             ->post(url('save-payment-setting'), ['paystack' => '1'])
             ->assertRedirect(url('admin-setting'))
             ->assertSessionHasErrors(['paystackPublicKey', 'paystackSecretKey']);
+    }
+
+    #[Test]
+    public function admin_header_is_bounded_to_the_viewport_in_every_sidebar_state()
+    {
+        $css = (string) file_get_contents(public_path('admin/css/custom.css'));
+
+        foreach ([
+            '.main-navbar {',
+            'inset-inline-start: 250px;',
+            'body.sidebar-mini .main-navbar {',
+            'body.sidebar-gone .main-navbar {',
+            '@media (max-width: 1024px) {',
+        ] as $fragment) {
+            $this->assertStringContainsString($fragment, $css, 'Missing admin header layout rule: '.$fragment);
+        }
+
+        $this->assertStringNotContainsString('#app {display:none;}', $css);
+        $this->assertStringContainsString('#app {display:block;}', $css);
     }
 }

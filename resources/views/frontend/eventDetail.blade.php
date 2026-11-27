@@ -15,9 +15,6 @@
 
     $heroImage = $galleryImages[0];
     $isOnline = $data->type === 'online';
-    $joinUrl = $isOnline && $data->event_link && preg_match('#^https?://#i', $data->event_link)
-        ? $data->event_link
-        : null;
     $locationLabel = $isOnline
         ? __('Online event')
         : ($data->address ?: __('Venue to be announced'));
@@ -26,10 +23,19 @@
         ? 'https://www.openstreetmap.org/?mlat='.(float) $data->lat.'&mlon='.(float) $data->lang.'#map=15/'.(float) $data->lat.'/'.(float) $data->lang
         : null;
     $tags = array_values(array_filter(array_map('trim', explode(',', (string) $data->tags))));
+    $descriptionHtml = \App\Support\RichText::safeHtml($data->description);
     $reviews = $data->review ?? collect();
     $categoryUrl = url('events-category/'.$data->category_id.'/'.(\Illuminate\Support\Str::slug((string) ($data->category?->name ?? '')) ?: 'category'));
 
     $seoEventUrl = rtrim(config('brand.canonical_url', config('app.url')), '/').'/'.ltrim(request()->path(), '/');
+
+    $onSaleTickets = $data->paid_ticket->concat($data->free_ticket);
+    $minPaidPrice = $data->paid_ticket->min('price');
+    $heroPriceLabel = $onSaleTickets->isEmpty()
+        ? __('Tickets coming soon')
+        : ($minPaidPrice !== null && (float) $minPaidPrice > 0
+            ? __('From').' '.trim((string) ($setting->currency ?? '')).number_format((float) $minPaidPrice)
+            : __('Free'));
 @endphp
 
 @section('title', $data->name.' — '.config('brand.name'))
@@ -105,6 +111,14 @@
                 </div>
 
                 <div class="tw-flex tw-flex-wrap tw-items-center tw-gap-3">
+                    <x-badge tone="accent" class="tw-px-3 tw-py-1.5">{{ $heroPriceLabel }}</x-badge>
+                    @if ($onSaleTickets->isNotEmpty())
+                        <a href="#tickets"
+                            class="tw-inline-flex tw-h-10 tw-items-center tw-gap-2 tw-rounded-pill tw-bg-primary-500 tw-px-4 tw-text-sm tw-font-bold tw-text-ink-950 tw-transition-colors hover:tw-bg-primary-400 focus:tw-outline-none focus-visible:tw-ring-2 focus-visible:tw-ring-primary-500">
+                            {{ __('View tickets & checkout') }}
+                            <x-lucide-arrow-right class="tw-h-4 tw-w-4" />
+                        </a>
+                    @endif
                     @if ($joinUrl)
                         <a href="{{ $joinUrl }}" target="_blank" rel="noopener noreferrer"
                             class="tw-inline-flex tw-h-10 tw-items-center tw-gap-2 tw-rounded-pill tw-bg-primary-500 tw-px-4 tw-text-sm tw-font-bold tw-text-ink-950 tw-transition-colors hover:tw-bg-primary-400 focus:tw-outline-none focus-visible:tw-ring-2 focus-visible:tw-ring-primary-500">
@@ -152,8 +166,8 @@
 
                 <section aria-labelledby="about-heading">
                     <h2 id="about-heading" class="tw-text-xl tw-font-bold tw-text-ink-950 dark:tw-text-neutral-50">{{ __('About this event') }}</h2>
-                    <div class="tw-mt-4 tw-max-w-2xl tw-text-sm tw-leading-relaxed tw-text-neutral-600 dark:tw-text-neutral-300">
-                        {!! nl2br(e((string) $data->description)) !!}
+                    <div class="ds-rich-text tw-mt-4 tw-max-w-2xl tw-text-sm tw-leading-relaxed tw-text-neutral-600 dark:tw-text-neutral-300">
+                        {!! $descriptionHtml !!}
                     </div>
 
                     @if (count($tags) > 0)
@@ -271,6 +285,9 @@
                                         <x-lucide-external-link class="tw-h-4 tw-w-4" />
                                     </a>
                                     <p class="tw-mt-3 tw-break-all tw-font-mono tw-text-xs tw-text-neutral-500 dark:tw-text-neutral-400">{{ $joinUrl }}</p>
+                                @elseif (! empty($onlineJoinLocked))
+                                    <p class="tw-text-sm tw-font-bold tw-text-ink-950 dark:tw-text-neutral-50">{{ __('Your ticket unlocks the joining link.') }}</p>
+                                    <p class="tw-mt-2 tw-text-sm tw-leading-relaxed tw-text-neutral-600 dark:tw-text-neutral-400">{{ __('Choose a ticket above and complete checkout. The join link appears here once your order is confirmed.') }}</p>
                                 @else
                                     <p class="tw-text-sm tw-font-bold tw-text-ink-950 dark:tw-text-neutral-50">{{ __('Joining details will be shared by the organizer.') }}</p>
                                 @endif
@@ -297,38 +314,20 @@
                 </x-card>
             </div>
 
-            <aside class="tw-space-y-6 lg:tw-sticky lg:tw-top-24 lg:tw-self-start">
-                <x-card :title="__('Tickets on sale')" :subtitle="__('Choose an option to continue to checkout.')">
-                    <x-tabs :tabs="[
-                        ['label' => __('Paid').' ('.count($data->paid_ticket).')', 'slot' => 'paid'],
-                        ['label' => __('Free').' ('.count($data->free_ticket).')', 'slot' => 'free'],
-                    ]">
-                        <x-slot:paid>
-                            <div class="tw-space-y-4">
-                                @forelse ($data->paid_ticket as $ticket)
-                                    <x-event-ticket-offer :ticket="$ticket" :event="$data" :currency="$currency ?? null" />
-                                @empty
-                                    <x-empty-state title="{{ __('No Paid Tickets found') }}"
-                                        description="{{ __('Check back later or switch to the free tab.') }}">
-                                        <x-slot:icon><x-lucide-ticket class="tw-h-6 tw-w-6" /></x-slot:icon>
-                                    </x-empty-state>
-                                @endforelse
-                            </div>
-                        </x-slot:paid>
+            <aside id="tickets" class="tw-scroll-mt-24 tw-space-y-6 lg:tw-sticky lg:tw-top-24 lg:tw-self-start">
+                <x-card :title="__('Tickets on sale')" :subtitle="__('Compare the options, then choose the one that fits.')">
+                    @forelse ($data->ticket_options as $ticket)
+                        <x-event-ticket-choice :ticket="$ticket" :currency="$currency ?? null" />
+                    @empty
+                        <x-empty-state title="{{ __('No tickets on sale') }}"
+                            description="{{ __('Check back later after the organizer opens ticket sales.') }}">
+                            <x-slot:icon><x-lucide-ticket class="tw-h-6 tw-w-6" /></x-slot:icon>
+                        </x-empty-state>
+                    @endforelse
 
-                        <x-slot:free>
-                            <div class="tw-space-y-4">
-                                @forelse ($data->free_ticket as $ticket)
-                                    <x-event-ticket-offer :ticket="$ticket" :event="$data" :currency="$currency ?? null" />
-                                @empty
-                                    <x-empty-state title="{{ __('No Free Tickets found') }}"
-                                        description="{{ __('Browse the paid tickets instead.') }}">
-                                        <x-slot:icon><x-lucide-ticket class="tw-h-6 tw-w-6" /></x-slot:icon>
-                                    </x-empty-state>
-                                @endforelse
-                            </div>
-                        </x-slot:free>
-                    </x-tabs>
+                    <p class="tw-mt-5 tw-border-t tw-border-neutral-100 tw-pt-4 tw-text-xs tw-leading-relaxed tw-text-neutral-500 dark:tw-border-neutral-800 dark:tw-text-neutral-400">
+                        {{ __('Prices shown per ticket. Any taxes are calculated before you pay.') }}
+                    </p>
                 </x-card>
 
                 <div class="tw-rounded-card tw-border tw-border-primary-100 tw-bg-primary-50/70 tw-p-5 dark:tw-border-primary-500/20 dark:tw-bg-primary-500/10">

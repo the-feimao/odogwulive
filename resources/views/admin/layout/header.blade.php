@@ -8,7 +8,7 @@
    
   </form>
   <ul class="navbar-nav navbar-right">    
-    @if(Auth::user()->hasRole('organization'))
+    @if(Auth::user()->hasRole('organization') || Auth::user()->hasRole('admin'))
     <li>
       @php
         $notification = $headerNotifications ?? collect();
@@ -75,6 +75,7 @@
       <div class="d-sm-none d-lg-inline-block">{{Auth::user()->name}}</div></a>
       <div class="dropdown-menu dropdown-menu-right">
         <div class="dropdown-title">{{__('Welcome')}} {{Auth::user()->name}}!</div>
+        <x-admin-theme-toggle />
         <a href="{{url('profile')}}" class="dropdown-item has-icon">
           <i class="far fa-user"></i> {{__('Profile')}}
         </a>  

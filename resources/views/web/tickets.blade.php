@@ -8,9 +8,6 @@
             ? url('images/upload/'.$data->image)
             : asset('web/bg/1.jpg');
         $isOnline = $data->type === 'online';
-        $joinUrl = $isOnline && $data->event_link && preg_match('#^https?://#i', $data->event_link)
-            ? $data->event_link
-            : null;
         $locationLabel = $isOnline ? __('Online event') : ($data->address ?: __('Venue to be announced'));
         $eventUrl = url('/event/'.$data->id.'/'.\Illuminate\Support\Str::slug($data->name));
     @endphp
@@ -98,6 +95,10 @@
                                         {{ __('Join online') }}
                                         <x-lucide-external-link class="tw-h-3.5 tw-w-3.5" />
                                     </a>
+                                @elseif (! empty($onlineJoinLocked))
+                                    <p class="tw-mt-2 tw-text-xs tw-leading-relaxed tw-text-neutral-500 dark:tw-text-neutral-400">
+                                        {{ __('Join link unlocks after checkout.') }}
+                                    </p>
                                 @endif
                             </div>
                         </div>

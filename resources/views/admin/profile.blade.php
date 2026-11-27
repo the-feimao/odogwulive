@@ -137,6 +137,83 @@
                 </form>
             </x-card>
 
+            @if (Auth::user()->hasRole('organization'))
+                @php
+                    $payoutAccount = Auth::user();
+                @endphp
+                <x-card :title="__('Paystack Payout Details')" :subtitle="__('Used to pay your commission by direct Paystack transfer.')">
+                    <div x-data="{ banks: [], loading: true }"
+                        x-init="fetch('{{ url('/organization/paystack-banks') }}').then(function (response) { return response.json(); }).then(function (data) { banks = data.banks || []; }).catch(function () { banks = []; }).finally(function () { loading = false; })"
+                        class="tw-grid tw-gap-5">
+
+                        @if ($payoutAccount->hasPayoutDetails())
+                            <x-alert tone="success" :title="__('Payout account on file')">
+                                {{ __('Bank:').' '.$payoutAccount->bank_name.' · '.__('Account:').' '.$payoutAccount->maskedAccountNumber() }}
+                                @if ($payoutAccount->payout_verified_at)
+                                    · {{ __('Verified with Paystack') }}
+                                @endif
+                            </x-alert>
+                        @endif
+
+                        <datalist id="paystack-bank-names">
+                            <template x-for="bank in banks" :key="bank.code">
+                                <option :value="bank.name"></option>
+                            </template>
+                        </datalist>
+                        <datalist id="paystack-bank-codes">
+                            <template x-for="bank in banks" :key="bank.code">
+                                <option :value="bank.code" x-text="bank.name"></option>
+                            </template>
+                        </datalist>
+
+                        <form method="post" action="{{ url('organization/paystack-account') }}" class="tw-grid tw-gap-5">
+                            @csrf
+
+                            <p class="tw-text-xs tw-leading-relaxed tw-text-neutral-500 dark:tw-text-neutral-400" x-show="loading">
+                                {{ __('Loading Paystack banks…') }}
+                            </p>
+
+                            <div class="tw-grid tw-gap-4 sm:tw-grid-cols-2">
+                                <x-input name="bank_name" :label="__('Bank name')" :value="old('bank_name', $payoutAccount->bank_name)"
+                                    :placeholder="__('e.g. Access Bank')" list="paystack-bank-names" required />
+                                <x-input name="bank_code" :label="__('Bank code')" :value="old('bank_code', $payoutAccount->bank_code)"
+                                    :placeholder="__('e.g. 044')" list="paystack-bank-codes" required />
+                            </div>
+
+                            <x-input name="account_name" :label="__('Account name')" :value="old('account_name', $payoutAccount->account_name)"
+                                :placeholder="__('Name on the bank account')" required />
+
+                            @php
+                                $accountError = $errors->first('account_number') ?: ($payoutAccount->hasPayoutDetails() ? null : __('Account number is required.'));
+                            @endphp
+                            <div class="ds-field tw-flex tw-flex-col tw-gap-1.5">
+                                <label for="field-account_number" class="tw-text-sm tw-font-semibold tw-text-ink-800 dark:tw-text-neutral-100">
+                                    {{ __('Account number') }}
+                                </label>
+                                <input id="field-account_number" name="account_number" type="text" value=""
+                                    placeholder="{{ $payoutAccount->hasPayoutDetails() ? __('Leave blank to keep ').$payoutAccount->maskedAccountNumber() : __('10-digit account number') }}"
+                                    inputmode="numeric" pattern="[0-9]{10}"
+                                    @if ($accountError) aria-invalid="true" aria-describedby="field-account_number-error" @endif
+                                    class="tw-h-10 tw-w-full tw-rounded-card tw-border tw-bg-neutral-0 tw-px-3 tw-text-sm tw-text-ink-900 tw-placeholder-neutral-400 tw-transition focus:tw-outline-none focus:tw-ring-2 focus:tw-ring-accent-600/20 dark:tw-bg-ink-900 dark:tw-text-neutral-50 dark:tw-placeholder-neutral-500 {{ $accountError ? 'tw-border-danger-600' : 'tw-border-neutral-200 dark:tw-border-neutral-700' }}">
+                                @if ($accountError)
+                                    <p id="field-account_number-error" class="tw-text-xs tw-font-medium tw-text-danger-600">{{ $accountError }}</p>
+                                @endif
+                            </div>
+
+                            <label class="tw-flex tw-items-start tw-gap-2 tw-text-sm tw-text-neutral-700 dark:tw-text-neutral-200">
+                                <input type="checkbox" name="verify" value="1"
+                                    class="tw-mt-0.5 tw-h-4 tw-w-4 tw-rounded-card tw-border-neutral-300 tw-text-accent-600 focus:tw-ring-accent-600 dark:tw-border-neutral-600 dark:tw-bg-ink-900">
+                                <span>{{ __('Verify this account with Paystack before saving.') }}</span>
+                            </label>
+
+                            <div>
+                                <x-button type="submit">{{ __('Save Payout Details') }}</x-button>
+                            </div>
+                        </form>
+                    </div>
+                </x-card>
+            @endif
+
             <x-card :title="__('Change Password')" :subtitle="__('Use a strong password you do not use elsewhere.')">
                 <form method="post" class="tw-grid tw-gap-5" action="{{ url('change-password') }}">
                     @csrf

@@ -11,6 +11,7 @@
         $tags = array_values(array_filter(array_map('trim', explode(',', (string) $data->tags))));
         $image = $data->image ? url('images/upload/'.$data->image) : asset('web/bg/1.jpg');
         $articleUrl = url('blog-detail/'.$data->id.'/'.preg_replace('/\s+/', '-', $data->title));
+        $descriptionHtml = \App\Support\RichText::safeHtml($data->description);
     @endphp
 
     <section class="tw-relative tw-overflow-hidden tw-bg-ink-950">
@@ -62,8 +63,8 @@
                         <p class="tw-text-xl tw-font-bold tw-leading-snug tw-text-ink-900 dark:tw-text-neutral-50">
                             {{ $data->title }}
                         </p>
-                        <div class="tw-mt-4 tw-whitespace-pre-line tw-text-sm tw-leading-7 tw-text-neutral-600 dark:tw-text-neutral-300 md:tw-text-base">
-                            {{ $data->description }}
+                        <div class="ds-rich-text tw-mt-4 tw-text-sm tw-leading-7 tw-text-neutral-600 dark:tw-text-neutral-300 md:tw-text-base">
+                            {!! $descriptionHtml !!}
                         </div>
 
                         @if (count($tags) > 0)

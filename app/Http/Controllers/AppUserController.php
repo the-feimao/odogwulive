@@ -17,19 +17,43 @@ class AppUserController extends Controller
 {
     public function index()
     {
-        abort_if(Gate::denies('app_user_access'), Response::HTTP_FORBIDDEN, '403 Forbidden');
-        $users = AppUser::OrderBy('id', 'DESC')->get();
-        return view('admin.appUser.index', compact('users'));
+        $authUser = Auth::user();
+
+        if ($authUser->hasRole('admin')) {
+            abort_if(Gate::denies('app_user_access'), Response::HTTP_FORBIDDEN, '403 Forbidden');
+            $users = AppUser::orderBy('id', 'DESC')->get();
+        } elseif ($authUser->hasRole('organization')) {
+            $users = AppUser::whereHas('orders', function ($query) use ($authUser) {
+                $query->where('organization_id', $authUser->id);
+            })->orderBy('id', 'DESC')->get();
+        } else {
+            abort(Response::HTTP_FORBIDDEN, '403 Forbidden');
+        }
+
+        $readOnly = $authUser->hasRole('organization') && !$authUser->hasRole('admin');
+
+        return view('admin.appUser.index', compact('users', 'readOnly'));
+    }
+
+    private function abortIfReadOnlyOrganizer(): void
+    {
+        $authUser = Auth::user();
+
+        if ($authUser && $authUser->hasRole('organization') && !$authUser->hasRole('admin')) {
+            abort(Response::HTTP_FORBIDDEN, '403 Forbidden');
+        }
     }
 
     public function create()
     {
+        $this->abortIfReadOnlyOrganizer();
         abort_if(Gate::denies('app_user_create'), Response::HTTP_FORBIDDEN, '403 Forbidden');
         return view('admin.appUser.create');
     }
 
     public function store(Request $request)
     {
+        $this->abortIfReadOnlyOrganizer();
         abort_if(Gate::denies('app_user_create'), Response::HTTP_FORBIDDEN, '403 Forbidden');
 
         $request->validate([
@@ -72,6 +96,7 @@ class AppUserController extends Controller
 
     public function blockUser($id)
     {
+        $this->abortIfReadOnlyOrganizer();
         abort_if(Gate::denies('app_user_edit'), Response::HTTP_FORBIDDEN, '403 Forbidden');
 
         $user = AppUser::findOrFail($id);
@@ -100,6 +125,12 @@ class AppUserController extends Controller
                 ->orWhere([['customer_id', $user->id], ['order_status', 'Cancel']])
                 ->orderBy('id', 'DESC')->get();
         } elseif ($authUser->hasRole('organization')) {
+            abort_unless(
+                Order::where('customer_id', $user->id)->where('organization_id', $authUser->id)->exists(),
+                Response::HTTP_FORBIDDEN,
+                '403 Forbidden'
+            );
+
             $user->pending = Order::where([['customer_id', $user->id], ['organization_id', $authUser->id], ['order_status', 'Pending']])->orderBy('id', 'DESC')->count();
             $user->complete = Order::where([['customer_id', $user->id], ['organization_id', $authUser->id], ['order_status', 'Complete']])->orderBy('id', 'DESC')->count();
             $user->cancel = Order::where([['customer_id', $user->id], ['organization_id', $authUser->id], ['order_status', 'Cancel']])->orderBy('id', 'DESC')->count();

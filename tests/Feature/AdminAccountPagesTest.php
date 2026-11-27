@@ -83,6 +83,26 @@ class AdminAccountPagesTest extends TestCase
     }
 
     #[Test]
+    public function the_admin_header_shows_the_notification_bell()
+    {
+        $this->activateLicense();
+        $admin = $this->admin();
+
+        Notification::create([
+            'organizer_id' => null,
+            'user_id' => $admin->id,
+            'order_id' => null,
+            'title' => 'Admin notice',
+            'message' => 'A new booking needs review.',
+        ]);
+
+        $this->actingAs($admin)->get('/admin/home')
+            ->assertOk()
+            ->assertSee('notification-toggle', false)
+            ->assertSee('far fa-bell', false);
+    }
+
+    #[Test]
     public function the_admin_profile_keeps_both_forms_and_their_field_names()
     {
         $this->activateLicense();

@@ -9,16 +9,22 @@
                 {{ __('View Attendees') }}
             </h1>
             <p class="tw-mt-1 tw-text-sm tw-text-neutral-600 dark:tw-text-neutral-300">
-                {{ __('Manage attendee accounts, details and access.') }}
+                @if ($readOnly)
+                    {{ __('Review attendees who have placed orders for your events.') }}
+                @else
+                    {{ __('Manage attendee accounts, details and access.') }}
+                @endif
             </p>
         </div>
 
         @can('app_user_create')
-            <a href="{{ url('app-user/create') }}"
-                class="tw-inline-flex tw-h-10 tw-items-center tw-gap-2 tw-rounded-pill tw-bg-primary-500 tw-px-4 tw-text-sm tw-font-bold tw-text-ink-950 tw-transition hover:tw-bg-primary-400 focus-visible:tw-outline-none focus-visible:tw-ring-2 focus-visible:tw-ring-accent-600">
-                <x-lucide-plus class="tw-h-4 tw-w-4" />
-                {{ __('Add New') }}
-            </a>
+            @unless ($readOnly)
+                <a href="{{ url('app-user/create') }}"
+                    class="tw-inline-flex tw-h-10 tw-items-center tw-gap-2 tw-rounded-pill tw-bg-primary-500 tw-px-4 tw-text-sm tw-font-bold tw-text-ink-950 tw-transition hover:tw-bg-primary-400 focus-visible:tw-outline-none focus-visible:tw-ring-2 focus-visible:tw-ring-accent-600">
+                    <x-lucide-plus class="tw-h-4 tw-w-4" />
+                    {{ __('Add New') }}
+                </a>
+            @endunless
         @endcan
     </div>
 
@@ -26,7 +32,8 @@
 
     <x-card :padded="false">
         @if ($users->isEmpty())
-            <x-empty-state :title="__('No attendees yet')" :description="__('Add an attendee or wait for customers to register.')" />
+            <x-empty-state :title="__('No attendees yet')"
+                :description="$readOnly ? __('Customers who order your event tickets will appear here.') : __('Add an attendee or wait for customers to register.')" />
         @else
             <div class="tw-overflow-x-auto">
                 <table id="report_table" class="tw-min-w-full tw-text-left tw-text-sm">
@@ -68,19 +75,21 @@
                                             <x-lucide-eye class="tw-h-4 tw-w-4" />
                                         </a>
                                         @can('block_app_user')
-                                            @if ($item->status == '0')
-                                                <a href="{{ url('block-user/'.$item->id) }}" title="Unblock {{ $item->name }}"
-                                                    aria-label="Unblock {{ $item->name }}"
-                                                    class="tw-inline-flex tw-h-9 tw-w-9 tw-items-center tw-justify-center tw-rounded-stub tw-text-success-600 tw-transition hover:tw-bg-success-50 focus-visible:tw-outline-none focus-visible:tw-ring-2 focus-visible:tw-ring-success-600 dark:tw-text-success-300 dark:hover:tw-bg-success-500/10">
-                                                    <x-lucide-unlock class="tw-h-4 tw-w-4" />
-                                                </a>
-                                            @else
-                                                <a href="{{ url('block-user/'.$item->id) }}" title="Block {{ $item->name }}"
-                                                    aria-label="Block {{ $item->name }}"
-                                                    class="tw-inline-flex tw-h-9 tw-w-9 tw-items-center tw-justify-center tw-rounded-stub tw-text-danger-600 tw-transition hover:tw-bg-danger-50 focus-visible:tw-outline-none focus-visible:tw-ring-2 focus-visible:tw-ring-danger-600 dark:tw-text-danger-300 dark:hover:tw-bg-danger-500/10">
-                                                    <x-lucide-ban class="tw-h-4 tw-w-4" />
-                                                </a>
-                                            @endif
+                                            @unless ($readOnly)
+                                                @if ($item->status == '0')
+                                                    <a href="{{ url('block-user/'.$item->id) }}" title="Unblock {{ $item->name }}"
+                                                        aria-label="Unblock {{ $item->name }}"
+                                                        class="tw-inline-flex tw-h-9 tw-w-9 tw-items-center tw-justify-center tw-rounded-stub tw-text-success-600 tw-transition hover:tw-bg-success-50 focus-visible:tw-outline-none focus-visible:tw-ring-2 focus-visible:tw-ring-success-600 dark:tw-text-success-300 dark:hover:tw-bg-success-500/10">
+                                                        <x-lucide-unlock class="tw-h-4 tw-w-4" />
+                                                    </a>
+                                                @else
+                                                    <a href="{{ url('block-user/'.$item->id) }}" title="Block {{ $item->name }}"
+                                                        aria-label="Block {{ $item->name }}"
+                                                        class="tw-inline-flex tw-h-9 tw-w-9 tw-items-center tw-justify-center tw-rounded-stub tw-text-danger-600 tw-transition hover:tw-bg-danger-50 focus-visible:tw-outline-none focus-visible:tw-ring-2 focus-visible:tw-ring-danger-600 dark:tw-text-danger-300 dark:hover:tw-bg-danger-500/10">
+                                                        <x-lucide-ban class="tw-h-4 tw-w-4" />
+                                                    </a>
+                                                @endif
+                                            @endunless
                                         @endcan
                                     </span>
                                 </td>

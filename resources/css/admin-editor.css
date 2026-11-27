@@ -1,0 +1,75 @@
+.ds-rich-text.trix-content {
+    display: block;
+    min-height: 12rem;
+    padding: 1rem;
+    border: 1px solid #e5e5e5;
+    border-radius: 0.75rem;
+    background: #fff;
+    color: #171717;
+    font-size: 0.875rem;
+    line-height: 1.65;
+}
+
+.ds-rich-text.trix-content:focus {
+    outline: 2px solid rgba(59, 130, 246, 0.35);
+    outline-offset: 1px;
+    border-color: #d1a200;
+}
+
+.ds-rich-text .trix-toolbar {
+    margin: -1rem -1rem 1rem;
+    padding: 0.5rem;
+    overflow-x: auto;
+    border-bottom: 1px solid #e5e5e5;
+    border-radius: 0.75rem 0.75rem 0 0;
+    background: #fafafa;
+}
+
+.ds-rich-text .trix-button-group {
+    border-color: #e5e5e5;
+}
+
+.ds-rich-text .trix-button {
+    color: #525252;
+}
+
+.ds-rich-text .trix-button:not(:last-child) {
+    border-right-color: #e5e5e5;
+}
+
+.ds-rich-text .trix-dialog {
+    border-color: #e5e5e5;
+    border-radius: 0.5rem;
+    background: #fff;
+    box-shadow: 0 12px 30px rgba(15, 23, 42, 0.16);
+}
+
+.tw-dark .ds-rich-text.trix-content {
+    border-color: #2b3445;
+    background: #111827;
+    color: #f5f5f5;
+}
+
+.tw-dark .ds-rich-text.trix-content:focus {
+    border-color: #facc15;
+}
+
+.tw-dark .ds-rich-text .trix-toolbar {
+    border-color: #2b3445;
+    background: #0b1220;
+}
+
+.tw-dark .ds-rich-text .trix-button-group,
+.tw-dark .ds-rich-text .trix-button:not(:last-child) {
+    border-color: #2b3445;
+}
+
+.tw-dark .ds-rich-text .trix-button {
+    color: #d4d4d4;
+}
+
+.tw-dark .ds-rich-text .trix-dialog {
+    border-color: #2b3445;
+    background: #111827;
+    color: #f5f5f5;
+}

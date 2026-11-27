@@ -43,7 +43,7 @@
                 <form method="POST" action="{{ url('/user/logout') }}">
                     @csrf
                     <button type="submit"
-                        class="tw-inline-flex tw-h-9 tw-items-center tw-gap-1.5 tw-rounded-pill tw-px-3 tw-text-sm tw-font-semibold tw-text-neutral-600 hover:tw-bg-neutral-100 hover:tw-text-ink-900 focus:tw-outline-none focus-visible:tw-ring-2 focus-visible:tw-ring-accent-600 dark:tw-text-neutral-300 dark:hover:tw-bg-neutral-800 dark:hover:tw-text-neutral-50">
+                        class="tw-inline-flex tw-h-9 tw-items-center tw-gap-1.5 tw-rounded-pill tw-border-0 tw-bg-transparent tw-px-3 tw-text-sm tw-font-semibold tw-text-neutral-600 hover:tw-bg-neutral-100 hover:tw-text-ink-900 focus:tw-outline-none focus-visible:tw-ring-2 focus-visible:tw-ring-accent-600 dark:tw-text-neutral-300 dark:hover:tw-bg-neutral-800 dark:hover:tw-text-neutral-50">
                         <x-lucide-log-out class="tw-h-4 tw-w-4" />
                         {{ __('Log out') }}
                     </button>
@@ -65,7 +65,7 @@
             <x-theme-toggle />
             <button type="button" @click="open = !open" :aria-expanded="open.toString()"
                 :aria-label="open ? '{{ __('Close menu') }}' : '{{ __('Open menu') }}'"
-                class="tw-inline-flex tw-h-10 tw-w-10 tw-items-center tw-justify-center tw-rounded-pill tw-border tw-border-neutral-200 tw-text-ink-800 focus:tw-outline-none focus-visible:tw-ring-2 focus-visible:tw-ring-accent-600 dark:tw-border-neutral-700 dark:tw-text-neutral-100">
+                class="tw-inline-flex tw-h-10 tw-w-10 tw-items-center tw-justify-center tw-rounded-pill tw-border tw-border-neutral-200 tw-bg-transparent tw-text-ink-800 focus:tw-outline-none focus-visible:tw-ring-2 focus-visible:tw-ring-accent-600 dark:tw-border-neutral-700 dark:tw-text-neutral-100 dark:hover:tw-bg-neutral-800">
                 <x-lucide-x x-cloak x-show="open" class="tw-h-5 tw-w-5" />
                 <x-lucide-menu x-cloak x-show="!open" class="tw-h-5 tw-w-5" />
             </button>
@@ -94,7 +94,7 @@
                     <form method="POST" action="{{ url('/user/logout') }}">
                         @csrf
                         <button type="submit"
-                            class="tw-inline-flex tw-w-full tw-items-center tw-gap-2 tw-rounded-stub tw-px-3 tw-py-2.5 tw-text-left tw-text-sm tw-font-semibold tw-text-neutral-700 dark:tw-text-neutral-200">
+                            class="tw-inline-flex tw-w-full tw-items-center tw-gap-2 tw-rounded-stub tw-border-0 tw-bg-transparent tw-px-3 tw-py-2.5 tw-text-left tw-text-sm tw-font-semibold tw-text-neutral-700 hover:tw-bg-neutral-100 dark:tw-text-neutral-200 dark:hover:tw-bg-neutral-800">
                             <x-lucide-log-out class="tw-h-4 tw-w-4" />
                             {{ __('Log out') }}
                         </button>

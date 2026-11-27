@@ -3,7 +3,7 @@
 
     Legacy hooks are intentionally preserved: `.event-form`, `#image-preview`,
     `#image-upload`, `#image-label`, `#start_time`, `#end_time`,
-    `#org-for-event`, `.scanner_id`, `.location-detail`, `.inputtags` and
+    `#org-for-event`, `.scanner_id`, `#additional-scanners`, `.location-detail`, `.inputtags` and
     `.textarea_editor`. Steps use x-show (not x-if) so these plugins keep
     initialising against elements that are already in the DOM.
 --}}
@@ -13,6 +13,7 @@
     $jsType = in_array($type, ['offline', 'online'], true) ? $type : 'offline';
     $security = $isEdit ? (string) $event->security : old('security', '1');
     $onlineLink = old('event_link', $isEdit ? $event->event_link : '');
+    $selectedScannerIds = array_map('intval', (array) old('scanner_ids', $isEdit ? $event->scanners->pluck('id')->all() : []));
 
     // Return organisers to the step that actually failed validation.
     $initialStep = 1;
@@ -161,6 +162,16 @@
                     <option value="{{ $item->id }}"
                         {{ old('scanner_id', $isEdit ? $event->scanner_id : '') == $item->id ? 'selected' : '' }}>
                         {{ $item->first_name.' '.$item->last_name }}
+                    </option>
+                @endforeach
+            </x-select>
+
+            <x-select name="scanner_ids[]" id="additional-scanners" :label="__('Additional scanners')" class="select2" multiple
+                :help="__('Optional. These scanners can also scan tickets for this event.')">
+                @foreach ($scanner as $item)
+                    <option value="{{ $item->id }}"
+                        {{ in_array((int) $item->id, $selectedScannerIds, true) ? 'selected' : '' }}>
+                        {{ trim($item->first_name.' '.$item->last_name) ?: ($item->name ?: $item->email) }}
                     </option>
                 @endforeach
             </x-select>

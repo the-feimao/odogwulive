@@ -127,6 +127,112 @@ class AdminRoleScannerTemplatePagesTest extends TestCase
     }
 
     #[Test]
+    public function organizers_see_checkin_stats_for_only_their_scanners()
+    {
+        $this->activateLicense();
+        $organizer = $this->organizer();
+        $otherOrganizer = $this->organizer();
+
+        $scanner = $this->scannerUser($organizer);
+        $scanner->update([
+            'name' => null,
+            'first_name' => 'Assigned',
+            'last_name' => 'Scanner',
+        ]);
+        $otherScanner = $this->scannerUser($otherOrganizer);
+        $otherScanner->update([
+            'name' => null,
+            'first_name' => 'Outside',
+            'last_name' => 'Scanner',
+        ]);
+
+        $event = $this->event($organizer, [
+            'name' => 'Check-in Stats Event',
+            'scanner_id' => $scanner->id,
+        ]);
+        $ticket = $this->ticket($event);
+        $customer = $this->customer();
+        $order = $this->order($event, $ticket, $customer, $organizer);
+        $this->orderChild($order, $ticket, $customer, ['ticket_number' => 'STATS-IN', 'status' => 1]);
+        $this->orderChild($order, $ticket, $customer, ['ticket_number' => 'STATS-OUT', 'status' => 0]);
+
+        $otherEvent = $this->event($otherOrganizer, [
+            'name' => 'Other Check-in Stats Event',
+            'scanner_id' => $otherScanner->id,
+        ]);
+        $otherTicket = $this->ticket($otherEvent);
+        $otherCustomer = $this->customer();
+        $otherOrder = $this->order($otherEvent, $otherTicket, $otherCustomer, $otherOrganizer);
+        $this->orderChild($otherOrder, $otherTicket, $otherCustomer, [
+            'ticket_number' => 'OTHER-IN',
+            'status' => 1,
+        ]);
+        $unassignedEvent = $this->event($organizer, ['name' => 'Unassigned Check-in Event']);
+
+        $this->actingAs($organizer)->get('/scanner')->assertOk()
+            ->assertSee('View Scanner')
+            ->assertSee('Checked in')
+            ->assertSee('Remaining')
+            ->assertSee('Event check-in progress')
+            ->assertSee('Tickets sold')
+            ->assertSee('Check-in Stats Event')
+            ->assertSee('Assigned Scanner')
+            ->assertSee('Unassigned Check-in Event')
+            ->assertSee('Unassigned')
+            ->assertDontSee('Outside Scanner')
+            ->assertDontSee('Other Check-in Stats Event')
+            ->assertViewHas('scanners', function ($scanners) use ($scanner, $otherScanner) {
+                $own = $scanners->firstWhere('id', $scanner->id);
+
+                return $own
+                    && (int) $own->total_event === 1
+                    && (int) $own->checked_in === 1
+                    && (int) $own->remaining === 1
+                    && !$scanners->contains('id', $otherScanner->id);
+            })
+            ->assertViewHas('events', function ($events) use ($event, $scanner, $unassignedEvent, $otherEvent) {
+                $own = $events->firstWhere('id', $event->id);
+                $unassigned = $events->firstWhere('id', $unassignedEvent->id);
+
+                return $own
+                    && (int) $own->tickets_sold === 2
+                    && (int) $own->checked_in === 1
+                    && (int) $own->remaining === 1
+                    && (int) $own->scanner_id === $scanner->id
+                    && $own->assigned_scanner_name === 'Assigned Scanner'
+                    && $unassigned
+                    && (int) $unassigned->tickets_sold === 0
+                    && is_null($unassigned->scanner_id)
+                    && !$events->contains('id', $otherEvent->id);
+            });
+
+        $this->actingAs($this->admin())->get('/scanner')->assertOk()
+            ->assertViewHas('scanners', function ($scanners) use ($scanner, $otherScanner) {
+                $own = $scanners->firstWhere('id', $scanner->id);
+                $other = $scanners->firstWhere('id', $otherScanner->id);
+
+                return $own && $other
+                    && (int) $own->checked_in === 1
+                    && (int) $own->remaining === 1
+                    && (int) $other->checked_in === 1
+                    && (int) $other->remaining === 0;
+            })
+            ->assertViewHas('events', function ($events) use ($event, $otherEvent, $scanner, $otherScanner) {
+                $own = $events->firstWhere('id', $event->id);
+                $other = $events->firstWhere('id', $otherEvent->id);
+
+                return $own && $other
+                    && (int) $own->tickets_sold === 2
+                    && (int) $own->scanner_id === $scanner->id
+                    && $own->assigned_scanner_name === 'Assigned Scanner'
+                    && (int) $other->tickets_sold === 1
+                    && (int) $other->checked_in === 1
+                    && (int) $other->scanner_id === $otherScanner->id
+                    && $other->assigned_scanner_name === 'Outside Scanner';
+            });
+    }
+
+    #[Test]
     public function template_pages_keep_summer_note_and_notification_hooks()
     {
         $this->activateLicense();

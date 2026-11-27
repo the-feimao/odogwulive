@@ -4,6 +4,7 @@ namespace Tests;
 
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
+use Illuminate\Foundation\Vite;
 use Laravel\Passport\Passport;
 use Tests\Concerns\CreatesFixtures;
 
@@ -16,6 +17,11 @@ abstract class TestCase extends BaseTestCase
     protected function setUp(): void
     {
         parent::setUp();
+
+        // Tests assert against the Vite build manifest. Ignore a leftover
+        // public/hot file from `npm run dev` so asset URLs are deterministic.
+        $this->app->make(Vite::class)
+            ->useHotFile(sys_get_temp_dir().'/odogwu-vite-hot-missing-'.getmypid());
 
         // Token-issuing endpoints need an RSA key pair. Generate an ephemeral
         // pair outside the repository so no key material is ever committed.

@@ -49,8 +49,9 @@
 
                     <x-input name="tags" :label="__('Tags')" class="inputtags" :value="$blog->tags" />
 
-                    <x-textarea name="description" :label="__('Description')" :placeholder="__('Description')"
-                        :value="$blog->description" />
+                    <x-rich-textarea name="description" :label="__('Description')"
+                        :value="$blog->description"
+                        :help="__('Use the toolbar to format the article before publishing.')" />
                 </div>
             </div>
 

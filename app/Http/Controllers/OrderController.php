@@ -13,6 +13,12 @@ use App\Models\OrderChild;
 use App\Models\User;
 use App\Models\Settlement;
 use App\Models\PaymentSetting;
+use App\Support\DashboardMetrics;
+use App\Support\PaystackTransferClient;
+use App\Support\PaystackTransferException;
+use App\Support\SettlementPayout;
+use App\Support\TicketQr;
+use Illuminate\Support\Facades\Cache;
 use Stripe;
 use QrCode;
 use Carbon\Carbon;
@@ -224,7 +230,13 @@ class OrderController extends Controller
         $data = $data->get();
         $this->attachSettlementUsers($data);
 
-        return view('admin.report.org_revenue', compact('data', 'request'));
+        $summary = [
+            'payouts' => $data->count(),
+            'paid' => (float) $data->where('payment_status', 1)->sum('payment'),
+            'pending' => (float) $data->where('payment_status', 0)->sum('payment'),
+        ];
+
+        return view('admin.report.org_revenue', compact('data', 'request', 'summary'));
     }
 
     public function adminCustomerReport(Request $request)
@@ -312,7 +324,15 @@ class OrderController extends Controller
         $organizers = User::role('organization')->orderBy('id', 'DESC')->get();
         $customers = AppUser::orderBy('id', 'DESC')->get();
 
-        return view('admin.report.admin_revenue_report', compact('data', 'request', 'organizers', 'customers'));
+        $summary = [
+            'orders' => $data->count(),
+            'gross' => (float) $data->sum('payment'),
+            'tax' => (float) $data->sum('tax'),
+            'organizer' => (float) $data->sum(fn ($order) => $order->org_commission + $order->tax),
+            'platform' => (float) $data->sum(fn ($order) => $order->payment - $order->org_commission - $order->tax),
+        ];
+
+        return view('admin.report.admin_revenue_report', compact('data', 'request', 'organizers', 'customers', 'summary'));
     }
 
     public function getStatistics($month){
@@ -362,15 +382,36 @@ class OrderController extends Controller
             'organization_id',
             $commissionExpression
         );
+        $latestPayouts = Settlement::whereIn('user_id', $organizationIds)
+            ->where('payment_type', 'PAYSTACK')
+            ->orderBy('id', 'DESC')
+            ->get()
+            ->groupBy('user_id');
 
         foreach ($data as $value) {
             $value->total_orders = (int) ($orderCounts->get($value->id) ?? 0);
             $value->total_commission = (float) ($totalCommission->get($value->id) ?? 0);
             $value->pay_commission = (float) ($paidCommission->get($value->id) ?? 0);
             $value->organization_commission = (float) ($unpaidCommission->get($value->id) ?? 0);
+            $value->latest_payout = $latestPayouts->get($value->id)?->first();
+            $value->payout_status = ! $value->hasPayoutDetails()
+                ? 'missing'
+                : match ((int) ($value->latest_payout?->payment_status ?? 0)) {
+                    1 => 'paid',
+                    2 => 'failed',
+                    default => 'ready',
+                };
         }
 
-        return view('admin.report.admin_settlement_report', compact('data'));
+        $summary = [
+            'organizations' => $data->count(),
+            'total_commission' => (float) $data->sum('total_commission'),
+            'paid_commission' => (float) $data->sum('pay_commission'),
+            'outstanding' => (float) $data->sum('organization_commission'),
+            'ready' => $data->filter(fn ($organization) => $organization->payout_status === 'ready')->count(),
+        ];
+
+        return view('admin.report.admin_settlement_report', compact('data', 'summary'));
     }
 
     public function viewSettlement($id)
@@ -421,6 +462,108 @@ class OrderController extends Controller
         return response()->json(['msg' => null, 'success' => true], 200);
     }
 
+    /**
+     * Pay an organisation's outstanding commission from the Paystack balance.
+     * The amount is recalculated here; the browser only supplies the user id.
+     */
+    public function payToOrganizationWithPaystack(Request $request)
+    {
+        if (!Auth::user()->hasRole('admin')) {
+            abort(403);
+        }
+
+        $validated = $request->validate([
+            'user_id' => 'bail|required|integer',
+        ]);
+
+        $organization = User::role('organization')->findOrFail($validated['user_id']);
+        $lock = Cache::lock('settlement-payout:'.$organization->id, 30);
+
+        if (! $lock->get()) {
+            return redirect()->back()->with('error', __('A payout for this organization is already being processed.'));
+        }
+
+        $payout = app(SettlementPayout::class);
+        $settlement = null;
+
+        try {
+            if (! $organization->hasPayoutDetails()) {
+                return redirect()->back()->with('error', __('This organization has not added complete payout details yet.'));
+            }
+
+            $client = app(PaystackTransferClient::class);
+            $currency = DashboardMetrics::currencyCode();
+
+            $recipientCode = $organization->paystack_recipient_code;
+            if (! $recipientCode) {
+                $recipientCode = $client->createRecipient([
+                    'organization_id' => $organization->id,
+                    'account_name' => $organization->account_name,
+                    'account_number' => $organization->account_number,
+                    'bank_code' => $organization->bank_code,
+                    'currency' => $currency,
+                ]);
+
+                $organization->paystack_recipient_code = $recipientCode;
+                $organization->save();
+            }
+
+            $settlement = $payout->start((int) $organization->id);
+            $reference = (string) $settlement->payment_token;
+
+            $response = $client->initiateTransfer([
+                'source' => 'balance',
+                'amount' => $client->subunitAmount((int) $settlement->payment),
+                'recipient_code' => $recipientCode,
+                'reference' => $reference,
+                'currency' => $currency,
+                'reason' => 'Commission settlement '.($organization->first_name ?: $organization->name),
+                'metadata' => [
+                    'settlement_id' => $settlement->id,
+                    'organization_id' => $organization->id,
+                ],
+            ]);
+
+            $data = (array) ($response['data'] ?? []);
+            $status = strtolower((string) ($data['status'] ?? 'pending'));
+            $settlement->gateway_reference = (string) ($data['id'] ?? $data['code'] ?? '');
+            $settlement->save();
+
+            if ($status === 'success') {
+                $payout->complete($settlement);
+
+                return redirect()->back()->withStatus(__('Paystack payout completed successfully.'));
+            }
+
+            if (in_array($status, ['failed', 'reversed'], true)) {
+                $payout->fail($settlement, (string) ($data['reason'] ?? 'Paystack rejected the transfer.'));
+                $settlement->refresh();
+
+                return redirect()->back()->with('error', __('Paystack payout failed: ').$settlement->failure_reason);
+            }
+
+            return redirect()->back()->withStatus(__('Paystack payout was started and will complete when Paystack confirms it.'));
+        } catch (PaystackTransferException $exception) {
+            report($exception);
+
+            if ($settlement) {
+                $payout->fail($settlement, $exception->getMessage());
+            }
+
+            return redirect()->back()->with('error', __('Paystack payout could not be started: ').$exception->getMessage());
+        } catch (\Throwable $exception) {
+            report($exception);
+
+            if ($settlement) {
+                $payout->fail($settlement, 'Unexpected payout error.');
+            }
+
+            return redirect()->back()->with('error', __('The payout could not be started. Please try again.'));
+        } finally {
+            $lock->release();
+        }
+    }
+
     public function getQrCode($id)
     {
         $ticket = OrderChild::findOrFail($id);
@@ -468,7 +611,8 @@ class OrderController extends Controller
         $this->authorizeOrderAccess($order);
 
         $order->tax_data = OrderTax::with('tax')->where('order_id', $order->id)->get();
-        $order->ticket_data = OrderChild::where('order_id', $order->id)->get();
+        $order->ticket_data = OrderChild::where('order_id', $order->id)->orderBy('id')->get();
+        app(TicketQr::class)->attach($order, $order->ticket_data, 110);
 
         return view('admin.order.invoicePrint', compact('order'));
     }

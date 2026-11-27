@@ -7,13 +7,11 @@ import $ from './admin-jquery';
 
 import 'bootstrap/dist/js/bootstrap.bundle.min.js';
 
-import jszip from 'jszip';
-import pdfMake from 'pdfmake/build/pdfmake';
-import vfsFontsUrl from 'pdfmake/build/vfs_fonts.js?url';
-
 // These packages expose CommonJS factories instead of installing themselves as
 // a side effect. Call them once with the exact jQuery instance used by the
-// legacy public/admin/js scripts.
+// legacy public/admin/js scripts. PDF/Excel export runtimes live in
+// admin-export.js and are only loaded on report pages. The rich text editor
+// lives in admin-editor.js and is only loaded on blog forms.
 import select2 from 'select2';
 import dataTableBs4 from 'datatables.net-bs4';
 import buttonsBs4 from 'datatables.net-buttons-bs4';
@@ -38,26 +36,15 @@ import 'flatpickr/dist/flatpickr.min.css';
 import 'summernote/dist/summernote-bs4.min.css';
 import '../css/vendor/jvectormap.css';
 
-window.jszip = jszip;
-window.JSZip = jszip;
-window.pdfMake = pdfMake;
 window.flatpickr = flatpickr;
 window.Chart = Chart;
 window.Swal = Swal;
 window.moment = moment;
 
-// vfs_fonts.js is a classic script that assigns to `this.pdfMake`. Loaded as
-// an ES module its top-level `this` is undefined, so it must be injected as a
-// normal script while pointing at the Vite-emitted local asset.
-const vfsFontsScript = document.createElement('script');
-vfsFontsScript.src = vfsFontsUrl;
-vfsFontsScript.async = false;
-document.head.appendChild(vfsFontsScript);
-
 select2(window, $);
 dataTableBs4(window, $);
 buttonsBs4(window, $);
-buttonsHtml5(window, $, jszip, pdfMake);
+buttonsHtml5(window, $);
 buttonsPrint(window, $);
 selectBs4(window, $);
 
@@ -66,10 +53,3 @@ selectBs4(window, $);
 $.fn.flatpickr = function (config) {
     return flatpickr(this, config);
 };
-
-if ($.fn.dataTable && $.fn.dataTable.Buttons) {
-    // DataTables expects getter/setter functions here, not the libraries
-    // themselves; the HTML5 button module installs those setters.
-    $.fn.dataTable.Buttons.jszip(jszip);
-    $.fn.dataTable.Buttons.pdfMake(pdfMake);
-}

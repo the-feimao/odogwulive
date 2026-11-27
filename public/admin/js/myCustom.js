@@ -2,6 +2,38 @@ var base_url = $('#base_url').val();
 var cur = $('#currency').val();
 var pay_fd;
 
+// Excel/PDF buttons are registered by admin-export.js only on report pages.
+// Keep print and CSV available everywhere without loading PDF fonts on every
+// admin screen.
+function dataTableButtons() {
+    var buttons = [{
+        text: '<i class="fas fa-print"></i> Print',
+        extend: 'print',
+    }, {
+        text: '<i class="fas fa-file-csv"></i> CSV',
+        extend: 'csvHtml5',
+        title: new Date().toISOString()
+    }];
+
+    if (window.JSZip) {
+        buttons.push({
+            text: '<i class="far fa-file-excel"></i> Excel',
+            extend: 'excelHtml5',
+            title: new Date().toISOString()
+        });
+    }
+
+    if (window.pdfMake) {
+        buttons.push({
+            text: '<i class="far fa-file-pdf"></i> PDF',
+            extend: 'pdfHtml5',
+            title: new Date().toISOString()
+        });
+    }
+
+    return buttons;
+}
+
 $(".preload").fadeOut(2000, function() {
     $("#app").fadeIn(700);        
 });
@@ -23,25 +55,7 @@ $(document).ready(function() {
                 next: "<i class='fas fa-angle-right'>"
             }
         },
-        buttons: [{
-            text: '<i class="fas fa-print"></i> Print',
-            extend: 'print',
-        }, 
-        {
-            text: '<i class="far fa-file-excel"></i> Excel',
-            extend: 'excelHtml5',
-            title: new Date().toISOString()
-        },
-        {
-            text: '<i class="fas fa-file-csv"></i> CSV',
-            extend: 'csvHtml5',
-            title: new Date().toISOString()
-        },
-        {
-            text: '<i class="far fa-file-pdf"></i> PDF',
-            extend: 'pdfHtml5',
-            title: new Date().toISOString()
-        }],
+        buttons: dataTableButtons(),
         columnDefs: [ {
             orderable: true,
             className: 'select-checkbox',
@@ -66,25 +80,7 @@ $(document).ready(function() {
                 next: "<i class='fas fa-angle-right'>"
             }
         },
-        buttons: [{
-            text: '<i class="fas fa-print"></i> Print',
-            extend: 'print',
-        }, 
-        {
-            text: '<i class="far fa-file-excel"></i> Excel',
-            extend: 'excelHtml5',
-            title: new Date().toISOString()
-        },
-        {
-            text: '<i class="fas fa-file-csv"></i> CSV',
-            extend: 'csvHtml5',
-            title: new Date().toISOString()
-        },
-        {
-            text: '<i class="far fa-file-pdf"></i> PDF',
-            extend: 'pdfHtml5',
-            title: new Date().toISOString()
-        }],
+        buttons: dataTableButtons(),
         columnDefs: [ {
             orderable: true,
             className: 'select-checkbox',
@@ -194,25 +190,7 @@ $(document).ready(function() {
                 next: "<i class='fas fa-angle-right'>"
             }
         },
-        buttons: [{
-            text: '<i class="fas fa-print"></i> Print',
-            extend: 'print',
-        }, 
-        {
-            text: '<i class="far fa-file-excel"></i> Excel',
-            extend: 'excelHtml5',
-            title: new Date().toISOString()
-        },
-        {
-            text: '<i class="fas fa-file-csv"></i> CSV',
-            extend: 'csvHtml5',
-            title: new Date().toISOString()
-        },
-        {
-            text: '<i class="far fa-file-pdf"></i> PDF',
-            extend: 'pdfHtml5',
-            title: new Date().toISOString()
-        }],
+        buttons: dataTableButtons(),
         columnDefs: [ {
             orderable: true,
             className: 'select-checkbox',
@@ -330,25 +308,7 @@ $(document).ready(function() {
                 next: "<i class='fas fa-angle-right'>"
             }
         },
-        buttons: [{
-            text: '<i class="fas fa-print"></i> Print',
-            extend: 'print',
-        }, 
-        {
-            text: '<i class="far fa-file-excel"></i> Excel',
-            extend: 'excelHtml5',
-            title: new Date().toISOString()
-        },
-        {
-            text: '<i class="fas fa-file-csv"></i> CSV',
-            extend: 'csvHtml5',
-            title: new Date().toISOString()
-        },
-        {
-            text: '<i class="far fa-file-pdf"></i> PDF',
-            extend: 'pdfHtml5',
-            title: new Date().toISOString()
-        }],
+        buttons: dataTableButtons(),
         columnDefs: [ {
             orderable: true,
             className: 'select-checkbox',
@@ -658,11 +618,40 @@ function getStatistics(number){
           $('.card-stats .order-complete').html(result.data.complete_order);
           $('.card-stats .order-cancel').html(result.data.cancel_order);
           $('.card-statistic-2 .order-total').html(result.data.total_order);
+          refreshOrderActivityCard();
         },
         error: function(err){
           console.log('err ',err)
         }
     });
+}
+
+function refreshOrderActivityCard(){
+    var card = $('.card-statistic-2');
+    if (!card.length) {
+      return;
+    }
+
+    function count(selector){
+      var value = String(card.find(selector).first().text() || '').replace(/,/g, '');
+      var number = parseInt(value, 10);
+      return isNaN(number) ? 0 : Math.max(0, number);
+    }
+
+    var total = count('.order-total');
+    var pending = count('.order-pending');
+    var completed = count('.order-complete');
+    var cancelled = count('.order-cancel');
+    var other = Math.max(0, total - pending - completed - cancelled);
+    var width = function(value){
+      return (total > 0 ? ((value / total) * 100).toFixed(2) : 0) + '%';
+    };
+
+    card.find('[data-order-bar-completed]').css('width', width(completed));
+    card.find('[data-order-bar-pending]').css('width', width(pending));
+    card.find('[data-order-bar-cancelled]').css('width', width(cancelled));
+    card.find('[data-order-bar-other]').css('width', width(other));
+    card.find('[data-order-completion]').text((total > 0 ? Math.round((completed / total) * 100) : 0) + '%');
 }
 
 function payLocally(){

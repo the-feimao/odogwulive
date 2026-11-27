@@ -66,6 +66,8 @@ Route::post('/change-password', [AccountPasswordController::class, 'change']);
         Route::get('/my-tickets', [FrontendController::class, 'userTickets']);
         Route::get('/my-tickets/{id}/invoice-print', [FrontendController::class, 'orderInvoicePrint'])
             ->name('frontend.invoice.print');
+        Route::get('/my-tickets/{id}/qr', [FrontendController::class, 'orderTicketQrs'])
+            ->name('frontend.tickets.qr');
         Route::post('/check-coupon', [FrontendController::class, 'checkCoupon'])->name('frontend.checkCoupon');
         Route::get('/update_profile', [FrontendController::class, 'update_profile']);
         Route::post('/update_user_profile', [FrontendController::class, 'update_user_profile']);

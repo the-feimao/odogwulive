@@ -24,6 +24,16 @@
 
     <x-flash-messages />
 
+    @if ($capacityExceeded)
+        <x-alert tone="warning" :title="__('Ticket quantity exceeds venue capacity')">
+            {{ __('This event allows :capacity people but has :allocated tickets. Reduce ticket quantities or increase the event capacity.', ['capacity' => $eventCapacity, 'allocated' => $allocatedTickets]) }}
+        </x-alert>
+    @else
+        <p class="tw-text-sm tw-text-neutral-600 dark:tw-text-neutral-300">
+            {{ __('Venue capacity: :capacity people · :remaining ticket(s) still available to allocate.', ['capacity' => $eventCapacity, 'remaining' => $remainingCapacity]) }}
+        </p>
+    @endif
+
     <x-card :padded="false">
         @if ($ticket->isEmpty())
             <x-empty-state :title="__('No tickets yet')" :description="__('Add a ticket to start selling for this event.')" />

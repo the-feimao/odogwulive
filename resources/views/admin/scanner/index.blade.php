@@ -9,7 +9,10 @@
                 {{ __('View Scanner') }}
             </h1>
             <p class="tw-mt-1 tw-text-sm tw-text-neutral-600 dark:tw-text-neutral-300">
-                {{ __('Manage scanner accounts and their event assignments.') }}
+                {{ __('Manage scanner accounts, event assignments and ticket check-in progress.') }}
+            </p>
+            <p class="tw-mt-1 tw-text-xs tw-text-neutral-500 dark:tw-text-neutral-400">
+                {{ __('Check-in counts refresh when this page reloads.') }}
             </p>
         </div>
 
@@ -35,6 +38,8 @@
                             <th class="tw-w-8 tw-px-3 tw-py-3"></th>
                             <th class="tw-px-3 tw-py-3">{{ __('Name') }}</th>
                             <th class="tw-px-3 tw-py-3">{{ __('Total events') }}</th>
+                            <th class="tw-px-3 tw-py-3">{{ __('Checked in') }}</th>
+                            <th class="tw-px-3 tw-py-3">{{ __('Remaining') }}</th>
                             <th class="tw-px-3 tw-py-3">{{ __('Status') }}</th>
                             <th class="tw-px-3 tw-py-3">{{ __('Action') }}</th>
                         </tr>
@@ -59,6 +64,8 @@
                                     </div>
                                 </td>
                                 <td class="tw-px-3 tw-py-3 tw-text-neutral-600 dark:tw-text-neutral-300">{{ $item->total_event }}</td>
+                                <td class="tw-px-3 tw-py-3 tw-font-semibold tw-text-success-700 dark:tw-text-success-300">{{ $item->checked_in }}</td>
+                                <td class="tw-px-3 tw-py-3 tw-text-neutral-600 dark:tw-text-neutral-300">{{ $item->remaining }}</td>
                                 <td class="tw-px-3 tw-py-3">
                                     <x-badge :tone="$item->status == 1 ? 'success' : 'danger'">
                                         {{ $item->status == 1 ? __('Active') : __('Inactive') }}
@@ -86,4 +93,81 @@
             </div>
         @endif
     </x-card>
+
+    <div class="tw-mt-8 tw-space-y-4">
+        <div>
+            <h2 class="tw-text-xl tw-font-extrabold tw-tracking-tight tw-text-ink-900 dark:tw-text-neutral-50">
+                {{ __('Event check-in progress') }}
+            </h2>
+            <p class="tw-mt-1 tw-text-sm tw-text-neutral-600 dark:tw-text-neutral-300">
+                {{ __('An event can have multiple scanners. Tickets sold is the number of ticket records issued; checked-in tickets are scanned by any scanner assigned to that event.') }}
+            </p>
+        </div>
+
+        <x-card :padded="false">
+            @if ($events->isEmpty())
+                <x-empty-state :title="__('No events yet')" :description="__('Create an event to start tracking ticket check-ins.')" />
+            @else
+                <div class="tw-overflow-x-auto">
+                    <table class="tw-min-w-full tw-text-left tw-text-sm">
+                        <thead>
+                            <tr class="tw-border-b tw-border-neutral-200 tw-text-xs tw-uppercase tw-tracking-wide tw-text-neutral-500 dark:tw-border-neutral-700 dark:tw-text-neutral-400">
+                                <th class="tw-px-3 tw-py-3">{{ __('Event') }}</th>
+                                <th class="tw-px-3 tw-py-3">{{ __('Date') }}</th>
+                                <th class="tw-px-3 tw-py-3">{{ __('Scanners') }}</th>
+                                <th class="tw-px-3 tw-py-3">{{ __('Tickets sold') }}</th>
+                                <th class="tw-px-3 tw-py-3">{{ __('Checked in') }}</th>
+                                <th class="tw-px-3 tw-py-3">{{ __('Remaining') }}</th>
+                                <th class="tw-px-3 tw-py-3">{{ __('Progress') }}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach ($events as $event)
+                                @php
+                                    $progress = $event->tickets_sold > 0
+                                        ? min(100, (int) round(($event->checked_in / $event->tickets_sold) * 100))
+                                        : 0;
+                                @endphp
+                                <tr class="tw-border-b tw-border-neutral-100 last:tw-border-0 dark:tw-border-neutral-800">
+                                    <td class="tw-px-3 tw-py-3">
+                                        <div class="tw-flex tw-items-center tw-gap-3">
+                                            <span class="tw-inline-flex tw-h-8 tw-w-8 tw-shrink-0 tw-items-center tw-justify-center tw-rounded-stub tw-bg-primary-100 tw-text-primary-700 dark:tw-bg-primary-500/20 dark:tw-text-primary-300">
+                                                <x-lucide-calendar-days class="tw-h-4 tw-w-4" />
+                                            </span>
+                                            <span class="tw-font-semibold tw-text-ink-900 dark:tw-text-neutral-100">{{ $event->name }}</span>
+                                        </div>
+                                    </td>
+                                    <td class="tw-px-3 tw-py-3 tw-text-neutral-600 dark:tw-text-neutral-300">
+                                        {{ $event->start_time?->format('d M Y') }}
+                                    </td>
+                                    <td class="tw-px-3 tw-py-3 tw-text-neutral-600 dark:tw-text-neutral-300">
+                                        @forelse ($event->assigned_scanners as $assignedScanner)
+                                            <span class="tw-inline-flex tw-items-center tw-rounded-pill tw-bg-neutral-100 tw-px-2 tw-py-0.5 tw-text-xs tw-font-medium tw-text-neutral-700 dark:tw-bg-neutral-800 dark:tw-text-neutral-200">
+                                                {{ $assignedScanner->name }}
+                                            </span>
+                                        @empty
+                                            {{ __('Unassigned') }}
+                                        @endforelse
+                                    </td>
+                                    <td class="tw-px-3 tw-py-3 tw-font-semibold tw-text-ink-900 dark:tw-text-neutral-100">{{ $event->tickets_sold }}</td>
+                                    <td class="tw-px-3 tw-py-3 tw-font-semibold tw-text-success-700 dark:tw-text-success-300">{{ $event->checked_in }}</td>
+                                    <td class="tw-px-3 tw-py-3 tw-text-neutral-600 dark:tw-text-neutral-300">{{ $event->remaining }}</td>
+                                    <td class="tw-px-3 tw-py-3">
+                                        <div class="tw-flex tw-items-center tw-gap-2">
+                                            <div class="tw-h-1.5 tw-w-20 tw-overflow-hidden tw-rounded-pill tw-bg-neutral-100 dark:tw-bg-neutral-800"
+                                                role="progressbar" aria-label="{{ __('Check-in progress for').' '.$event->name }}"
+                                                aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ $progress }}">
+                                                <div class="tw-h-full tw-rounded-pill tw-bg-success-500" style="width: {{ $progress }}%"></div>
+                                            </div>
+                                            <span class="tw-text-xs tw-text-neutral-500 dark:tw-text-neutral-400">{{ $progress }}%</span>
+                                        </div>
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            @endif
+        </x-card>
+    </div>
 @endsection

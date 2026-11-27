@@ -32,6 +32,13 @@ class User extends Authenticatable
         'bio',
         'country',
         'language',
+        'bank_code',
+        'bank_name',
+        'account_number',
+        'account_name',
+        'payout_currency',
+        'payout_verified_at',
+        'paystack_recipient_code',
     ];
 
     /**
@@ -42,6 +49,9 @@ class User extends Authenticatable
     protected $hidden = [
         'password',
         'remember_token',
+        // Never let a new payout field leak through an existing API response.
+        'account_number',
+        'paystack_recipient_code',
     ];
 
     /**
@@ -51,6 +61,8 @@ class User extends Authenticatable
      */
     protected $casts = [
         'email_verified_at' => 'datetime',
+        'payout_verified_at' => 'datetime',
+        'account_number' => 'encrypted',
     ];
     protected $appends = ['followers','imagePath'];
 
@@ -71,6 +83,22 @@ class User extends Authenticatable
         return url('images/upload') . '/'.$this->attributes['image'];
     }
 
-    
- 
+    public function hasPayoutDetails(): bool
+    {
+        return filled($this->account_number)
+            && filled($this->bank_code)
+            && filled($this->bank_name)
+            && filled($this->account_name);
+    }
+
+    public function maskedAccountNumber(): string
+    {
+        $number = (string) ($this->account_number ?? '');
+
+        if ($number === '') {
+            return '—';
+        }
+
+        return str_repeat('•', max(0, strlen($number) - 4)).substr($number, -4);
+    }
 }

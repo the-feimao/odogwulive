@@ -88,6 +88,7 @@
                             <th class="tw-px-3 tw-py-3">#</th>
                             <th class="tw-px-3 tw-py-3 tw-text-center">{{ __('Ticket Name') }}</th>
                             <th class="tw-px-3 tw-py-3 tw-text-center">{{ __('Ticket Number') }}</th>
+                            <th class="tw-px-3 tw-py-3 tw-text-center">{{ __('QR Code') }}</th>
                             <th class="tw-px-3 tw-py-3 tw-text-center">{{ __('Price') }}</th>
                         </tr>
                     </thead>
@@ -97,6 +98,13 @@
                                 <td class="tw-px-3 tw-py-3">{{ $loop->iteration }}</td>
                                 <td class="tw-px-3 tw-py-3 tw-text-center">{{ $order->ticket->name }}</td>
                                 <td class="tw-px-3 tw-py-3 tw-text-center tw-font-mono tw-text-xs">{{ $item->ticket_number }}</td>
+                                <td class="tw-px-3 tw-py-3 tw-text-center">
+                                    @if (! empty($item->qrCode))
+                                        <span class="tw-inline-block tw-h-16 tw-w-16" role="img" aria-label="{{ __('QR code for').' '.$item->ticket_number }}">{!! $item->qrCode !!}</span>
+                                    @else
+                                        <span class="tw-text-xs tw-text-neutral-500">{{ __('After payment') }}</span>
+                                    @endif
+                                </td>
                                 <td class="tw-px-3 tw-py-3 tw-text-center">{{ $currency.$order->ticket->price }}</td>
                             </tr>
                         @endforeach

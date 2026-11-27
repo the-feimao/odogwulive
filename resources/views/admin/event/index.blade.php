@@ -38,7 +38,7 @@
                             <th class="tw-px-3 tw-py-3">{{ __('Organization') }}</th>
                         @endif
                         @if (Auth::user()->hasRole('organization'))
-                            <th class="tw-px-3 tw-py-3">{{ __('Scanner') }}</th>
+                            <th class="tw-px-3 tw-py-3">{{ __('Scanners') }}</th>
                         @endif
                         <th class="tw-px-3 tw-py-3">{{ __('Status') }}</th>
                         @if (Gate::check('event_edit') || Gate::check('event_delete'))
@@ -71,7 +71,7 @@
                             @endif
                             @if (Auth::user()->hasRole('organization'))
                                 <td class="tw-px-3 tw-py-3 tw-text-neutral-600 dark:tw-text-neutral-300">
-                                    {{ $item->scanner == null ? '' : $item->scanner->first_name.' '.$item->scanner->last_name }}
+                                    {{ $item->scanners->map(fn ($scanner) => trim($scanner->first_name.' '.$scanner->last_name) ?: ($scanner->name ?: $scanner->email))->implode(', ') }}
                                 </td>
                             @endif
                             <td class="tw-px-3 tw-py-3">

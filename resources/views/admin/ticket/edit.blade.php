@@ -6,6 +6,16 @@
 
     <x-flash-messages />
 
+    @if ($capacityExceeded)
+        <x-alert tone="warning" :title="__('Ticket quantity exceeds venue capacity')">
+            {{ __('Excluding this ticket, the event allows :capacity people but other tickets total :allocated. Reduce quantities or increase capacity.', ['capacity' => $eventCapacity, 'allocated' => $allocatedTickets]) }}
+        </x-alert>
+    @else
+        <p class="tw-text-sm tw-text-neutral-600 dark:tw-text-neutral-300">
+            {{ __('Venue capacity: :capacity people · :remaining ticket(s) left to allocate excluding this ticket.', ['capacity' => $eventCapacity, 'remaining' => $remainingCapacity]) }}
+        </p>
+    @endif
+
     <x-card :title="__('Edit Ticket')" :subtitle="__('Update the ticket details and sales window.')">
         <form method="post" class="ticket-form tw-grid tw-gap-6" action="{{ url('ticket/update/'.$ticket->id) }}" enctype="multipart/form-data">
             @csrf

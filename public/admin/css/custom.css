@@ -530,7 +530,9 @@ span.flatpickr-weekday{
 tfoot{
     border-top: 1px solid #ddd;
 }
-#app {display:none;}
+/* Vue was removed from the admin shell, so the app container must not start
+   hidden waiting for a jQuery fadeIn that may never run. */
+#app {display:block;}
 .preload { 
     width:100px;
     height: 100px;
@@ -561,4 +563,552 @@ tfoot{
 }
 .display-none{
     display: none;
+}
+
+/* Keep the admin header inside the viewport in every sidebar state. The
+   legacy Stisla navbar is absolutely positioned with a hard-coded sidebar
+   offset; without an explicit width its right-hand menu can be pushed off
+   screen until the sidebar is toggled. Logical properties keep this correct
+   when rtl.css is active. */
+.main-navbar {
+    inset-inline-start: 250px;
+    inset-inline-end: 0;
+    width: calc(100% - 250px);
+}
+body.sidebar-mini .main-navbar {
+    inset-inline-start: 65px;
+    width: calc(100% - 65px);
+}
+body.sidebar-gone .main-navbar {
+    inset-inline-start: 0;
+    width: 100%;
+}
+@media (max-width: 1024px) {
+    .main-navbar,
+    body.sidebar-mini .main-navbar,
+    body.sidebar-gone .main-navbar {
+        inset-inline-start: 0;
+        inset-inline-end: 0;
+        width: 100%;
+    }
+}
+
+/* --------------------------------------------------------------------------
+   Admin dark theme. Scoped to .tw-dark on <html> and toggled independently
+   from the public site (ds-admin-theme). Loaded after Stisla so the legacy
+   Bootstrap shell follows the same palette as the Tailwind admin views.
+   -------------------------------------------------------------------------- */
+.tw-dark {
+    color-scheme: dark;
+}
+
+.tw-dark body {
+    background-color: #0d1120;
+    color: #e9ebf3;
+}
+
+/* Legacy shell: sidebar, top bar and footer. */
+.tw-dark .main-sidebar {
+    background-color: #151a2e;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+}
+
+.tw-dark .navbar-bg {
+    background-color: #151a2e;
+}
+
+.tw-dark .main-sidebar .sidebar-menu li.menu-header {
+    color: #9ba4bf;
+}
+
+.tw-dark .main-sidebar .sidebar-menu li a {
+    color: #cbd0e0;
+}
+
+.tw-dark .main-sidebar .sidebar-menu li a:hover,
+.tw-dark .main-sidebar .sidebar-menu li.active a {
+    background-color: rgba(254, 192, 9, 0.12);
+}
+
+.tw-dark .main-sidebar .sidebar-menu li.active a {
+    color: #FEC009;
+}
+
+.tw-dark .main-sidebar .sidebar-menu li.active ul.dropdown-menu,
+.tw-dark .main-sidebar .sidebar-menu li ul.dropdown-menu li a:hover {
+    background-color: #1c2238;
+}
+
+.tw-dark .main-sidebar .sidebar-menu li ul.dropdown-menu li a {
+    color: #9ba4bf;
+}
+
+.tw-dark .main-footer {
+    border-top-color: #2b3244;
+    color: #9ba4bf;
+}
+
+/* Cards and section headers. */
+.tw-dark .card {
+    background-color: #151a2e;
+    border: 1px solid #2b3244;
+    box-shadow: none;
+}
+
+.tw-dark .card-header,
+.tw-dark .card-footer,
+.tw-dark .section-header {
+    border-color: #2b3244;
+}
+
+.tw-dark .section-header {
+    background-color: #151a2e;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+}
+
+.tw-dark .section-title,
+.tw-dark .section-description,
+.tw-dark .card-title {
+    color: #e9ebf3;
+}
+
+/* Form controls, Select2 and the flatpickr inputs. */
+.tw-dark .form-control,
+.tw-dark .custom-select,
+.tw-dark .input-group-text,
+.tw-dark .select2-selection--single,
+.tw-dark .select2-selection--multiple,
+.tw-dark .flatpickr-input {
+    background-color: #1c2238;
+    border-color: #2b3244;
+    color: #e9ebf3;
+}
+
+.tw-dark .form-control::placeholder {
+    color: #98a1b3;
+    opacity: 1;
+}
+
+.tw-dark .form-control:focus,
+.tw-dark .custom-select:focus,
+.tw-dark .select2-selection--single:focus {
+    border-color: #FEC009;
+}
+
+.tw-dark .select2-dropdown,
+.tw-dark .select2-results__options {
+    background-color: #1c2238;
+}
+
+.tw-dark .select2-results__option {
+    color: #e9ebf3;
+}
+
+.tw-dark .select2-results__option--highlighted[aria-selected] {
+    background-color: #FEC009;
+    color: #151a2e;
+}
+
+.tw-dark .select2-selection__placeholder,
+.tw-dark .select2-search__field {
+    color: #98a1b3;
+}
+
+.tw-dark .select2-search__field {
+    background-color: #151a2e;
+    border-color: #2b3244;
+}
+
+/* Tables and pagination. */
+.tw-dark .table,
+.tw-dark .table-bordered td,
+.tw-dark .table-bordered th {
+    border-color: #2b3244;
+    color: #e9ebf3;
+}
+
+.tw-dark .table:not(.table-sm) thead th {
+    background-color: #1c2238;
+    color: #cbd0e0;
+}
+
+.tw-dark .table-striped tbody tr:nth-of-type(odd) {
+    background-color: rgba(255, 255, 255, 0.03);
+}
+
+.tw-dark .dataTables_wrapper .dataTables_info,
+.tw-dark .dataTables_wrapper .dataTables_length,
+.tw-dark .dataTables_wrapper .dataTables_filter {
+    color: #9ba4bf;
+}
+
+.tw-dark .page-link {
+    background-color: #1c2238;
+    border-color: #2b3244;
+    color: #e9ebf3;
+}
+
+.tw-dark .page-item.disabled .page-link {
+    background-color: #151a2e;
+    color: #657096;
+}
+
+/* Menus, modals and overlays. */
+.tw-dark .dropdown-menu,
+.tw-dark .dropdown-list-content {
+    background-color: #1c2238;
+    border-color: #2b3244;
+    color: #e9ebf3;
+}
+
+.tw-dark .dropdown-item {
+    color: #e9ebf3;
+}
+
+.tw-dark .dropdown-item:hover,
+.tw-dark .dropdown-item:focus {
+    background-color: #2b3244;
+    color: #ffffff;
+}
+
+.tw-dark .dropdown-divider {
+    border-top-color: #2b3244;
+}
+
+/* The notification dropdown is still Stisla markup, which hard-codes its own
+   header, message and timestamp colours. Override those here instead of
+   changing the header markup or its notification contract. */
+.tw-dark .dropdown-header,
+.tw-dark .dropdown-title {
+    color: #cbd0e0;
+}
+
+.tw-dark .dropdown-title {
+    color: #e9ebf3 !important;
+}
+
+.tw-dark .dropdown-list .dropdown-item {
+    border-bottom-color: #2b3244;
+}
+
+.tw-dark .dropdown-list .dropdown-item.dropdown-item-unread {
+    background-color: rgba(254, 192, 9, 0.06);
+    border-bottom-color: #2b3244;
+}
+
+.tw-dark .dropdown-list .dropdown-item .dropdown-item-desc,
+.tw-dark .dropdown-list .dropdown-item .dropdown-item-desc h6,
+.tw-dark .dropdown-list .dropdown-item .dropdown-item-desc b {
+    color: #e9ebf3;
+}
+
+.tw-dark .dropdown-list .dropdown-item .dropdown-item-desc .time {
+    color: #9ba4bf;
+}
+
+.tw-dark .dropdown-list .dropdown-item:focus .dropdown-item-desc,
+.tw-dark .dropdown-list .dropdown-item:focus .dropdown-item-desc b {
+    color: #ffffff !important;
+}
+
+.tw-dark .dropdown-list .dropdown-footer,
+.tw-dark .dropdown-list .dropdown-header {
+    border-top-color: #2b3244;
+}
+
+.tw-dark .dropdown-list .dropdown-footer a,
+.tw-dark .dropdown-list .dropdown-header a {
+    color: #FEC009;
+}
+
+/* Stisla fades the bottom of long notification lists to white. */
+.tw-dark .dropdown-list .dropdown-list-content:not(.is-end):after {
+    background-image: linear-gradient(to bottom,
+        rgba(28, 34, 56, 0),
+        rgba(28, 34, 56, 0.65),
+        rgba(28, 34, 56, 0.95));
+}
+
+.tw-dark .dropdown-list-icons .dropdown-item .dropdown-item-icon.bg-danger {
+    background-color: rgba(196, 55, 75, 0.18) !important;
+    color: #fc6b7a;
+}
+
+.tw-dark .dropdown-list-icons .dropdown-item .dropdown-item-icon img.avatar {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
+}
+
+/* Keep destructive actions visibly red in the dark dropdown. */
+.tw-dark .dropdown-item.text-danger,
+.tw-dark .dropdown-item.text-danger:hover {
+    color: #fc544b;
+}
+
+.tw-dark .modal-content {
+    background-color: #151a2e;
+    border: 1px solid #2b3244;
+    color: #e9ebf3;
+}
+
+.tw-dark .modal-header,
+.tw-dark .modal-footer {
+    border-color: #2b3244;
+}
+
+.tw-dark .close {
+    color: #e9ebf3;
+    text-shadow: none;
+}
+
+.tw-dark .swal2-popup {
+    background-color: #151a2e;
+    color: #e9ebf3;
+}
+
+.tw-dark .swal2-title,
+.tw-dark .swal2-html-container {
+    color: #e9ebf3;
+}
+
+.tw-dark .tooltip-inner {
+    background-color: #2b3244;
+    color: #e9ebf3;
+}
+
+.tw-dark .popover {
+    background-color: #1c2238;
+    color: #e9ebf3;
+}
+
+.tw-dark .popover-header {
+    background-color: #2b3244;
+    border-color: #2b3244;
+    color: #e9ebf3;
+}
+
+.tw-dark .popover-body,
+.tw-dark .list-group-item {
+    color: #e9ebf3;
+}
+
+.tw-dark .list-group-item {
+    background-color: #151a2e;
+    border-color: #2b3244;
+}
+
+/* Secondary buttons are the only Bootstrap buttons with a light fill. */
+.tw-dark .btn-secondary,
+.tw-dark .btn-light {
+    background-color: #2b3244;
+    border-color: #2b3244;
+    color: #e9ebf3;
+}
+
+/* Stisla declares the secondary hover fill with !important. */
+.tw-dark .btn-secondary:hover,
+.tw-dark .btn-secondary:focus {
+    background-color: #414a60 !important;
+    color: #ffffff !important;
+}
+
+.tw-dark .btn-outline-secondary {
+    border-color: #414a60;
+    color: #cbd0e0;
+}
+
+.tw-dark .btn-outline-secondary:hover {
+    background-color: #2b3244;
+    color: #ffffff;
+}
+
+/* Remaining Stisla details: helper text, labels and generated widgets. */
+.tw-dark .text-muted,
+.tw-dark .form-text,
+.tw-dark .custom-control-label {
+    color: #9ba4bf !important;
+}
+
+.tw-dark .invalid-feedback {
+    color: #fc6b7a;
+}
+
+.tw-dark .custom-control-label::before,
+.tw-dark .custom-control-label::after {
+    background-color: #1c2238;
+    border-color: #414a60;
+}
+
+.tw-dark .card .card-header h4,
+.tw-dark .card .card-body h4,
+.tw-dark .card .card-body h5,
+.tw-dark .card .card-body h6,
+.tw-dark .section-header h4 {
+    color: #e9ebf3;
+}
+
+.tw-dark .jvectormap-tip {
+    background: #1c2238;
+    border-color: #2b3244;
+    color: #e9ebf3;
+}
+
+.tw-dark .jvectormap-zoomin,
+.tw-dark .jvectormap-zoomout {
+    background: #2b3244;
+    color: #e9ebf3;
+}
+
+/* Flatpickr ships with a white calendar; the dashboards use it inline. */
+.tw-dark .flatpickr-calendar {
+    background: #151a2e;
+    border-color: #2b3244;
+}
+
+.tw-dark .flatpickr-calendar:not(.inline) {
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
+}
+
+.tw-dark .flatpickr-months,
+.tw-dark .flatpickr-weekdays,
+.tw-dark .flatpickr-weekwrapper,
+.tw-dark .flatpickr-time {
+    background: #151a2e;
+}
+
+.tw-dark .flatpickr-months .flatpickr-month,
+.tw-dark .flatpickr-prev-month,
+.tw-dark .flatpickr-next-month {
+    color: #cbd0e0;
+    fill: #cbd0e0;
+}
+
+.tw-dark .flatpickr-current-month .flatpickr-monthDropdown-months {
+    color: #cbd0e0 !important;
+}
+
+.tw-dark .flatpickr-current-month input.cur-year {
+    color: #FEC009 !important;
+}
+
+.tw-dark span.flatpickr-weekday {
+    color: #9ba4bf !important;
+}
+
+.tw-dark .flatpickr-day {
+    color: #e9ebf3;
+}
+
+.tw-dark .flatpickr-day:not(.selected):not(.startRange):not(.endRange):hover {
+    background: #2b3244;
+    border-color: #414a60;
+}
+
+.tw-dark .flatpickr-day.flatpickr-disabled,
+.tw-dark .flatpickr-day.prevMonthDay,
+.tw-dark .flatpickr-day.nextMonthDay {
+    color: #657096;
+}
+
+.tw-dark .flatpickr-day.selected,
+.tw-dark .flatpickr-day.startRange,
+.tw-dark .flatpickr-day.endRange {
+    color: #151a2e;
+}
+
+/* Month events are injected by the legacy AJAX handler with Stisla classes. */
+.tw-dark .empty-data .card-icon {
+    background-color: rgba(254, 192, 9, 0.12);
+    color: #FEC009;
+}
+
+.tw-dark .empty-data h6 {
+    color: #e9ebf3;
+}
+
+.tw-dark .event-right p {
+    color: #9ba4bf;
+}
+
+.tw-dark .event-right p.name {
+    color: #e9ebf3;
+}
+
+.tw-dark .date-left {
+    background: rgba(254, 192, 9, 0.1);
+    border-color: rgba(254, 192, 9, 0.45);
+}
+
+.tw-dark .date-left h3 {
+    color: #FEC009;
+}
+
+.tw-dark .date-left p {
+    color: #cbd0e0;
+}
+
+.tw-dark .date-left::after {
+    border-color: #151a2e;
+}
+
+.tw-dark .progress {
+    background-color: #2b3244;
+}
+
+/* Summernote styles are still bundled for legacy rich-text screens. */
+.tw-dark .note-editor.note-frame {
+    border-color: #2b3244;
+}
+
+.tw-dark .note-editor .note-toolbar,
+.tw-dark .note-editor .note-statusbar,
+.tw-dark .note-popover .popover-content {
+    background-color: #1c2238;
+    border-color: #2b3244;
+    color: #e9ebf3;
+}
+
+.tw-dark .note-editor .note-editable,
+.tw-dark .note-editor .note-codable {
+    background-color: #151a2e;
+    color: #e9ebf3;
+}
+
+.tw-dark .note-editor .note-editable[contenteditable="false"] {
+    background-color: #1c2238;
+}
+
+.tw-dark .note-editor .note-btn,
+.tw-dark .note-popover .note-btn {
+    background-color: #2b3244;
+    border-color: #414a60;
+    color: #e9ebf3;
+}
+
+.tw-dark .note-editor .note-btn:hover,
+.tw-dark .note-popover .note-btn:hover {
+    background-color: #414a60;
+    color: #ffffff;
+}
+
+.tw-dark .note-editor .note-resizebar {
+    border-top-color: #2b3244;
+}
+
+/* Printed tickets and invoices must stay light regardless of UI theme. */
+@media print {
+    .tw-dark body,
+    .tw-dark .card,
+    .tw-dark .modal-content {
+        background-color: #ffffff !important;
+        color: #000000 !important;
+    }
+
+    .tw-dark .main-sidebar,
+    .tw-dark .navbar-bg,
+    .tw-dark #admin-theme-toggle {
+        display: none !important;
+    }
 }

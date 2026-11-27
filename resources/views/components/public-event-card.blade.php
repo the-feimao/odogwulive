@@ -19,7 +19,7 @@
         ? __('See details')
         : ((float) $minPrice === 0.0
             ? __('Free')
-            : trim((string) $currency).number_format((float) $minPrice));
+            : __('From').' '.trim((string) $currency).number_format((float) $minPrice));
 
     $image = $image ?? ($event->image ? url('images/upload/'.$event->image) : asset('web/bg/1.jpg'));
     $date = $date ?? $event->start_time?->format('D, M j · g:i A');

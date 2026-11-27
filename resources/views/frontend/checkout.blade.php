@@ -19,8 +19,9 @@
     }
 
     $gatewayAmount = $isFree ? 0 : $paymentPrice + $data->tax_total;
-    $localChecked = $isFree || $setting->cod == 1
-        || ($setting->flutterwave == 0 && $setting->stripe == 0 && $setting->paypal == 0 && $setting->razor == 0);
+    $onlineGatewayEnabled = $setting->flutterwave == 1 || $setting->stripe == 1
+        || $setting->paypal == 1 || $setting->razor == 1 || $setting->paystack == 1;
+    $localChecked = $isFree || $setting->cod == 1 || ! $onlineGatewayEnabled;
 @endphp
 
 @push('head')
@@ -165,6 +166,17 @@
                                 <span class="tw-text-sm tw-font-bold tw-text-ink-950 dark:tw-text-neutral-50">{{ __('FREE') }}</span>
                             </label>
                         @else
+                            @if ($setting->paystack == 1)
+                                <label class="tw-flex tw-cursor-pointer tw-items-center tw-gap-3 tw-rounded-card tw-border tw-border-neutral-200 tw-p-4 tw-transition-colors hover:tw-border-primary-400 focus-within:tw-ring-2 focus-within:tw-ring-primary-600 dark:tw-border-neutral-700">
+                                    <input type="radio" name="payment_type" value="PAYSTACK"
+                                        {{ ! $localChecked ? 'checked' : '' }} class="tw-peer tw-sr-only">
+                                    <span class="tw-flex tw-h-5 tw-w-5 tw-shrink-0 tw-items-center tw-justify-center tw-rounded-pill tw-border-2 tw-border-neutral-300 tw-text-transparent peer-checked:tw-border-primary-600 peer-checked:tw-bg-primary-500 peer-checked:tw-text-ink-950 dark:tw-border-neutral-600">
+                                        <x-lucide-check class="tw-h-3 tw-w-3" />
+                                    </span>
+                                    <span class="tw-text-sm tw-font-bold tw-text-ink-950 dark:tw-text-neutral-50">{{ __('Paystack') }}</span>
+                                </label>
+                            @endif
+
                             @if ($setting->paypal == 1)
                                 <label class="tw-flex tw-cursor-pointer tw-items-center tw-gap-3 tw-rounded-card tw-border tw-border-neutral-200 tw-p-4 tw-transition-colors hover:tw-border-primary-400 focus-within:tw-ring-2 focus-within:tw-ring-primary-600 dark:tw-border-neutral-700">
                                     <input type="radio" name="payment_type" value="PAYPAL" class="tw-peer tw-sr-only">
@@ -205,7 +217,7 @@
                                 </label>
                             @endif
 
-                            @if ($setting->cod == 1 || ($setting->flutterwave == 0 && $setting->stripe == 0 && $setting->paypal == 0 && $setting->razor == 0))
+                            @if ($setting->cod == 1 || ! $onlineGatewayEnabled)
                                 <label class="tw-flex tw-cursor-pointer tw-items-center tw-gap-3 tw-rounded-card tw-border tw-border-neutral-200 tw-p-4 tw-transition-colors hover:tw-border-primary-400 focus-within:tw-ring-2 focus-within:tw-ring-primary-600 dark:tw-border-neutral-700">
                                     <input type="radio" name="payment_type" value="LOCAL" checked class="tw-peer tw-sr-only">
                                     <span class="tw-flex tw-h-5 tw-w-5 tw-shrink-0 tw-items-center tw-justify-center tw-rounded-pill tw-border-2 tw-border-neutral-300 tw-text-transparent peer-checked:tw-border-primary-600 peer-checked:tw-bg-primary-500 peer-checked:tw-text-ink-950 dark:tw-border-neutral-600">

@@ -30,6 +30,34 @@ class TicketController extends Controller
         abort(403);
     }
 
+    /**
+     * Capacity is informational only; existing orders and API clients keep
+     * their current behaviour. Shows whether new tickets would overfill the
+     * event's "people allowed" setting.
+     */
+    private function capacityContext(Event $event, ?Ticket $ticket = null): array
+    {
+        $query = Ticket::where('event_id', $event->id)
+            ->where([
+                ['is_deleted', 0],
+                ['status', 1],
+            ]);
+
+        if ($ticket) {
+            $query->where('id', '!=', $ticket->id);
+        }
+
+        $capacity = (int) ($event->people ?? 0);
+        $allocated = (int) $query->sum('quantity');
+
+        return [
+            'eventCapacity' => $capacity,
+            'allocatedTickets' => $allocated,
+            'remainingCapacity' => max(0, $capacity - $allocated),
+            'capacityExceeded' => $capacity > 0 && $allocated > $capacity,
+        ];
+    }
+
     public function index($id, $name)
     {
         abort_if(Gate::denies('ticket_access'), Response::HTTP_FORBIDDEN, '403 Forbidden');
@@ -37,7 +65,7 @@ class TicketController extends Controller
         $this->authorizeEventAccess($event);
 
         $ticket = Ticket::where([['event_id', $id], ['is_deleted', 0]])->orderBy('id', 'DESC')->get();
-        return view('admin.ticket.index', compact('ticket', 'event'));
+        return view('admin.ticket.index', compact('ticket', 'event') + $this->capacityContext($event));
     }
 
     public function create($id)
@@ -46,7 +74,7 @@ class TicketController extends Controller
         $event = Event::findOrFail($id);
         $this->authorizeEventAccess($event);
 
-        return view('admin.ticket.create', compact('event'));
+        return view('admin.ticket.create', compact('event') + $this->capacityContext($event));
     }
 
     public function store(Request $request)
@@ -88,7 +116,7 @@ class TicketController extends Controller
         $event = Event::findOrFail($ticket->event_id);
         $this->authorizeEventAccess($event);
 
-        return view('admin.ticket.edit', compact('ticket', 'event'));
+        return view('admin.ticket.edit', compact('ticket', 'event') + $this->capacityContext($event, $ticket));
     }
 
     public function update(Request $request, $id)

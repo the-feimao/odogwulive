@@ -83,9 +83,12 @@ class AdminRemainingReportPagesTest extends TestCase
             ->assertSee('data-id="'.$organizer->id.'"', false)
             ->assertSee('data-payment="1"', false)
             ->assertSee('data-toggle="modal"', false)
-            ->assertSee('data-target="#paymentModel"', false);
+            ->assertSee('data-target="#paymentModel"', false)
+            ->assertSee('Payout Account', false)
+            ->assertSee('Paystack Status', false)
+            ->assertSee('Paystack unavailable', false);
 
-        $this->assertSame(7, $this->footerCellCount($response->getContent()));
+        $this->assertSame(9, $this->footerCellCount($response->getContent()));
 
         $this->post('/pay-to-organization', [
             'user_id' => $organizer->id,

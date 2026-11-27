@@ -50,6 +50,8 @@ npm run build
 php artisan serve
 ```
 
+For local Paystack checkout on Windows, use `powershell -ExecutionPolicy Bypass -File scripts\serve-with-paystack.ps1` instead of `php artisan serve`. It applies the bundled CA certificate only to that Laravel process, avoiding a machine-wide `php.ini` change. See [`docs/paystack-local.md`](docs/paystack-local.md) for webhook setup; no Paystack dashboard callback URL is needed.
+
 The repository also contains installer assets under `installer/`. Installer and license-check logic must remain intact and must not be bypassed.
 
 ## Docker / Sail

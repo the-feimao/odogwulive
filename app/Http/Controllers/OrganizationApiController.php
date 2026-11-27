@@ -171,6 +171,8 @@ class OrganizationApiController extends Controller
             'start_time' => 'bail|required',
             'end_time' => 'bail|required',
             'scanner_id' => 'bail|required',
+            'scanner_ids' => 'nullable',
+            'scanner_ids.*' => 'numeric',
             'category_id' => 'bail|required|numeric',
             'type' => 'bail|required',  // offline & online
             'address' => 'bail|required_if:type,offline',           
@@ -180,8 +182,9 @@ class OrganizationApiController extends Controller
             'description' => 'bail|required',
             'people' => 'bail|required|numeric',                                     
         ]);
-        $this->ownedScanner($request->scanner_id);
+        $scannerIds = $this->organizationScannerIds($request);
         $data = $request->all();
+        unset($data['scanner_ids']);
         $data['user_id'] = Auth::user()->id;
         if($request->tags != null){
             $data['tags'] = array();
@@ -202,6 +205,8 @@ class OrganizationApiController extends Controller
         $data['end_time']  = $request->end_date.' '.$request->end_time;     
      
         $event = Event::create($data);
+        $event->syncScanners($scannerIds);
+
         return response()->json(['data' => $event,'success'=>true], 200);
     }
 
@@ -214,6 +219,8 @@ class OrganizationApiController extends Controller
             'start_time' => 'bail|required',
             'end_time' => 'bail|required', 
             'scanner_id' => 'bail|required',
+            'scanner_ids' => 'nullable',
+            'scanner_ids.*' => 'numeric',
             'category_id' => 'bail|required|numeric',
             'type' => 'bail|required',  // offline & online
             'address' => 'bail|required_if:type,offline',           
@@ -223,7 +230,8 @@ class OrganizationApiController extends Controller
             'description' => 'bail|required',
             'people' => 'bail|required|numeric',                                     
         ]); 
-        $data = $request->all();                    
+        $data = $request->all();
+        unset($data['scanner_ids']);
         if (isset($request->image)) {
             $data['image'] = (new AppHelper)->saveApiImage($request);
         } 
@@ -247,7 +255,9 @@ class OrganizationApiController extends Controller
             $data['gallery'] = implode(',',$gallery);
         }
         $this->ownedEvent($request->id);
+        $scannerIds = $this->organizationScannerIds($request);
         $event = Event::find($request->id)->update($data);
+        Event::find($request->id)->syncScanners($scannerIds);
 
         return response()->json(['data' => $event,'success'=>true], 200);       
     }
@@ -655,6 +665,34 @@ class OrganizationApiController extends Controller
         abort_unless($scanner->hasRole('scanner'), 403);
 
         return $scanner;
+    }
+
+    /**
+     * Normalise the legacy single scanner plus optional additional scanners.
+     * Every id is checked against the authenticated organization so an API
+     * client cannot attach another organizer's scanner to its event.
+     */
+    private function organizationScannerIds(Request $request): array
+    {
+        $ids = $request->input('scanner_ids', []);
+
+        if (is_string($ids)) {
+            $decoded = json_decode($ids, true);
+            $ids = is_array($decoded) ? $decoded : [];
+        }
+
+        $all = collect([$request->input('scanner_id')])
+            ->merge($ids)
+            ->filter(fn ($id) => $id !== null && $id !== '')
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values();
+
+        foreach ($all as $id) {
+            $this->ownedScanner($id);
+        }
+
+        return $all->all();
     }
 
 }

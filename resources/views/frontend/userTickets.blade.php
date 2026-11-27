@@ -60,7 +60,8 @@
         data-image-base="{{ url('images/upload') }}"
         data-image-fallback="{{ asset('web/bg/1.jpg') }}"
         data-order-endpoint="{{ url('/getOrder') }}"
-        data-invoice-base="{{ url('/my-tickets') }}">
+        data-invoice-base="{{ url('/my-tickets') }}"
+        data-qr-base="{{ url('/my-tickets') }}">
         <p id="user-area-status" hidden
             class="tw-mb-5 tw-rounded-stub tw-border tw-border-primary-200 tw-bg-primary-50 tw-px-4 tw-py-3 tw-text-sm tw-font-semibold tw-text-primary-900 dark:tw-border-primary-500/30 dark:tw-bg-primary-500/10 dark:tw-text-primary-200"
             aria-live="polite"></p>
@@ -243,6 +244,40 @@
                                 <span data-detail="total">{{ $isFree ? __('FREE') : $money($first->payment) }}</span>
                             </div>
                         </div>
+
+                        <section class="tw-border-t tw-border-neutral-100 tw-p-5 dark:tw-border-neutral-800 md:tw-p-6"
+                            aria-labelledby="qr-tickets-heading">
+                            <div class="tw-flex tw-flex-wrap tw-items-end tw-justify-between tw-gap-3">
+                                <div>
+                                    <h3 id="qr-tickets-heading" class="tw-text-lg tw-font-extrabold tw-tracking-tight tw-text-ink-950 dark:tw-text-neutral-50">
+                                        {{ __('Your QR tickets') }}
+                                    </h3>
+                                    <p class="tw-mt-1 tw-text-sm tw-text-neutral-500 dark:tw-text-neutral-400">
+                                        {{ __('Each ticket has its own code. Show one code per person at the entrance.') }}
+                                    </p>
+                                </div>
+
+                                <div class="tw-flex tw-items-center tw-gap-2">
+                                    <span data-detail="ticket-count"
+                                        class="tw-inline-flex tw-h-8 tw-items-center tw-rounded-pill tw-bg-primary-100 tw-px-3 tw-text-xs tw-font-bold tw-text-primary-900 dark:tw-bg-primary-500/15 dark:tw-text-primary-200">
+                                        {{ $firstChildren->count() }} {{ $firstChildren->count() === 1 ? __('ticket') : __('tickets') }}
+                                    </span>
+                                    <a href="{{ url('my-tickets/'.$first->id.'/invoice-print') }}" target="_blank" rel="noopener"
+                                        data-detail="tickets-print-link"
+                                        class="tw-inline-flex tw-h-8 tw-items-center tw-gap-2 tw-rounded-pill tw-border tw-border-neutral-200 tw-px-3 tw-text-xs tw-font-bold tw-text-ink-800 tw-transition-colors hover:tw-border-primary-400 focus:tw-outline-none focus-visible:tw-ring-2 focus-visible:tw-ring-primary-600 dark:tw-border-neutral-700 dark:tw-text-neutral-100">
+                                        <x-lucide-printer class="tw-h-3.5 tw-w-3.5" />{{ __('Print tickets') }}
+                                    </a>
+                                </div>
+                            </div>
+
+                            <div class="tw-mt-5" data-order-qr-content>
+                                @include('frontend.partials.order-ticket-qrs', [
+                                    'order' => $first,
+                                    'children' => $firstChildren,
+                                    'paid' => $firstPaid,
+                                ])
+                            </div>
+                        </section>
                     </div>
                 </x-card>
             </div>
@@ -250,7 +285,7 @@
     </div>
 
     <div id="reviewModel" role="dialog" aria-modal="true" aria-labelledby="exampleModalLongTitle" data-review-modal hidden
-        class="tw-fixed tw-inset-0 tw-z-50 tw-flex tw-items-center tw-justify-center tw-bg-ink-950/70 tw-p-4">
+        class="tw-fixed tw-inset-0 tw-z-50 tw-hidden tw-items-center tw-justify-center tw-bg-ink-950/70 tw-p-4">
         <div data-review-close class="tw-absolute tw-inset-0" aria-hidden="true"></div>
         <div class="tw-relative tw-w-full tw-max-w-lg tw-max-h-[90vh] tw-overflow-y-auto tw-rounded-card tw-bg-neutral-0 tw-shadow-card-hover dark:tw-bg-ink-900">
             <div class="tw-flex tw-items-start tw-justify-between tw-gap-4 tw-border-b tw-border-neutral-100 tw-px-5 tw-py-4 dark:tw-border-neutral-800">

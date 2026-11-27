@@ -3,6 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Support\DashboardMetrics;
+use App\Support\PaystackTransferClient;
+use App\Support\PaystackTransferException;
 use App\Models\Event;
 use App\Models\Ticket;
 use App\Models\AppUser;
@@ -19,6 +22,7 @@ use Illuminate\Support\Facades\Gate;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\Models\Permission;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Cache;
 use DB;
 use Illuminate\Http\Request;
 
@@ -45,6 +49,20 @@ class UserController extends Controller
     }
 
     /**
+     * The admin role picker submits role IDs as strings. Spatie treats string
+     * values as role names, so cast them to integers before assignment.
+     */
+    private function roleIdsFromRequest(Request $request): array
+    {
+        return collect($request->input('roles', []))
+            ->filter(fn ($id) => $id !== null && $id !== '')
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    /**
      * Populate dashboard event aggregates with two grouped queries instead of
      * querying tickets and orders once per event.
      */
@@ -58,6 +76,10 @@ class UserController extends Controller
         }
 
         $ticketTotals = Ticket::whereIn('event_id', $eventIds)
+            ->where([
+                ['is_deleted', 0],
+                ['status', 1],
+            ])
             ->select('event_id')
             ->selectRaw('SUM(quantity) as total')
             ->groupBy('event_id')
@@ -74,6 +96,7 @@ class UserController extends Controller
             $event->sold_ticket = (int) ($soldTotals->get($event->id) ?? 0);
             $event->average = $event->tickets == 0 ? 0 : $event->sold_ticket * 100 / $event->tickets;
             $event->avaliable = $event->tickets - $event->sold_ticket;
+            $event->capacity_exceeded = $event->tickets > (int) ($event->people ?? 0);
         }
     }
 
@@ -100,13 +123,15 @@ class UserController extends Controller
             'email' => 'bail|required|email|unique:users',
             'phone' => 'bail|required',
             'password' => 'bail|required|min:6',
+            'roles' => 'nullable|array',
+            'roles.*' => 'exists:roles,id',
         ]);
         $data = $request->all();
         $data['password'] =  Hash::make($request->password); 
         $data['org_id'] = $request->organization;
         $data['language'] = Setting::first()->language;
         $user = User::create($data);
-        $user->assignRole($request->input('roles', []));
+        $user->assignRole($this->roleIdsFromRequest($request));
     
         return redirect()->route('users.index')->withStatus(__('User is added successfully.'));
     }
@@ -141,6 +166,8 @@ class UserController extends Controller
             'last_name' => 'bail|required',
             'phone' => 'bail|required',
             'email' => 'bail|required|unique:users,email,' . $user->id . ',id',
+            'roles' => 'nullable|array',
+            'roles.*' => 'exists:roles,id',
         ]);
         $data = $request->all();
         $data['org_id'] = $request->organization;
@@ -150,7 +177,7 @@ class UserController extends Controller
             $data['password'] = Hash::make($request->password);
         }
         $user->update($data);
-        $user->syncRoles($request->input('roles', []));
+        $user->syncRoles($this->roleIdsFromRequest($request));
 
         return redirect()->route('users.index')->withStatus(__('User is updated successfully.'));
     }
@@ -168,10 +195,14 @@ class UserController extends Controller
 
         $master['organizations'] = User::role('organization')->count();
         $master['users'] = AppUser::count();
-        $master['total_order'] = Order::count();
-        $master['pending_order'] = Order::where('order_status', 'Pending')->count();
-        $master['complete_order'] = Order::where('order_status', 'Complete')->count();
-        $master['cancel_order'] = Order::where('order_status', 'Cancel')->count();
+        $orderCounts = Order::query()
+            ->selectRaw('order_status, COUNT(*) as total')
+            ->groupBy('order_status')
+            ->pluck('total', 'order_status');
+        $master['total_order'] = (int) $orderCounts->sum();
+        $master['pending_order'] = (int) ($orderCounts->get('Pending') ?? 0);
+        $master['complete_order'] = (int) ($orderCounts->get('Complete') ?? 0);
+        $master['cancel_order'] = (int) ($orderCounts->get('Cancel') ?? 0);
         $master['eventDate'] = array();
         $events = Event::where([['status', 1], ['is_deleted', 0]])->orderBy('id', 'DESC')->get();
         $day = Carbon::parse(Carbon::now()->year . '-' . Carbon::now()->month . '-01')->daysInMonth;
@@ -184,7 +215,10 @@ class UserController extends Controller
             array_push($master['eventDate'], $value->start_time->format('Y-m-d'));
         }
 
-        return view('admin.dashboard', compact('events', 'monthEvent', 'master'));
+        $metrics = DashboardMetrics::forScope();
+        $series = DashboardMetrics::monthly();
+
+        return view('admin.dashboard', compact('events', 'monthEvent', 'master', 'metrics', 'series'));
     }
 
     public function organizationDashboard()
@@ -193,13 +227,22 @@ class UserController extends Controller
             abort(403);
         }
 
-        $master['total_tickets'] = Ticket::where('user_id', Auth::user()->id)->sum('quantity');
+        $master['total_tickets'] = Ticket::where('user_id', Auth::user()->id)
+            ->where([
+                ['is_deleted', 0],
+                ['status', 1],
+            ])
+            ->sum('quantity');
         $master['used_tickets'] = Order::where('organization_id', Auth::user()->id)->sum('quantity');
         $master['events'] = Event::where([['user_id', Auth::user()->id], ['is_deleted', 0]])->count();
-        $master['total_order'] = Order::where('organization_id', Auth::user()->id)->count();
-        $master['pending_order'] = Order::where([['order_status', 'Pending'], ['organization_id', Auth::user()->id]])->count();
-        $master['complete_order'] = Order::where([['order_status', 'Complete'], ['organization_id', Auth::user()->id]])->count();
-        $master['cancel_order'] = Order::where([['order_status', 'Cancel'], ['organization_id', Auth::user()->id]])->count();
+        $orderCounts = Order::where('organization_id', Auth::user()->id)
+            ->selectRaw('order_status, COUNT(*) as total')
+            ->groupBy('order_status')
+            ->pluck('total', 'order_status');
+        $master['total_order'] = (int) $orderCounts->sum();
+        $master['pending_order'] = (int) ($orderCounts->get('Pending') ?? 0);
+        $master['complete_order'] = (int) ($orderCounts->get('Complete') ?? 0);
+        $master['cancel_order'] = (int) ($orderCounts->get('Cancel') ?? 0);
         $day = Carbon::parse(Carbon::now()->year . '-' . Carbon::now()->month . '-01')->daysInMonth;
         $monthEvent = Event::whereBetween('start_time', [date('Y') . "-" . date('m') . "-01 00:00:00",  date('Y') . "-" . date('m') . "-" . $day . " 23:59:59"])
             ->where([['status', 1], ['user_id', Auth::user()->id], ['is_deleted', 0]])
@@ -213,7 +256,18 @@ class UserController extends Controller
             array_push($master['eventDate'], $value->start_time->format('Y-m-d'));
         }
 
-        return view('admin.org_dashboard', compact('events', 'monthEvent', 'master'));
+        $metrics = DashboardMetrics::forScope((int) Auth::user()->id);
+        $series = DashboardMetrics::monthly((int) Auth::user()->id);
+        $payoutReady = Auth::user()->hasPayoutDetails();
+
+        return view('admin.org_dashboard', compact(
+            'events',
+            'monthEvent',
+            'master',
+            'metrics',
+            'series',
+            'payoutReady'
+        ));
     }
 
     public function viewProfile(){
@@ -246,6 +300,94 @@ class UserController extends Controller
             }
         }
         return redirect('profile')->withStatus(__('Profile is updated successfully.'));
+    }
+
+    /**
+     * Bank list for the organizer payout form. Fetching happens here rather
+     * than during page render so opening the profile never makes an external
+     * API call.
+     */
+    public function paystackBanks()
+    {
+        if (!Auth::check() || !Auth::user()->hasRole('organization')) {
+            abort(403);
+        }
+
+        try {
+            $banks = Cache::remember('paystack.banks.nigeria', now()->addDay(), function () {
+                return app(PaystackTransferClient::class)->banks();
+            });
+        } catch (PaystackTransferException $exception) {
+            report($exception);
+            $banks = [];
+        }
+
+        return response()->json(['banks' => $banks], 200);
+    }
+
+    public function savePayoutAccount(Request $request)
+    {
+        if (!Auth::check() || !Auth::user()->hasRole('organization')) {
+            abort(403);
+        }
+
+        $user = Auth::user();
+        $existingNumber = (string) ($user->account_number ?? '');
+
+        $validated = $request->validate([
+            'bank_code' => 'bail|required|string|max:10',
+            'bank_name' => 'bail|required|string|max:120',
+            'account_number' => 'bail|nullable|string|max:20|regex:/^\d{10}$/',
+            'account_name' => 'bail|required|string|max:120',
+            'verify' => 'nullable|boolean',
+        ]);
+
+        if (blank($validated['account_number'] ?? null) && $existingNumber === '') {
+            return redirect()->back()->withErrors([
+                'account_number' => __('Enter an account number.'),
+            ]);
+        }
+
+        $accountNumber = filled($validated['account_number'] ?? null)
+            ? (string) $validated['account_number']
+            : $existingNumber;
+
+        $detailsChanged = (string) $user->bank_code !== (string) $validated['bank_code']
+            || $accountNumber !== $existingNumber;
+
+        $data = [
+            'bank_code' => $validated['bank_code'],
+            'bank_name' => $validated['bank_name'],
+            'account_number' => $accountNumber,
+            'account_name' => $validated['account_name'],
+            'payout_currency' => DashboardMetrics::currencyCode(),
+        ];
+
+        if ($request->boolean('verify')) {
+            try {
+                $resolved = app(PaystackTransferClient::class)
+                    ->resolveAccount($accountNumber, (string) $validated['bank_code']);
+                $data['account_name'] = (string) ($resolved['account_name'] ?? $data['account_name']);
+                $data['payout_verified_at'] = now();
+                $detailsChanged = true;
+            } catch (PaystackTransferException $exception) {
+                report($exception);
+
+                return redirect()->back()->with('error', __('Paystack could not verify that account. Check the bank and account number.'));
+            }
+        } elseif (! $detailsChanged) {
+            $data['payout_verified_at'] = $user->payout_verified_at;
+        } else {
+            $data['payout_verified_at'] = null;
+        }
+
+        if ($detailsChanged) {
+            $data['paystack_recipient_code'] = null;
+        }
+
+        $user->update($data);
+
+        return redirect('profile')->withStatus(__('Payout details are saved successfully.'));
     }
 
     public function changePassword(Request $request){
@@ -357,10 +499,87 @@ class UserController extends Controller
         } else {
             abort(403);
         }
+        $events = Event::query()
+            ->where('events.is_deleted', 0)
+            ->when($user->hasRole('organization') && !$user->hasRole('admin'), function ($query) use ($user) {
+                $query->where('events.user_id', $user->id);
+            })
+            ->select('events.id', 'events.name', 'events.start_time', 'events.scanner_id')
+            ->selectRaw('COUNT(order_child.id) as tickets_sold')
+            ->selectRaw('SUM(CASE WHEN order_child.status = 1 THEN 1 ELSE 0 END) as checked_in')
+            ->selectRaw('SUM(CASE WHEN order_child.status = 0 THEN 1 ELSE 0 END) as remaining')
+            ->leftJoin('orders', 'orders.event_id', '=', 'events.id')
+            ->leftJoin('order_child', 'order_child.order_id', '=', 'orders.id')
+            ->groupBy('events.id', 'events.name', 'events.start_time', 'events.scanner_id')
+            ->orderBy('events.id', 'DESC')
+            ->get();
+
+        $events->each(function ($event) {
+            $event->tickets_sold = (int) $event->tickets_sold;
+            $event->checked_in = (int) $event->checked_in;
+            $event->remaining = (int) $event->remaining;
+        });
+
+        // Load assignments in one query. The ticket counts above never join the
+        // pivot table, so sharing an event cannot duplicate ticket rows.
+        $pivotNames = DB::table('event_scanner')
+            ->join('users', 'users.id', '=', 'event_scanner.scanner_id')
+            ->whereIn('event_scanner.event_id', $events->pluck('id')->all())
+            ->select('event_scanner.event_id', 'event_scanner.scanner_id')
+            ->selectRaw("COALESCE(NULLIF(TRIM(CONCAT_WS(' ', users.first_name, users.last_name)), ''), NULLIF(users.name, ''), users.email) as scanner_name")
+            ->get()
+            ->groupBy('event_id')
+            ->map(fn ($rows) => $rows->mapWithKeys(fn ($row) => [(int) $row->scanner_id => $row->scanner_name]));
+
+        $scannersById = $scanners->keyBy('id');
+        $scannerStats = collect();
+
+        $events->each(function ($event) use ($pivotNames, $scannersById, $scannerStats) {
+            $names = $pivotNames->get($event->id, collect());
+            $ids = $event->scanner_id ? [(int) $event->scanner_id] : [];
+
+            foreach ($names->keys() as $id) {
+                if (! in_array($id, $ids, true)) {
+                    $ids[] = $id;
+                }
+            }
+
+            $event->assigned_scanners = collect($ids)->map(function ($id) use ($names, $scannersById) {
+                $name = $names->get($id);
+
+                if (! $name) {
+                    $scanner = $scannersById->get($id);
+                    $name = $scanner
+                        ? (trim($scanner->first_name.' '.$scanner->last_name) ?: ($scanner->name ?: $scanner->email))
+                        : __('Scanner unavailable');
+                }
+
+                return (object) ['id' => $id, 'name' => $name];
+            })->values();
+
+            $event->assigned_scanner_name = $event->assigned_scanners->first()->name ?? null;
+            $event->scanner_names = $event->assigned_scanners->pluck('name')->filter()->implode(', ');
+
+            foreach ($event->assigned_scanners as $assignment) {
+                $stat = $scannerStats->get($assignment->id) ?: (object) [
+                    'total_event' => 0,
+                    'checked_in' => 0,
+                    'remaining' => 0,
+                ];
+                $stat->total_event += 1;
+                $stat->checked_in += $event->checked_in;
+                $stat->remaining += $event->remaining;
+                $scannerStats->put($assignment->id, $stat);
+            }
+        });
+
         foreach ($scanners as $value) {
-            $value->total_event = Event::where('scanner_id', $value->id)->count();
+            $stat = $scannerStats->get($value->id);
+            $value->total_event = (int) ($stat->total_event ?? 0);
+            $value->checked_in = (int) ($stat->checked_in ?? 0);
+            $value->remaining = (int) ($stat->remaining ?? 0);
         }
-        return view('admin.scanner.index', compact('scanners'));
+        return view('admin.scanner.index', compact('scanners', 'events'));
     }
 
     public function scannerCreate()

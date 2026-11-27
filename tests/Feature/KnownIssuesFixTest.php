@@ -225,6 +225,25 @@ class KnownIssuesFixTest extends TestCase
     }
 
     #[Test]
+    public function public_dark_theme_styles_native_controls_and_header_logout_buttons()
+    {
+        $css = (string) file_get_contents(resource_path('css/app.css'));
+
+        // The class-based toggle cannot change the OS preference, so native
+        // controls (e.g. the home banner category dropdown) need an explicit
+        // colour scheme. Preflight is disabled, so buttons need a UA reset.
+        $this->assertStringContainsString('color-scheme: light;', $css);
+        $this->assertStringContainsString('color-scheme: dark;', $css);
+        $this->assertStringContainsString(':where(.ds) button {', $css);
+
+        $html = $this->actingAs($this->customer(), 'appuser')->get('/')->assertOk()->getContent();
+
+        $this->assertStringContainsString('id="home-category"', $html);
+        $this->assertSame(2, substr_count($html, 'action="'.url('/user/logout').'"'));
+        $this->assertSame(2, substr_count($html, 'tw-border-0 tw-bg-transparent'));
+    }
+
+    #[Test]
     public function an_attendee_can_print_only_their_own_invoice()
     {
         $organizer = $this->organizer();

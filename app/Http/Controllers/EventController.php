@@ -14,6 +14,7 @@ use Auth;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\Rule;
 
 class EventController extends Controller
 {
@@ -36,6 +37,37 @@ class EventController extends Controller
         abort(403);
     }
 
+    private function allowedScannerIds(): array
+    {
+        $query = User::role('scanner');
+
+        if (! Auth::user()->hasRole('admin')) {
+            $query->where('org_id', Auth::user()->id);
+        }
+
+        return $query->pluck('id')->map(fn ($id) => (int) $id)->all();
+    }
+
+    private function scannerAssignmentRules(array $allowedIds): array
+    {
+        return [
+            'scanner_id' => ['bail', 'required', Rule::in($allowedIds)],
+            'scanner_ids' => 'nullable|array',
+            'scanner_ids.*' => [Rule::in($allowedIds)],
+        ];
+    }
+
+    private function scannerIdsForEvent(Request $request): array
+    {
+        return collect([$request->input('scanner_id')])
+            ->merge($request->input('scanner_ids', []))
+            ->filter(fn ($id) => $id !== null && $id !== '')
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values()
+            ->all();
+    }
+
     private function ticketManagerUrl(Event $event): string
     {
         return url($event->id.'/'.preg_replace('/\s+/', '-', $event->name).'/tickets');
@@ -45,12 +77,9 @@ class EventController extends Controller
     {
         abort_if(Gate::denies('event_access'), Response::HTTP_FORBIDDEN, '403 Forbidden');
         if (Auth::user()->hasRole('admin')) {
-            $events = Event::with(['category', 'organization'])->where('is_deleted', 0)->orderBy('id', 'DESC')->get();
+            $events = Event::with(['category', 'organization', 'scanners'])->where('is_deleted', 0)->orderBy('id', 'DESC')->get();
         } elseif (Auth::user()->hasRole('organization')) {
-            $events = Event::with(['category', 'organization'])->where([['user_id', Auth::user()->id], ['is_deleted', 0]])->orderBy('id', 'DESC')->get();
-            foreach ($events as $value) {
-                $value->scanner = User::find($value->scanner_id);
-            }
+            $events = Event::with(['category', 'organization', 'scanners'])->where([['user_id', Auth::user()->id], ['is_deleted', 0]])->orderBy('id', 'DESC')->get();
         } else {
             abort(403);
         }
@@ -76,7 +105,8 @@ class EventController extends Controller
     {
         abort_if(Gate::denies('event_create'), Response::HTTP_FORBIDDEN, '403 Forbidden');
 
-        $request->validate([
+        $allowedScanners = $this->allowedScannerIds();
+        $request->validate(array_merge([
             'name' => 'bail|required',
             'image' => 'bail|required',
             'start_time' => 'bail|required',
@@ -89,11 +119,10 @@ class EventController extends Controller
             'lang' => 'bail|required_if:type,offline',
             'status' => 'bail|required',
             'description' => 'bail|required',
-            'scanner_id' => 'bail|required',
             'people' => 'bail|required',
-        ]);
+        ], $this->scannerAssignmentRules($allowedScanners)));
         $data = $request->all();
-        unset($data['after_save']);
+        unset($data['after_save'], $data['scanner_ids']);
         if ($request->input('type') !== 'online') {
             $data['event_link'] = null;
         }
@@ -104,6 +133,7 @@ class EventController extends Controller
             $data['user_id'] = Auth::user()->id;
         }
         $event = Event::create($data);
+        $event->syncScanners($this->scannerIdsForEvent($request));
 
         if ($request->input('after_save') === 'tickets') {
             return redirect($this->ticketManagerUrl($event))
@@ -147,7 +177,8 @@ class EventController extends Controller
         abort_if(Gate::denies('event_edit'), Response::HTTP_FORBIDDEN, '403 Forbidden');
         $this->authorizeEventAccess($event);
 
-        $request->validate([
+        $allowedScanners = $this->allowedScannerIds();
+        $request->validate(array_merge([
             'name' => 'bail|required',
             'start_time' => 'bail|required',
             'end_time' => 'bail|required',
@@ -159,11 +190,10 @@ class EventController extends Controller
             'lang' => 'bail|required_if:type,offline',
             'status' => 'bail|required',
             'description' => 'bail|required',
-            'scanner_id' => 'bail|required',
             'people' => 'bail|required',
-        ]);
+        ], $this->scannerAssignmentRules($allowedScanners)));
         $data = $request->all();
-        unset($data['after_save']);
+        unset($data['after_save'], $data['scanner_ids']);
         if ($request->input('type') !== 'online') {
             $data['event_link'] = null;
         }
@@ -175,6 +205,7 @@ class EventController extends Controller
             $data['image'] = (new AppHelper)->saveImage($request);
         }
         $event->update($data);
+        $event->syncScanners($this->scannerIdsForEvent($request));
 
         if ($request->input('after_save') === 'tickets') {
             return redirect($this->ticketManagerUrl($event))

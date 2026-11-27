@@ -33,10 +33,14 @@ use App\Mail\TicketBook;
 use App\Mail\TicketBookOrg;
 use App\Models\Language;
 use App\Support\CheckoutCalculator;
+use App\Support\OnlineEventAccess;
 use App\Support\PublicPaymentLink;
+use App\Support\RequestData;
+use App\Support\TicketQr;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 
 use Artesaos\SEOTools\Facades\JsonLdMulti;
@@ -103,6 +107,21 @@ class FrontendController extends Controller
     }
 
     /**
+     * Resolve the online joining link for a public event page. Paid online
+     * events only expose the link to attendees with a valid order.
+     */
+    private function onlineJoinContext(Event $event): array
+    {
+        $access = app(OnlineEventAccess::class);
+        $customerId = Auth::guard('appuser')->id();
+
+        return [
+            'joinUrl' => $access->joinUrl($event, $customerId === null ? null : (int) $customerId),
+            'onlineJoinLocked' => $access->requiresOrder($event),
+        ];
+    }
+
+    /**
      * Attach remaining quantities to tickets with one grouped order query.
      */
     private function applyTicketAvailability($tickets): void
@@ -121,6 +140,41 @@ class FrontendController extends Controller
 
         foreach ($tickets as $ticket) {
             $ticket->available_qty = $ticket->quantity - (int) ($used->get($ticket->id) ?? 0);
+        }
+    }
+
+    /**
+     * Keep the home page's "all active tickets" totals, but calculate them
+     * with two grouped queries instead of two queries per event.
+     */
+    private function applyHomeTicketTotals($events): void
+    {
+        $eventIds = $events->pluck('id')->filter()->values();
+
+        if ($eventIds->isEmpty()) {
+            return;
+        }
+
+        $ticketTotals = Ticket::whereIn('event_id', $eventIds)
+            ->where([
+                ['is_deleted', 0],
+                ['status', 1],
+            ])
+            ->select('event_id')
+            ->selectRaw('SUM(quantity) as total')
+            ->groupBy('event_id')
+            ->pluck('total', 'event_id');
+
+        $soldTotals = Order::whereIn('event_id', $eventIds)
+            ->select('event_id')
+            ->selectRaw('SUM(quantity) as total')
+            ->groupBy('event_id')
+            ->pluck('total', 'event_id');
+
+        foreach ($events as $event) {
+            $event->total_ticket = (int) ($ticketTotals->get($event->id) ?? 0);
+            $event->sold_ticket = (int) ($soldTotals->get($event->id) ?? 0);
+            $event->available_ticket = $event->total_ticket - $event->sold_ticket;
         }
     }
 
@@ -152,15 +206,17 @@ class FrontendController extends Controller
     
             $data->review = Review::where('event_id',$data->id)->orderBy('id','DESC')->get();
             $this->applyTicketAvailability($data->paid_ticket->concat($data->free_ticket));
-           
-        return view ('web.tickets', compact('data'));
+
+        $onlineJoin = $this->onlineJoinContext($data);
+
+        return view('web.tickets', array_merge(compact('data'), $onlineJoin));
     }
     public function home(){
         if(env('DB_DATABASE')==null){              
             return view('admin.frontpage');
         }
         else{
-            $setting = Setting::first(['app_name','logo']);
+            $setting = app(RequestData::class)->setting();
 
             SEOMeta::setTitle($setting->app_name.' - Home' ?? env('APP_NAME'))
             ->setDescription('This is home page')
@@ -181,19 +237,15 @@ class FrontendController extends Controller
             SEOTools::setCanonical(url()->current());
             SEOTools::jsonLd()->addImage($setting->imagePath . $setting->logo);
             
-            $timezone = Setting::find(1)->timezone;       
-            $date = Carbon::now($timezone);      
+            $timezone = $setting->timezone ?? config('app.timezone');
+            $date = Carbon::now($timezone);
             $events  = Event::with(['category:id,name'])
-            ->where([['status',1],['is_deleted',0],['event_status','Pending'],['end_time', '>',$date->format('Y-m-d H:i:s')]])              
+            ->where([['status',1],['is_deleted',0],['event_status','Pending'],['end_time', '>',$date->format('Y-m-d H:i:s')]])
             ->orderBy('start_time','ASC')->get();
             $organizer = User::role('organization')->orderBy('id','DESC')->get();
             $category = Category::where('status',1)->orderBy('id','DESC')->get();
             $blog = Blog::with(['category:id,name'])->where('status',1)->orderBy('id','DESC')->get();
-            foreach ($events as $value) {
-                $value->total_ticket = Ticket::where([['event_id',$value->id],['is_deleted',0],['status',1]])->sum('quantity');
-                $value->sold_ticket = Order::where('event_id',$value->id)->sum('quantity');
-                $value->available_ticket = $value->total_ticket - $value->sold_ticket;
-            }
+            $this->applyHomeTicketTotals($events);
             return view('frontend.home',compact('events','organizer','category','blog'));
         }
         
@@ -490,7 +542,7 @@ class FrontendController extends Controller
     }
     
     public function eventDetail($id,$name){
-        $setting = Setting::first(['app_name','logo','currency']);
+        $setting = app(RequestData::class)->setting();
         $data = Event::with(['category:id,name,image','organization:id,first_name,name,bio,last_name,image'])->find($id);      
 
         SEOMeta::setTitle($data->name)
@@ -537,16 +589,32 @@ class FrontendController extends Controller
         SEOTools::jsonLd()->addImage($setting->imagePath . $setting->logo);
         SEOTools::jsonLd()->addImage($data->imagePath . $data->image);
 
-        $timezone = Setting::find(1)->timezone;       
-        $date = Carbon::now($timezone); 
+        $timezone = $setting->timezone ?? config('app.timezone');
+        $date = Carbon::now($timezone);
         $data->paid_ticket =  Ticket::where([['event_id',$data->id],['is_deleted',0],['type','paid'],['status',1],['end_time', '>=',$date->format('Y-m-d H:i:s')],['start_time', '<=',$date->format('Y-m-d H:i:s')]])->orderBy('id','DESC')->get();
         $data->free_ticket = Ticket::where([['event_id',$data->id],['is_deleted',0],['type','free'],['status',1],['end_time', '>=',$date->format('Y-m-d H:i:s')],['start_time', '<=',$date->format('Y-m-d H:i:s')]])->orderBy('id','DESC')->get();
 
         $data->review = Review::where('event_id',$data->id)->orderBy('id','DESC')->get();
         $this->attachReviewAuthors($data->review);
-        $this->applyTicketAvailability($data->paid_ticket->concat($data->free_ticket));
 
-        return view('frontend.eventDetail',compact('data','setting'));
+        $ticketOptions = $data->paid_ticket->concat($data->free_ticket);
+        $this->applyTicketAvailability($ticketOptions);
+        $data->ticket_options = $ticketOptions->sort(function ($a, $b) {
+            $aSoldOut = (int) ($a->available_qty ?? 0) <= 0;
+            $bSoldOut = (int) ($b->available_qty ?? 0) <= 0;
+
+            if ($aSoldOut !== $bSoldOut) {
+                return $aSoldOut ? 1 : -1;
+            }
+
+            $priceComparison = (float) ($a->price ?? 0) <=> (float) ($b->price ?? 0);
+
+            return $priceComparison !== 0 ? $priceComparison : (int) $a->id <=> (int) $b->id;
+        })->values();
+
+        $onlineJoin = $this->onlineJoinContext($data);
+
+        return view('frontend.eventDetail', array_merge(compact('data', 'setting'), $onlineJoin));
     }
     
     public function orgDetail($id,$name){
@@ -666,7 +734,7 @@ class FrontendController extends Controller
         $request->validate([
             'ticket_id' => 'bail|required|integer',
             'quantity' => 'bail|required|integer|min:1',
-            'payment_type' => 'bail|required|in:FREE,LOCAL,FLUTTERWAVE,STRIPE,PAYPAL,RAZOR',
+            'payment_type' => 'bail|required|in:FREE,LOCAL,FLUTTERWAVE,STRIPE,PAYPAL,RAZOR,PAYSTACK',
             'coupon_id' => 'nullable|integer',
             'payment' => 'bail|required|numeric',
             'tax' => 'bail|required|numeric',
@@ -702,11 +770,14 @@ class FrontendController extends Controller
         $data['coupon_discount'] = $totals['discount'];
         $data['coupon_id'] = $coupon ? $coupon->id : null;
         $data['org_commission'] = $totals['commission'];
-        if($request->payment_type=='LOCAL' ||$request->payment_type=='FLUTTERWAVE' ){
+        if (in_array($request->payment_type, ['LOCAL', 'FLUTTERWAVE', 'PAYSTACK'], true)) {
             $data['payment_status'] = 0;
-        }
-        else{
+        } else {
             $data['payment_status'] = 1;
+        }
+
+        if ($request->payment_type === 'PAYSTACK') {
+            $data['payment_token'] = 'ODG-'.Str::upper(Str::random(12));
         }
 
         if($request->payment_type == "STRIPE"){
@@ -855,6 +926,9 @@ class FrontendController extends Controller
         if($request->payment_type=="FLUTTERWAVE"){
             return redirect('web/create-payment/'.$order->id);
         }
+        if ($request->payment_type === 'PAYSTACK') {
+            return redirect()->route('paystack.pay', ['order' => $order->id]);
+        }
         return redirect('my-tickets');        
     }
     
@@ -911,9 +985,20 @@ class FrontendController extends Controller
         $order = $this->authorizeCustomerOrder($id);
         $order->load(['customer', 'event', 'organization', 'ticket']);
         $order->tax_data = OrderTax::with('tax')->where('order_id', $order->id)->get();
-        $order->ticket_data = OrderChild::where('order_id', $order->id)->get();
+        $order->ticket_data = OrderChild::where('order_id', $order->id)->orderBy('id')->get();
+        app(TicketQr::class)->attach($order, $order->ticket_data, 110);
 
         return view('admin.order.invoicePrint', compact('order'));
+    }
+
+    public function orderTicketQrs($id)
+    {
+        $order = $this->authorizeCustomerOrder($id);
+        $order->load(['event:id,name,start_time,end_time', 'ticket:id,name,price,type']);
+        $children = OrderChild::where('order_id', $order->id)->orderBy('id')->get();
+        $paid = app(TicketQr::class)->attach($order, $children, 240);
+
+        return view('frontend.partials.order-ticket-qrs', compact('order', 'children', 'paid'));
     }
 
     private function authorizePublicPaymentOrder(Order $order, string $token): void
@@ -1433,8 +1518,17 @@ class FrontendController extends Controller
         $ticket['past'] = Order::with(['event:id,name,image,start_time,type,end_time,address','ticket:id,ticket_number,name,type','organization:id,first_name,last_name,image'])
         ->where([['customer_id',Auth::guard('appuser')->user()->id],['order_status','Cancel']])
         ->orWhere([['customer_id',Auth::guard('appuser')->user()->id],['order_status','Complete']])
-        ->orderBy('id','DESC')->get();        
-        return view('frontend.userTickets',compact('ticket'));
+        ->orderBy('id','DESC')->get();
+
+        $firstOrder = $ticket['upcoming']->first() ?? $ticket['past']->first();
+        $firstChildren = $firstOrder
+            ? OrderChild::where('order_id', $firstOrder->id)->orderBy('id')->get()
+            : collect();
+        $firstPaid = $firstOrder
+            ? app(TicketQr::class)->attach($firstOrder, $firstChildren, 240)
+            : false;
+
+        return view('frontend.userTickets', compact('ticket', 'firstChildren', 'firstPaid'));
     }
 
     public function getOrder($id){

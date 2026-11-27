@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Category;
+use App\Models\Order;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
@@ -13,17 +14,22 @@ class EventPagesTest extends TestCase
     {
         $organizer = $this->organizer();
         $event = $this->event($organizer, ['name' => 'Upcoming Test Carnival']);
+        $this->ticket($event, ['name' => 'Paid Entry', 'price' => 2500]);
 
         $this->get('/')
             ->assertOk()
             ->assertSee(config('brand.name'), false)
-            ->assertSee('Upcoming Test Carnival', false);
+            ->assertSee('Upcoming Test Carnival', false)
+            ->assertSee('From', false)
+            ->assertSee('2,500', false);
         $this->get('/index')->assertOk();
 
         $this->get('/all-events')
             ->assertOk()
             ->assertSee('Upcoming Test Carnival', false)
-            ->assertSee('Event results', false);
+            ->assertSee('Event results', false)
+            ->assertSee('From', false)
+            ->assertSee('2,500', false);
     }
 
     #[Test]
@@ -161,7 +167,58 @@ class EventPagesTest extends TestCase
             ->assertSee('View on OpenStreetMap')
             ->assertSee('EARLY-BIRD-TEST', false)
             ->assertSee('FREE-PASS-TEST', false)
-            ->assertSee('user/login', false);
+            ->assertSee('user/login', false)
+            ->assertSee('From', false)
+            ->assertSee('1,000', false)
+            ->assertSee('View tickets & checkout')
+            ->assertSee('id="tickets"', false);
+    }
+
+    #[Test]
+    public function event_description_renders_rich_text_without_raw_tags_or_unsafe_attributes()
+    {
+        $organizer = $this->organizer();
+        $description = '<p><span style="color: rgb(8, 8, 9); font-family: &quot;Segoe UI Historic&quot;;">'
+            .'As part of its activities to mark this year\'s International Women\'s Day (IWD), '
+            .'the Nigerian institute of Management (Chartered) will hold a Webinar.</span></p>'
+            .'<script>alert(1)</script><a href="javascript:alert(2)" onclick="evil()">Unsafe link</a>';
+
+        $event = $this->event($organizer, [
+            'name' => 'Rich Text Event',
+            'description' => $description,
+        ]);
+
+        $html = $this->get('/event/'.$event->id.'/rich-text-event')
+            ->assertOk()
+            ->getContent();
+
+        preg_match('/<div class="ds-rich-text[^"]*">(.*?)<\/div>/s', $html, $matches);
+        $descriptionHtml = $matches[1] ?? '';
+
+        $this->assertStringContainsString('As part of its activities', $descriptionHtml);
+        $this->assertStringContainsString('<p>As part of its activities', $descriptionHtml);
+        $this->assertStringNotContainsString('&lt;p&gt;', $descriptionHtml);
+        $this->assertStringNotContainsString('font-family', $descriptionHtml);
+        $this->assertStringNotContainsString('<script>', $descriptionHtml);
+        $this->assertStringNotContainsString('alert(1)', $descriptionHtml);
+        $this->assertStringNotContainsString('href="javascript:', $descriptionHtml);
+        $this->assertStringNotContainsString('onclick=', $descriptionHtml);
+    }
+
+    #[Test]
+    public function plain_text_event_descriptions_still_keep_their_line_breaks()
+    {
+        $organizer = $this->organizer();
+        $event = $this->event($organizer, [
+            'name' => 'Plain Text Event',
+            'description' => "First line\nSecond line",
+        ]);
+
+        $html = $this->get('/event/'.$event->id.'/plain-text-event')
+            ->assertOk()
+            ->getContent();
+
+        $this->assertStringContainsString("First line<br>\nSecond line", $html);
     }
 
     #[Test]
@@ -189,6 +246,97 @@ class EventPagesTest extends TestCase
             ->assertOk()
             ->assertDontSee('javascript:alert(1)', false)
             ->assertSee('Joining details will be shared by the organizer.');
+    }
+
+    #[Test]
+    public function paid_online_events_hide_the_join_link_until_an_order_is_confirmed()
+    {
+        $organizer = $this->organizer();
+        $event = $this->event($organizer, [
+            'name' => 'Paid Online Workshop',
+            'type' => 'online',
+            'event_link' => 'https://meet.example.com/paid-workshop',
+        ]);
+        $ticket = $this->ticket($event, ['name' => 'Paid Seat']);
+        $link = 'https://meet.example.com/paid-workshop';
+
+        $this->get('/event/'.$event->id.'/paid-online-workshop')
+            ->assertOk()
+            ->assertDontSee('Join online')
+            ->assertDontSee('Open event link')
+            ->assertDontSee($link, false)
+            ->assertSee('Your ticket unlocks the joining link.');
+
+        $pendingCustomer = $this->customer();
+        $this->order($event, $ticket, $pendingCustomer, $organizer, [
+            'payment_status' => 0,
+            'order_status' => 'Pending',
+        ]);
+
+        $this->actingAs($pendingCustomer, 'appuser')
+            ->get('/event/'.$event->id.'/paid-online-workshop')
+            ->assertOk()
+            ->assertDontSee($link, false);
+
+        $this->get('/eventdetail/'.$event->id.'/paid-online-workshop')
+            ->assertOk()
+            ->assertDontSee('Join online')
+            ->assertDontSee($link, false)
+            ->assertSee('Join link unlocks after checkout.');
+    }
+
+    #[Test]
+    public function a_confirmed_order_unlocks_the_paid_online_join_link()
+    {
+        $organizer = $this->organizer();
+        $event = $this->event($organizer, [
+            'name' => 'Confirmed Online Workshop',
+            'type' => 'online',
+            'event_link' => 'https://meet.example.com/confirmed-workshop',
+        ]);
+        $ticket = $this->ticket($event, ['name' => 'Paid Seat']);
+        $customer = $this->customer();
+        $link = 'https://meet.example.com/confirmed-workshop';
+
+        $this->order($event, $ticket, $customer, $organizer, [
+            'payment_type' => 'PAYSTACK',
+            'payment_status' => 1,
+            'order_status' => 'Complete',
+        ]);
+
+        $this->actingAs($customer, 'appuser')
+            ->get('/event/'.$event->id.'/confirmed-online-workshop')
+            ->assertOk()
+            ->assertSee('Join online')
+            ->assertSee('Open event link')
+            ->assertSee($link, false);
+
+        $this->get('/eventdetail/'.$event->id.'/confirmed-online-workshop')
+            ->assertOk()
+            ->assertSee('Join online')
+            ->assertSee($link, false);
+    }
+
+    #[Test]
+    public function free_online_events_still_show_their_join_link()
+    {
+        $organizer = $this->organizer();
+        $event = $this->event($organizer, [
+            'name' => 'Free Online Meetup',
+            'type' => 'online',
+            'event_link' => 'https://meet.example.com/free-meetup',
+        ]);
+
+        $this->ticket($event, [
+            'name' => 'Free Seat',
+            'type' => 'free',
+            'price' => 0,
+        ]);
+
+        $this->get('/event/'.$event->id.'/free-online-meetup')
+            ->assertOk()
+            ->assertSee('Join online')
+            ->assertSee('https://meet.example.com/free-meetup', false);
     }
 
     #[Test]

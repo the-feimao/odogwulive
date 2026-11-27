@@ -37,6 +37,20 @@
         return response.json();
     };
 
+    const getHtml = async (url) => {
+        const response = await fetch(url, {
+            method: 'GET',
+            credentials: 'same-origin',
+            headers: { Accept: 'text/html', 'X-CSRF-TOKEN': csrfToken },
+        });
+
+        if (!response.ok) {
+            throw new Error('Request failed: '.concat(response.status));
+        }
+
+        return response.text();
+    };
+
     const postParams = async (url, params) => {
         const response = await fetch(url, {
             method: 'POST',
@@ -236,7 +250,11 @@
         if (!reviewModal) {
             return;
         }
+        // Tailwind's display utilities override the browser's [hidden] rule,
+        // so visibility is controlled by the tw-hidden/tw-flex classes.
         reviewModal.hidden = false;
+        reviewModal.classList.remove('tw-hidden');
+        reviewModal.classList.add('tw-flex');
         reviewModal.querySelector('textarea[name="message"]')?.focus();
     };
 
@@ -244,6 +262,8 @@
         if (!reviewModal) {
             return;
         }
+        reviewModal.classList.add('tw-hidden');
+        reviewModal.classList.remove('tw-flex');
         reviewModal.hidden = true;
     };
 
@@ -285,7 +305,9 @@
         const imageBase = root?.dataset.imageBase || '';
         const fallbackImage = root?.dataset.imageFallback || '';
         const invoiceBase = endpoint('invoiceBase', '/my-tickets');
+        const qrBase = endpoint('qrBase', '/my-tickets');
         const orderEndpoint = endpoint('orderEndpoint', '/getOrder');
+        const qrContainer = detail.querySelector('[data-order-qr-content]');
 
         const badgeBase = 'tw-inline-flex tw-items-center tw-rounded-pill tw-px-2.5 tw-py-1 tw-text-xs tw-font-bold';
         const badgeClasses = {
@@ -313,6 +335,11 @@
             minimumFractionDigits: 0,
             maximumFractionDigits: 2,
         }));
+
+        const setTicketCount = (count) => {
+            const total = Math.max(0, Number(count || 0));
+            setText('ticket-count', String(total).concat(' ', total === 1 ? 'ticket' : 'tickets'));
+        };
 
         const renderOrder = (order) => {
             setText('order-id', order.order_id);
@@ -344,6 +371,7 @@
 
             setText('ticket-name', order.ticket?.name);
             setText('ticket-quantity', order.quantity);
+            setTicketCount(order.quantity);
 
             const free = order.ticket?.type === 'free';
             setText('subtotal', free ? 'FREE' : money(Number(order.ticket?.price || 0) * Number(order.quantity || 0)));
@@ -375,6 +403,11 @@
                 invoiceLink.href = invoiceBase.concat('/', order.id, '/invoice-print');
             }
 
+            const ticketsPrintLink = detail.querySelector('[data-detail="tickets-print-link"]');
+            if (ticketsPrintLink) {
+                ticketsPrintLink.href = invoiceBase.concat('/', order.id, '/invoice-print');
+            }
+
             const paymentPanel = document.getElementById('payment-data') || document.querySelector('.payment-data');
             if (paymentPanel) {
                 paymentPanel.hidden = true;
@@ -390,6 +423,20 @@
                     const payload = await getJson(orderEndpoint.concat('/', button.dataset.orderId));
                     if (payload.success) {
                         renderOrder(payload.data);
+
+                        if (qrContainer) {
+                            try {
+                                qrContainer.innerHTML = await getHtml(
+                                    qrBase.concat('/', button.dataset.orderId, '/qr')
+                                );
+                                const passes = qrContainer.querySelectorAll('[data-ticket-qr]').length;
+                                if (passes) {
+                                    setTicketCount(passes);
+                                }
+                            } catch (error) {
+                                setStatus('Could not load the QR tickets.');
+                            }
+                        }
                     }
                 } catch (error) {
                     setStatus('Could not load that order.');
