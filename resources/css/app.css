@@ -65,6 +65,43 @@
 }
 
 @layer components {
+    /* Order-list status controls. These used to carry .form-control, whose
+       Stisla focus/disabled rules kept a light fill in dark mode. Keeping the
+       control on the design-system palette also lets color-scheme style the
+       native popup on Safari and Chrome. */
+    .ds-status-select {
+        box-sizing: border-box;
+        font-family: inherit;
+        line-height: 1.25;
+        color-scheme: light;
+        @apply tw-h-9 tw-w-full tw-rounded-card tw-border tw-border-neutral-200 tw-bg-neutral-0 tw-pl-2 tw-pr-7 tw-text-xs tw-text-ink-900;
+    }
+
+    .tw-dark .ds-status-select {
+        color-scheme: dark;
+        @apply tw-border-neutral-700 tw-bg-ink-900 tw-text-neutral-50;
+    }
+
+    .ds-status-select option {
+        @apply tw-bg-neutral-0 tw-text-ink-900;
+    }
+
+    .tw-dark .ds-status-select option {
+        @apply tw-bg-ink-900 tw-text-neutral-50;
+    }
+
+    .ds-status-select:focus-visible {
+        @apply tw-outline-none tw-ring-2 tw-ring-accent-600/40;
+    }
+
+    .ds-status-select:disabled {
+        @apply tw-cursor-default tw-border-neutral-200 tw-bg-neutral-100 tw-text-neutral-600 tw-opacity-100;
+    }
+
+    .tw-dark .ds-status-select:disabled {
+        @apply tw-border-neutral-700 tw-bg-neutral-800 tw-text-neutral-300;
+    }
+
     /* The one decorative motif: a ticket stub divider used on event/ticket cards. */
     .ds-ticket-divider {
         position: relative;

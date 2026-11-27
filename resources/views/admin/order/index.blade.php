@@ -57,7 +57,7 @@
                             <td class="tw-px-3 tw-py-3 tw-text-neutral-600 dark:tw-text-neutral-300">{{ $item->payment_type }}</td>
                             <td class="tw-px-3 tw-py-3">
                                 <select name="order_status" id="status-{{ $item->id }}"
-                                    class="form-control p-2 tw-h-9 tw-w-full tw-rounded-card tw-border tw-border-neutral-200 tw-bg-neutral-0 tw-px-2 tw-text-xs tw-text-ink-900 focus:tw-outline-none focus:tw-ring-2 focus:tw-ring-accent-600/20 dark:tw-border-neutral-700 dark:tw-bg-ink-900 dark:tw-text-neutral-50"
+                                    class="ds-status-select"
                                     onchange="changeOrderStatus({{ $item->id }})"
                                     {{ $item->order_status == "Complete" || $item->order_status == "Cancel" ? 'disabled':'' }}>
                                     <option value="Pending" {{ $item->order_status == "Pending" ? 'selected':''}}> {{ __('Pending') }} </option>
@@ -67,7 +67,7 @@
                             </td>
                             <td class="tw-px-3 tw-py-3">
                                 <select name="payment_status" id="payment-{{ $item->id }}"
-                                    class="form-control p-2 tw-h-9 tw-w-full tw-rounded-card tw-border tw-border-neutral-200 tw-bg-neutral-0 tw-px-2 tw-text-xs tw-text-ink-900 focus:tw-outline-none focus:tw-ring-2 focus:tw-ring-accent-600/20 dark:tw-border-neutral-700 dark:tw-bg-ink-900 dark:tw-text-neutral-50"
+                                    class="ds-status-select"
                                     onchange="changePaymentStatus({{ $item->id }})"
                                     {{ $item->payment_status == 1 ? 'disabled':'' }}>
                                     <option value="0" {{ $item->payment_status == 0 ? 'selected':''}}> {{ __('Pending') }} </option>

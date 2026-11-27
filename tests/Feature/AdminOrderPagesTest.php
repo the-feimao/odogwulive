@@ -55,6 +55,7 @@ class AdminOrderPagesTest extends TestCase
             ->assertSee('name="order_status"', false)
             ->assertSee('id="status-'.$order->id.'"', false)
             ->assertSee('onchange="changeOrderStatus('.$order->id.')"', false)
+            ->assertSee('class="ds-status-select"', false)
             ->assertSee('name="payment_status"', false)
             ->assertSee('id="payment-'.$order->id.'"', false)
             ->assertSee('onchange="changePaymentStatus('.$order->id.')"', false)
