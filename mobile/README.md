@@ -30,9 +30,17 @@ npx expo install --check
 
 ### 3. API address
 
-The sign-in screen has an **API server** field. It starts with the Expo dev server host on port `8000`, but you can change it to your computer's Wi-Fi address, for example `http://192.168.1.10:8000`. The value is saved on the device after sign-in.
+The sign-in screen deliberately has **no API server field**. Scanners cannot edit the server address.
 
-Keep the phone and computer on the same Wi-Fi network and allow port 8000 through the firewall. Laravel must be started with `--host 0.0.0.0`, otherwise a phone cannot reach it. For a non-standard setup you can still copy `.env.example` to `.env` and set `EXPO_PUBLIC_API_BASE_URL` as the default.
+By default the app uses the Expo dev server host on port `8000`, which is usually your computer's Wi-Fi address. Keep the phone and computer on the same Wi-Fi network and allow port 8000 through the firewall. Laravel must be started with `--host 0.0.0.0`, otherwise a phone cannot reach it.
+
+For a fixed address or a deployed API, copy `.env.example` to `.env` and set `EXPO_PUBLIC_API_BASE_URL`, then restart Expo. For example:
+
+```bash
+EXPO_PUBLIC_API_BASE_URL=http://192.168.1.100:8000
+```
+
+An address saved by an older version of the app is still honoured so existing installs keep working. It is no longer shown or editable in the app.
 
 ### 4. Start Expo Go
 
@@ -65,6 +73,11 @@ All authenticated requests send `Authorization: Bearer <token>` and `Accept: app
 
 - The Passport token is stored with `expo-secure-store`.
 - Signing out removes the token from the device; it does not revoke the server-side Passport token. Revoke tokens from the existing Laravel admin if needed.
+
+## Troubleshooting
+
+- **Cannot reach Laravel at `http://...`** — Laravel is not listening on your LAN address, the firewall is blocking port 8000, or the phone is not on the same network. Use `php artisan serve --host 0.0.0.0 --port=8000`.
+- **Invalid key supplied** — Passport encryption keys are missing. In the Laravel project root, run `php artisan passport:keys`, then sign in again. Newly generated keys invalidate previously issued tokens.
 
 ## Verification
 

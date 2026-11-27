@@ -41,15 +41,15 @@ function makeStyles(colors) {
       justifyContent: 'center',
       backgroundColor: colors.background,
     },
-    bootText: { marginTop: 14, fontSize: 14, color: colors.textMuted, fontWeight: '600' },
+    bootText: { marginTop: 14, fontSize: 14, color: colors.textMuted, fontWeight: '700' },
     noticeWrap: { paddingHorizontal: 20, paddingTop: 12 },
     header: {
       flexDirection: 'row',
       alignItems: 'center',
       gap: 12,
       paddingHorizontal: 20,
-      paddingTop: 18,
-      paddingBottom: 14,
+      paddingTop: 16,
+      paddingBottom: 15,
     },
     brandMark: {
       width: 44,
@@ -62,16 +62,18 @@ function makeStyles(colors) {
     headerBody: { flex: 1 },
     headerEyebrow: {
       fontSize: 10,
-      fontWeight: '800',
-      letterSpacing: 1.5,
+      fontWeight: '900',
+      letterSpacing: 1.6,
       color: colors.accent,
     },
-    headerTitle: { fontSize: 18, fontWeight: '800', color: colors.text, marginTop: 2 },
-    headerSub: { fontSize: 12, color: colors.textMuted, marginTop: 2 },
+    headerTitle: { fontSize: 18, fontWeight: '900', color: colors.text, marginTop: 2 },
+    statusRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 },
+    statusDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.success },
+    headerSub: { fontSize: 12, color: colors.textMuted },
     signOutButton: {
-      width: 40,
-      height: 40,
-      borderRadius: 13,
+      width: 42,
+      height: 42,
+      borderRadius: 14,
       alignItems: 'center',
       justifyContent: 'center',
       backgroundColor: colors.surface,
@@ -93,13 +95,14 @@ function makeStyles(colors) {
       flex: 1,
       alignItems: 'center',
       justifyContent: 'center',
-      gap: 4,
-      minHeight: 56,
-      borderRadius: 14,
+      gap: 5,
+      minHeight: 58,
+      borderRadius: 16,
     },
     navItemActive: { backgroundColor: colors.surfaceAlt },
     navText: { fontSize: 11, fontWeight: '700', color: colors.textMuted },
-    navTextActive: { color: colors.accent, fontWeight: '800' },
+    navTextActive: { color: colors.accent, fontWeight: '900' },
+    navIndicator: { width: 18, height: 3, borderRadius: 2, backgroundColor: colors.primary },
   });
 }
 
@@ -116,6 +119,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('events');
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [notice, setNotice] = useState(null);
+  const [scanResult, setScanResult] = useState(null);
   const [authBusy, setAuthBusy] = useState(false);
   const [processing, setProcessing] = useState(false);
 
@@ -133,6 +137,7 @@ export default function App() {
     setAccount(null);
     setEvents([]);
     setSelectedEvent(null);
+    setScanResult(null);
     setActiveTab('events');
 
     if (message) {
@@ -218,12 +223,13 @@ export default function App() {
   }, [loadEvents]);
 
   const handleLogin = useCallback(
-    async ({ email, password, baseUrl: requestedBaseUrl }) => {
+    async ({ email, password }) => {
       setNotice(null);
+      setScanResult(null);
       setAuthBusy(true);
 
       try {
-        const activeBaseUrl = normalizeBaseUrl(requestedBaseUrl || baseUrl);
+        const activeBaseUrl = normalizeBaseUrl(baseUrl);
         await storage.setApiBaseUrl(activeBaseUrl);
         setBaseUrl(activeBaseUrl);
 
@@ -257,6 +263,7 @@ export default function App() {
     setSelectedEvent(event);
     setActiveTab('scan');
     setNotice(null);
+    setScanResult(null);
   }, []);
 
   const handleValidate = useCallback(
@@ -287,11 +294,16 @@ export default function App() {
           baseUrl,
         });
 
-        setNotice({
+        const message =
+          payload.msg ||
+          (payload.success ? 'Ticket validated.' : 'Ticket could not be validated.');
+
+        setNotice({ tone: payload.success ? 'success' : 'error', message });
+        setScanResult({
           tone: payload.success ? 'success' : 'error',
-          message:
-            payload.msg ||
-            (payload.success ? 'Ticket validated.' : 'Ticket could not be validated.'),
+          message,
+          code,
+          at: Date.now(),
         });
 
         if (payload.success) {
@@ -301,10 +313,9 @@ export default function App() {
         if (error instanceof ApiError && error.code === 'UNAUTHENTICATED') {
           await clearSession(error.message);
         } else {
-          setNotice({
-            tone: 'error',
-            message: error?.message || 'Ticket validation failed.',
-          });
+          const message = error?.message || 'Ticket validation failed.';
+          setNotice({ tone: 'error', message });
+          setScanResult({ tone: 'error', message, code, at: Date.now() });
         }
       } finally {
         validatingRef.current = false;
@@ -328,6 +339,11 @@ export default function App() {
     [handleValidate],
   );
 
+  const dismissScanResult = useCallback(() => {
+    setScanResult(null);
+    setNotice(null);
+  }, []);
+
   if (booting) {
     return (
       <View style={styles.bootRoot}>
@@ -338,23 +354,20 @@ export default function App() {
     );
   }
 
+  const hideGlobalNotice = activeTab === 'scan' && scanResult;
+
   return (
     <SafeAreaView style={styles.root}>
       <StatusBar style={colors.statusBar} />
 
-      {notice ? (
+      {notice && !hideGlobalNotice ? (
         <View style={styles.noticeWrap}>
           <AlertBox message={notice.message} tone={notice.tone} />
         </View>
       ) : null}
 
       {!token ? (
-        <LoginScreen
-          onLogin={handleLogin}
-          busy={authBusy}
-          baseUrl={baseUrl}
-          onBaseUrlChange={setBaseUrl}
-        />
+        <LoginScreen onLogin={handleLogin} busy={authBusy} />
       ) : (
         <>
           <View style={styles.header}>
@@ -362,11 +375,14 @@ export default function App() {
               <MaterialCommunityIcons name="qrcode-scan" size={23} color={colors.primaryText} />
             </View>
             <View style={styles.headerBody}>
-              <Text style={styles.headerEyebrow}>ODOGWU FEST · STAFF TOOL</Text>
+              <Text style={styles.headerEyebrow}>ODOGWU FEST · GATE CREW</Text>
               <Text style={styles.headerTitle}>Ticket scanner</Text>
-              <Text style={styles.headerSub} numberOfLines={1}>
-                {account?.name || 'Signed in'}
-              </Text>
+              <View style={styles.statusRow}>
+                <View style={styles.statusDot} />
+                <Text style={styles.headerSub} numberOfLines={1}>
+                  {account?.name || 'Signed in'}
+                </Text>
+              </View>
             </View>
             <Pressable
               accessibilityRole="button"
@@ -393,6 +409,8 @@ export default function App() {
               <ScanScreen
                 event={selectedEvent}
                 processing={processing}
+                result={scanResult}
+                onDismissResult={dismissScanResult}
                 onScan={handleScan}
                 onManual={handleValidate}
                 onGoToEvents={() => setActiveTab('events')}
@@ -400,7 +418,7 @@ export default function App() {
             ) : null}
 
             {activeTab === 'settings' ? (
-              <SettingsScreen account={account} baseUrl={baseUrl} onSignOut={handleSignOut} />
+              <SettingsScreen account={account} onSignOut={handleSignOut} />
             ) : null}
           </View>
 
@@ -422,6 +440,7 @@ export default function App() {
                     color={active ? colors.accent : colors.textMuted}
                   />
                   <Text style={[styles.navText, active && styles.navTextActive]}>{tab.label}</Text>
+                  {active ? <View style={styles.navIndicator} /> : null}
                 </Pressable>
               );
             })}

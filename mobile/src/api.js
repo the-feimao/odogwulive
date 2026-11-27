@@ -19,6 +19,15 @@ export function normalizeBaseUrl(value) {
     throw new Error('Enter the API server address.');
   }
 
+  const authority = trimmed.replace(/^https?:\/\//i, '').split(/[/?#]/)[0];
+  const host = authority.replace(/:\d+$/, '').replace(/^\[|\]$/g, '');
+
+  if (/^\d+(?:\.\d+){0,2}\.?$/.test(host)) {
+    throw new Error(
+      'That IP address is incomplete. Use all four parts, for example http://192.168.100.10:8000.',
+    );
+  }
+
   const withScheme = /^https?:\/\//i.test(trimmed) ? trimmed : `http://${trimmed}`;
 
   try {

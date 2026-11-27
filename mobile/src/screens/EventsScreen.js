@@ -7,9 +7,8 @@ import {
   Text,
   View,
 } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
 
-import { AppButton, EmptyState } from '../components/ui';
+import { AppButton, AppCard, EmptyState, IconTile, Pill, SectionHeading } from '../components/ui';
 import { formatEventDate } from '../format';
 import { useTheme } from '../theme';
 
@@ -18,33 +17,43 @@ function makeStyles(colors) {
     content: { padding: 20, paddingBottom: 32 },
     headerRow: {
       flexDirection: 'row',
-      alignItems: 'center',
+      alignItems: 'flex-end',
       justifyContent: 'space-between',
       gap: 12,
       marginBottom: 18,
     },
-    title: { fontSize: 22, fontWeight: '800', color: colors.text },
-    subtitle: { fontSize: 13, color: colors.textMuted, marginTop: 4 },
-    refreshButton: { minHeight: 40, paddingHorizontal: 14 },
-    list: { gap: 12 },
+    refreshButton: { minHeight: 42, paddingHorizontal: 14 },
+    summary: { marginBottom: 20, paddingVertical: 18 },
+    summaryRow: { flexDirection: 'row', alignItems: 'center' },
+    summaryItem: { flex: 1, gap: 4 },
+    summaryDivider: { width: 1, alignSelf: 'stretch', backgroundColor: 'rgba(21,26,46,0.16)' },
+    summaryValue: { fontSize: 25, fontWeight: '900', color: colors.ink, letterSpacing: -0.6 },
+    summaryLabel: { fontSize: 11, fontWeight: '800', color: 'rgba(21,26,46,0.62)', letterSpacing: 0.5 },
+    list: { gap: 13 },
     card: {
-      borderRadius: 16,
+      borderRadius: 20,
       borderWidth: 1,
       borderColor: colors.border,
       backgroundColor: colors.surface,
-      padding: 16,
+      overflow: 'hidden',
+      shadowColor: colors.ink,
+      shadowOpacity: 0.05,
+      shadowRadius: 10,
+      shadowOffset: { width: 0, height: 3 },
+      elevation: 2,
     },
     cardSelected: { borderColor: colors.accent, borderWidth: 2 },
     cardPressed: { opacity: 0.72 },
-    cardTop: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
-    iconBox: {
-      width: 42,
-      height: 42,
-      borderRadius: 13,
-      backgroundColor: colors.surfaceAlt,
-      alignItems: 'center',
-      justifyContent: 'center',
+    accentRail: {
+      position: 'absolute',
+      left: 0,
+      top: 0,
+      bottom: 0,
+      width: 4,
+      backgroundColor: colors.accent,
     },
+    cardInner: { padding: 16, paddingLeft: 20 },
+    cardTop: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
     cardBody: { flex: 1 },
     eventName: { fontSize: 16, fontWeight: '800', color: colors.text },
     eventMeta: { fontSize: 13, color: colors.textMuted, marginTop: 5, lineHeight: 18 },
@@ -54,18 +63,14 @@ function makeStyles(colors) {
       justifyContent: 'space-between',
       borderTopWidth: 1,
       borderTopColor: colors.border,
-      marginTop: 14,
-      paddingTop: 12,
+      marginTop: 15,
+      paddingTop: 13,
     },
     footerLabel: { fontSize: 12, fontWeight: '700', color: colors.textMuted },
-    countPill: {
-      borderRadius: 999,
-      backgroundColor: colors.surfaceAlt,
-      paddingHorizontal: 10,
-      paddingVertical: 4,
-    },
-    countText: { fontSize: 12, fontWeight: '800', color: colors.text },
-    loading: { paddingVertical: 48, alignItems: 'center' },
+    actionRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+    actionText: { fontSize: 12, fontWeight: '800', color: colors.accent },
+    loading: { paddingVertical: 64, alignItems: 'center' },
+    loadingText: { marginTop: 14, fontSize: 14, color: colors.textMuted },
   });
 }
 
@@ -73,11 +78,16 @@ export default function EventsScreen({ events, loading, onRefresh, onSelect, sel
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
 
+  const totalScans = useMemo(
+    () => events.reduce((sum, event) => sum + Number(event.scanTicket ?? 0), 0),
+    [events],
+  );
+
   if (loading && events.length === 0) {
     return (
       <View style={styles.loading}>
         <ActivityIndicator color={colors.accent} />
-        <Text style={[styles.eventMeta, { marginTop: 12 }]}>Loading assigned events…</Text>
+        <Text style={styles.loadingText}>Loading assigned events…</Text>
       </View>
     );
   }
@@ -86,8 +96,11 @@ export default function EventsScreen({ events, loading, onRefresh, onSelect, sel
     <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
       <View style={styles.headerRow}>
         <View style={{ flex: 1 }}>
-          <Text style={styles.title}>Assigned events</Text>
-          <Text style={styles.subtitle}>Choose an event to start validating tickets.</Text>
+          <SectionHeading
+            overline="Your desk"
+            title="Assigned events"
+            subtitle="Choose an event to start validating tickets."
+          />
         </View>
         <AppButton
           label="Refresh"
@@ -99,6 +112,22 @@ export default function EventsScreen({ events, loading, onRefresh, onSelect, sel
           style={styles.refreshButton}
         />
       </View>
+
+      <AppCard tone="primary" style={styles.summary}>
+        <View style={styles.summaryRow}>
+          <View style={styles.summaryItem}>
+            <IconTile name="calendar-outline" tone="primary" size={20} />
+            <Text style={styles.summaryValue}>{events.length}</Text>
+            <Text style={styles.summaryLabel}>EVENTS ASSIGNED</Text>
+          </View>
+          <View style={styles.summaryDivider} />
+          <View style={styles.summaryItem}>
+            <IconTile name="check-circle-outline" tone="primary" size={20} />
+            <Text style={styles.summaryValue}>{totalScans}</Text>
+            <Text style={styles.summaryLabel}>TICKETS CHECKED IN</Text>
+          </View>
+        </View>
+      </AppCard>
 
       {events.length === 0 ? (
         <EmptyState
@@ -125,25 +154,31 @@ export default function EventsScreen({ events, loading, onRefresh, onSelect, sel
                   pressed && styles.cardPressed,
                 ]}
               >
-                <View style={styles.cardTop}>
-                  <View style={styles.iconBox}>
-                    <MaterialCommunityIcons name="calendar-outline" size={21} color={colors.accent} />
+                <View style={styles.accentRail} />
+                <View style={styles.cardInner}>
+                  <View style={styles.cardTop}>
+                    <IconTile name="ticket-outline" size={21} />
+                    <View style={styles.cardBody}>
+                      <Text style={styles.eventName}>{event.name || `Event #${event.id}`}</Text>
+                      <Text style={styles.eventMeta}>{formatEventDate(event.start_time)}</Text>
+                      {event.address ? (
+                        <Text style={styles.eventMeta} numberOfLines={1}>
+                          {event.address}
+                        </Text>
+                      ) : null}
+                    </View>
+                    {selected ? <Pill label="Active" tone="primary" /> : null}
                   </View>
-                  <View style={styles.cardBody}>
-                    <Text style={styles.eventName}>{event.name || `Event #${event.id}`}</Text>
-                    <Text style={styles.eventMeta}>{formatEventDate(event.start_time)}</Text>
-                    {event.address ? (
-                      <Text style={styles.eventMeta} numberOfLines={1}>
-                        {event.address}
-                      </Text>
-                    ) : null}
-                  </View>
-                  <MaterialCommunityIcons name="chevron-right" size={20} color={colors.textMuted} />
-                </View>
-                <View style={styles.cardFooter}>
-                  <Text style={styles.footerLabel}>Tickets scanned</Text>
-                  <View style={styles.countPill}>
-                    <Text style={styles.countText}>{Number(event.scanTicket ?? 0)}</Text>
+                  <View style={styles.cardFooter}>
+                    <Text style={styles.footerLabel}>Tickets scanned</Text>
+                    <View style={styles.actionRow}>
+                      <Pill
+                        label={String(Number(event.scanTicket ?? 0))}
+                        tone="success"
+                        icon="check"
+                      />
+                      <Text style={styles.actionText}>Start →</Text>
+                    </View>
                   </View>
                 </View>
               </Pressable>

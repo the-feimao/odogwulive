@@ -11,6 +11,8 @@ const shared = {
   danger: '#C4374B',
   warning: '#B26A00',
   white: '#FFFFFF',
+  ink: '#151A2E',
+  camera: '#0B1020',
 };
 
 export const LIGHT_COLORS = {
@@ -21,6 +23,12 @@ export const LIGHT_COLORS = {
   text: '#151A2E',
   textMuted: '#566078',
   border: '#DEE2EA',
+  successSurface: '#E7F4F1',
+  successText: '#12504D',
+  dangerSurface: '#FDECF0',
+  dangerText: '#811E2D',
+  warningSurface: '#FFF6DE',
+  warningText: '#6F4200',
   overlay: 'rgba(13, 17, 32, 0.55)',
   statusBar: 'dark',
 };
@@ -33,6 +41,12 @@ export const DARK_COLORS = {
   text: '#F7F8FA',
   textMuted: '#9BA4BF',
   border: '#333D5B',
+  successSurface: 'rgba(31, 122, 116, 0.20)',
+  successText: '#8FD8CD',
+  dangerSurface: 'rgba(196, 55, 75, 0.20)',
+  dangerText: '#FF9CAB',
+  warningSurface: 'rgba(254, 192, 9, 0.18)',
+  warningText: '#FFD66A',
   overlay: 'rgba(0, 0, 0, 0.65)',
   statusBar: 'light',
 };
