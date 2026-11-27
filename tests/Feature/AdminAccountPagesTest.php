@@ -103,6 +103,25 @@ class AdminAccountPagesTest extends TestCase
     }
 
     #[Test]
+    public function the_organizer_sidebar_links_settings_to_the_profile_page()
+    {
+        $this->activateLicense();
+        $organizer = $this->organizer();
+
+        $this->actingAs($organizer)->get('/organization/home')
+            ->assertOk()
+            ->assertSee('href="'.url('profile').'"', false)
+            ->assertSee('<span>Settings</span>', false)
+            ->assertDontSee('href="'.url('admin-setting').'"', false);
+
+        $this->actingAs($organizer)->get(url('profile'))->assertOk();
+
+        $this->actingAs($this->admin())->get('/admin/home')
+            ->assertOk()
+            ->assertSee('href="'.url('admin-setting').'"', false);
+    }
+
+    #[Test]
     public function the_admin_profile_keeps_both_forms_and_their_field_names()
     {
         $this->activateLicense();

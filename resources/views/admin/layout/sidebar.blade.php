@@ -180,7 +180,13 @@
                 </a>
               </li>
             @endcan
-            @if (Auth::user()->hasRole('admin'))
+            @if (Auth::user()->hasRole('organization') && ! Auth::user()->hasRole('admin'))
+                <li class="{{ request()->is('profile') ? 'active' : '' }}">
+                    <a class="nav-link" href="{{ url('profile') }}">
+                        <i class="fas fa-cogs"></i><span>{{ __('Settings') }}</span>
+                    </a>
+                </li>
+            @elseif (Auth::user()->hasRole('admin'))
                 <li class="{{ request()->is('admin-setting') ? 'active' : '' }}">
                     <a class="nav-link" href="{{ url('admin-setting') }}">
                         <i class="fas fa-cogs"></i><span>{{ __('Setting') }}</span>
